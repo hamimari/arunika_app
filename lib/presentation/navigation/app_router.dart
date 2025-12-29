@@ -1,0 +1,134 @@
+import 'package:arunika_app/core/storage/SecureStorageToken.dart';
+import 'package:arunika_app/data/repositories/auth_repository.dart';
+import 'package:arunika_app/data/repositories/user_repository.dart';
+import 'package:arunika_app/di/locator.dart';
+import 'package:arunika_app/presentation/navigation/signup_navigator.dart';
+import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_screen.dart';
+import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_bloc.dart';
+import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_screen.dart';
+import 'package:arunika_app/presentation/screens/home/home_bloc.dart';
+import 'package:arunika_app/presentation/screens/home/home_event.dart';
+import 'package:arunika_app/presentation/screens/home/home_screen.dart';
+import 'package:arunika_app/presentation/screens/home/home_state.dart';
+import 'package:arunika_app/presentation/screens/landing/landing_bloc.dart';
+import 'package:arunika_app/presentation/screens/landing/landing_screen.dart';
+import 'package:arunika_app/presentation/screens/otp/otp_bloc.dart';
+import 'package:arunika_app/presentation/screens/otp/otp_screen.dart';
+import 'package:arunika_app/presentation/screens/profile/profile_bloc.dart';
+import 'package:arunika_app/presentation/screens/profile/profile_event.dart';
+import 'package:arunika_app/presentation/screens/signin/signin_bloc.dart';
+import 'package:arunika_app/presentation/screens/signin/signin_screen.dart';
+import 'package:arunika_app/presentation/screens/signup/parent_signup_success_screen.dart';
+import 'package:arunika_app/presentation/screens/signup/signup_bloc.dart';
+import 'package:arunika_app/presentation/screens/signup/trial_screen.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../screens/profile/profile_screen.dart';
+
+class AppRouter {
+  static final GoRouter router = GoRouter(
+    initialLocation: '/',
+    routes: [
+      GoRoute(
+        path: '/',
+        redirect: (context, state) async {
+          final token = await SecureTokenStorage.getToken();
+          final isLoggedIn = token != null && token.isNotEmpty;
+
+          final goingToAuth =
+              state.matchedLocation == '/landing' ||
+              state.matchedLocation == '/signin';
+
+          if (!isLoggedIn && !goingToAuth) {
+            return '/landing';
+          }
+
+          if (isLoggedIn) {
+            return '/home';
+          }
+
+        },
+      ),
+      GoRoute(
+        path: '/signup',
+        builder: (context, state) {
+          return BlocProvider(
+            create: (_) => SignupBloc(repository: locator<AuthRepository>()),
+            child: const SignupNavigator(),
+          );
+        },
+      ),
+
+      GoRoute(
+        path: '/landing',
+        builder: (context, state) => BlocProvider(
+          create: (_) => LandingBloc(),
+          child: const LandingScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/otp',
+        builder: (context, state) =>
+            BlocProvider(create: (_) => OtpBloc(), child: const OtpScreen()),
+      ),
+      GoRoute(
+        path: '/parent-signup-success',
+        builder: (context, state) => BlocProvider(
+          create: (_) => SignupBloc(repository: locator<AuthRepository>()),
+          child: const ParentRegistrationSuccessScreen(),
+        ),
+      ),
+      /*GoRoute(
+        path: '/child-signup',
+        builder: (context, state) => BlocProvider(
+          create: (_) => SignupBloc(),
+          child: const ChildSignupScreen(),
+        ),
+      ),*/
+      GoRoute(
+        path: '/trial',
+        builder: (context, state) => BlocProvider(
+          create: (_) => SignupBloc(repository: locator<AuthRepository>()),
+          child: const TrialScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/home',
+        builder: (context, state) =>
+            BlocProvider(create: (_) => HomeBloc()..add(HomeInitial() as HomeEvent), child: const HomeScreen()),
+      ),
+      GoRoute(
+        path: '/dongeng-list',
+        builder: (context, state) => BlocProvider(
+          create: (_) => DongengListBloc(),
+          child: const DongengListScreen(),
+        ),
+      ),
+
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => BlocProvider(
+          create: (_) => ProfileBloc(repository: locator<UserRepository>())..add(ProfileInitial()),
+          child: const ProfileScreen(),
+        ),
+      ),
+
+      GoRoute(
+        path: '/dongeng-player',
+        builder: (context, state) => const DongengDetailScreen(),
+      ),
+      GoRoute(
+        path: '/signin',
+        builder: (context, state) {
+          return BlocProvider(
+            create: (_) => SigninBloc(repository: locator<AuthRepository>(),
+                userRepository: locator<UserRepository>()),
+            child: const SignInScreen(),
+          );
+        },
+      ),
+    ],
+  );
+}
