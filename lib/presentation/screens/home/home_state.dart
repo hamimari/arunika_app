@@ -13,3 +13,4 @@ class HomeState {
 }
 
 class NavigateToCategoryList extends HomeState {}
+class NavigateToDongengPlayer extends HomeState {}

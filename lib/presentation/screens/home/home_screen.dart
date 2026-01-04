@@ -1,4 +1,5 @@
 import 'package:arunika_app/presentation/screens/arscanner/qr_scanner.dart';
+import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_screen.dart';
 import 'package:arunika_app/presentation/screens/home/home_bloc.dart';
 import 'package:arunika_app/presentation/screens/home/home_event.dart';
 import 'package:arunika_app/presentation/screens/home/home_state.dart';
@@ -33,6 +34,25 @@ class HomeScreen extends StatefulWidget {
     },
   ];
 
+  static const List<Map<String, dynamic>> stories = [
+    {
+      'title': 'Poor Pluto',
+      'ageGroup': '6–9 years old · 5 min read',
+      'imageUrl':
+      'https://storage.googleapis.com/a1aa/image/2KbLEXPe53yJBZZcTS3MrE4GC4mmaJ6k0zqQT3Fw4Wc.jpg',
+      'label': 'PAID',
+      'labelColor': Colors.orange,
+    },
+    {
+      'title': 'Hansel & Grate',
+      'ageGroup': '9–12 years old · 7 min read',
+      'imageUrl':
+      'https://storage.googleapis.com/a1aa/image/2KbLEXPe53yJBZZcTS3MrE4GC4mmaJ6k0zqQT3Fw4Wc.jpg',
+      'label': 'FREE',
+      'labelColor': Colors.green,
+    },
+  ];
+
   const HomeScreen({super.key});
 
   @override
@@ -51,6 +71,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       listener: (context, state) {
         if (state is NavigateToCategoryList) {
           context.push('/dongeng-list');
+          context.read<HomeBloc>().add(HomeRefresh());
+        }
+        if (state is NavigateToDongengPlayer) {
+          context.push('/dongeng-player');
           context.read<HomeBloc>().add(HomeRefresh());
         }
       },
@@ -76,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           child: const Icon(Iconsax.scan),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        body: SafeArea(
+        /*body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -162,6 +186,70 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                         ),
                       );
                     }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),*/
+        body: SafeArea(
+          child:  Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Halo ${context.select((HomeBloc b) => b.state.user?.children[0].name)}",
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange[500],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  decoration: InputDecoration(
+                    hintText: "Search",
+                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Story list
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: HomeScreen.stories.length,
+                    itemBuilder: (context, index) {
+                      final story = HomeScreen.stories[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () {
+                              context
+                                  .read<HomeBloc>()
+                                  .add(DongengSelected());
+                            },
+                            child: StoryCard(
+                              title: story['title'],
+                              ageGroup: story['ageGroup'],
+                              imageUrl: story['imageUrl'],
+                              label: story['label'],
+                              labelColor: story['labelColor'],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],

@@ -20,5 +20,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     on<HomePressed>((event, emit) async {
       emit(NavigateToCategoryList());
     });
+    on<DongengSelected>((event, emit) {
+      emit(NavigateToDongengPlayer());
+    });
   }
 }
