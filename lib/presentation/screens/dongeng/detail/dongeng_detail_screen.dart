@@ -1,4 +1,3 @@
-import 'package:arunika_app/presentation/screens/widgets/bottom_nav.dart';
 import 'package:flutter/material.dart';
 
 class DongengDetailScreen extends StatelessWidget {
@@ -12,7 +11,6 @@ class DongengDetailScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
       ),
-      bottomNavigationBar: const BottomNav(currentIndex: 1),
       body: SafeArea(
         child: Column(
           children: [
