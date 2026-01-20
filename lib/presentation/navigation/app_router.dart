@@ -1,5 +1,6 @@
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
 import 'package:arunika_app/data/repositories/auth_repository.dart';
+import 'package:arunika_app/data/repositories/fairy_tales_repository.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/navigation/signup_navigator.dart';
@@ -97,7 +98,7 @@ class AppRouter {
       GoRoute(
         path: '/home',
         builder: (context, state) =>
-            BlocProvider(create: (_) => HomeBloc()..add(HomeInitial() as HomeEvent), child: const HomeScreen()),
+            BlocProvider(create: (_) => HomeBloc(repository: locator<FairyTalesRepository>())..add(HomeInitial() as HomeEvent), child: const HomeScreen()),
       ),
       GoRoute(
         path: '/dongeng-list',
