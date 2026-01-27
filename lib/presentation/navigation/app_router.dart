@@ -1,9 +1,11 @@
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
+import 'package:arunika_app/data/models/response/dongeng_response.dart';
 import 'package:arunika_app/data/repositories/auth_repository.dart';
 import 'package:arunika_app/data/repositories/fairy_tales_repository.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/navigation/signup_navigator.dart';
+import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_bloc.dart';
 import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_screen.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_bloc.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_screen.dart';
@@ -22,14 +24,17 @@ import 'package:arunika_app/presentation/screens/signin/signin_screen.dart';
 import 'package:arunika_app/presentation/screens/signup/parent_signup_success_screen.dart';
 import 'package:arunika_app/presentation/screens/signup/signup_bloc.dart';
 import 'package:arunika_app/presentation/screens/signup/trial_screen.dart';
+import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../screens/profile/profile_screen.dart';
 
+final authNotifier = locator<AuthNotifier>();
 class AppRouter {
   static final GoRouter router = GoRouter(
+    refreshListenable: authNotifier,
     initialLocation: '/',
     routes: [
       GoRoute(
@@ -118,7 +123,14 @@ class AppRouter {
 
       GoRoute(
         path: '/dongeng-player',
-        builder: (context, state) => const DongengDetailScreen(),
+        builder: (context, state) {
+          final dongeng = state.extra as DongengResponse;
+
+          return BlocProvider(
+            create: (_) => DongengDetailBloc(dongeng),
+            child: DongengDetailScreen(dongeng: dongeng),
+          );
+        }
       ),
       GoRoute(
         path: '/signin',

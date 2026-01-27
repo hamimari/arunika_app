@@ -40,7 +40,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       emit(NavigateToCategoryList());
     });
     on<DongengSelected>((event, emit) {
-      emit(NavigateToDongengPlayer());
+      emit(NavigateToDongengPlayer(event.dongeng));
     });
     on<SearchQueryChanged>((event, emit) {
       final q = event.query.toLowerCase();

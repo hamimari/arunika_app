@@ -35,7 +35,7 @@ class SignInScreen extends StatelessWidget {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFFFBF5),
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -47,103 +47,166 @@ class SignInScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Image.network(
-                  'https://raw.githubusercontent.com/hamimari/arunika_assets/main/login_icon_transparent.png',
-                  width: 600,
-                  height: 400,
-                ),
+                Center(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 32),
 
-                BlocBuilder<SigninBloc, SigninState>(
-                  buildWhen: (prev, curr) => prev.emailError != curr.emailError,
-                  builder: (context, state) {
-                    return AppTextField(
-                      label: 'Email',
-                      hint: 'nagita.slavina@mail.com',
-                      onChanged: (value) =>
-                          context.read<SigninBloc>().add(EmailChanged(value)),
-                      error: state.emailError,
-                    );
-                  },
-                ),
-
-                BlocBuilder<SigninBloc, SigninState>(
-                  buildWhen: (prev, curr) =>
-                      prev.passwordError != curr.passwordError ||
-                      prev.obscurePassword != curr.obscurePassword,
-                  builder: (context, state) {
-                    return AppTextField(
-                      label: 'Kata Sandi',
-                      hint: 'Masukkan kata sandi',
-                      onChanged: (value) => context.read<SigninBloc>().add(
-                        PasswordChanged(value),
-                      ),
-                      error: state.passwordError,
-                      obscure: state.obscurePassword,
-                      suffix: IconButton(
-                        icon: Icon(
-                          state.obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+                      Container(
+                        width: 48,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade200,
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                        onPressed: () {
-                          context.read<SigninBloc>().add(
-                            ObscurePasswordToggled(!state.obscurePassword),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      const Text(
+                        'Selamat Datang',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          'Masuk untuk melanjutkan perjalanan belajar si kecil dengan tenang dan menyenangkan',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 15,
+                            height: 1.5,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Container(
+                  margin: const EdgeInsets.only(top: 32),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withOpacity(0.08),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      BlocBuilder<SigninBloc, SigninState>(
+                        buildWhen: (prev, curr) => prev.emailError != curr.emailError,
+                        builder: (context, state) {
+                          return AppTextField(
+                            label: 'Email',
+                            hint: 'nagita.slavina@mail.com',
+                            onChanged: (value) =>
+                                context.read<SigninBloc>().add(EmailChanged(value)),
+                            error: state.emailError,
                           );
                         },
                       ),
-                    );
-                  },
-                ),
 
-                // Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      context.read<SigninBloc>().add(SigninSubmitted());
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                      const SizedBox(height: 12),
+
+
+                      BlocBuilder<SigninBloc, SigninState>(
+                        buildWhen: (prev, curr) =>
+                        prev.passwordError != curr.passwordError ||
+                            prev.obscurePassword != curr.obscurePassword,
+                        builder: (context, state) {
+                          return AppTextField(
+                            label: 'Kata Sandi',
+                            hint: 'Masukkan kata sandi',
+                            onChanged: (value) => context.read<SigninBloc>().add(
+                              PasswordChanged(value),
+                            ),
+                            error: state.passwordError,
+                            obscure: state.obscurePassword,
+                            suffix: IconButton(
+                              icon: Icon(
+                                state.obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                                color: Colors.orange,
+                              ),
+                              onPressed: () {
+                                context.read<SigninBloc>().add(
+                                  ObscurePasswordToggled(!state.obscurePassword),
+                                );
+                              },
+                            ),
+                          );
+                        },
                       ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Masuk',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+
+                      const SizedBox(height: 24),
+
+                      // Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            context.read<SigninBloc>().add(SigninSubmitted());
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Masuk',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 24),
 
-                // Bottom link
-                Center(
-                  child: Text.rich(
-                    TextSpan(
-                      text: 'Belum punya akun? ',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black54,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: 'Daftar',
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = () {
-                              context.push('/signup');
-                            },
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text.rich(
+                      TextSpan(
+                        text: 'Belum punya akun? ',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
                         ),
-                      ],
+                        children: [
+                          TextSpan(
+                            text: 'Daftar di sini',
+                            style: const TextStyle(
+                              color: Colors.orange,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                context.push('/signup');
+                              },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

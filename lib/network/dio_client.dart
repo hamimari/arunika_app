@@ -1,5 +1,6 @@
 import 'package:arunika_app/constants/api_paths.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
+import 'package:arunika_app/presentation/navigation/app_router.dart';
 import 'package:dio/dio.dart';
 import '../config/app_config.dart';
 
@@ -10,39 +11,74 @@ class DioClient {
       headers: {'Content-Type': 'application/json'},
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
+      validateStatus: (status) => status != null && status < 400,
     ),
   )..interceptors.add(AuthInterceptor());
 }
 
+class RefreshDio {
+  static final Dio dio = Dio(
+    BaseOptions(
+      baseUrl: AppConfig.baseUrl,
+      headers: {'Content-Type': 'application/json'},
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+      validateStatus: (status) => status != null && status < 400,
+    ),
+  );
+}
+
 class AuthInterceptor extends InterceptorsWrapper {
+  static bool _isRefreshing = false;
+
   @override
-  void onRequest(
+  Future<void> onRequest(
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
     final token = await SecureTokenStorage.getToken();
-    if (token != null && token.isNotEmpty) {
+    if (token?.isNotEmpty == true) {
       options.headers['Authorization'] = 'Bearer $token';
     }
-    super.onRequest(options, handler);
+    handler.next(options);
   }
 
   @override
-  void onError(DioException err, ErrorInterceptorHandler handler) async {
-    if (err.response?.statusCode == 401) {
+  Future<void> onError(
+      DioException err,
+      ErrorInterceptorHandler handler,
+      ) async {
+    if (err.requestOptions.extra['isRefresh'] == true) {
+      return handler.next(err);
+    }
+
+    if (err.response?.statusCode == 401 && !_isRefreshing) {
+      _isRefreshing = true;
+
       final success = await _refreshToken();
+      _isRefreshing = false;
+
       if (success) {
-        final req = err.requestOptions;
-        final newToken = await SecureTokenStorage.getToken();
+        final token = await SecureTokenStorage.getToken();
 
-        req.headers['Authorization'] = 'Bearer $newToken';
+        final response = await DioClient.dio.request(
+          err.requestOptions.path,
+          data: err.requestOptions.data,
+          queryParameters: err.requestOptions.queryParameters,
+          options: Options(
+            method: err.requestOptions.method,
+            headers: {
+              ...err.requestOptions.headers,
+              'Authorization': 'Bearer $token',
+            },
+          ),
+        );
 
-        final response = await DioClient.dio.fetch(req);
         return handler.resolve(response);
       }
     }
 
-    super.onError(err, handler);
+    handler.next(err);
   }
 
   Future<bool> _refreshToken() async {
@@ -50,9 +86,10 @@ class AuthInterceptor extends InterceptorsWrapper {
     if (refreshToken == null) return false;
 
     try {
-      final res = await Dio().post(
-        AppConfig.baseUrl + ApiPaths.refreshToken,
+      final res = await RefreshDio.dio.post(
+        ApiPaths.refreshToken,
         data: {'refresh_token': refreshToken},
+        options: Options(extra: {'isRefresh': true}),
       );
 
       final newToken = res.data['token'];
@@ -61,9 +98,15 @@ class AuthInterceptor extends InterceptorsWrapper {
       await SecureTokenStorage.saveToken(newToken);
       await SecureTokenStorage.saveRefreshToken(newRefreshToken);
       return true;
-    } catch (_) {
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        await authNotifier.logout();
+      }
+      return false;
+    } catch (e) {
       await SecureTokenStorage.clear();
       return false;
     }
   }
+
 }

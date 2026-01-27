@@ -1,8 +1,8 @@
 import 'package:arunika_app/presentation/screens/arscanner/qr_scanner.dart';
-import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_screen.dart';
 import 'package:arunika_app/presentation/screens/home/home_bloc.dart';
 import 'package:arunika_app/presentation/screens/home/home_event.dart';
 import 'package:arunika_app/presentation/screens/home/home_state.dart';
+import 'package:arunika_app/presentation/screens/home/story_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -63,105 +63,142 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           context.read<HomeBloc>().add(HomeRefresh());
         }
         if (state is NavigateToDongengPlayer) {
-          context.push('/dongeng-player');
+          context.push('/dongeng-player', extra: state.dongeng);
           _searchController.clear();
           context.read<HomeBloc>().add(HomeRefresh());
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
-        bottomNavigationBar: BottomNav(
-          currentIndex: 0,
-          onArPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => QRScannerPage()),
-            );
-          },
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => QRScannerPage()),
-            );
-          },
-          backgroundColor: Colors.orange,
-          child: const Icon(Iconsax.scan),
+        backgroundColor: const Color(0xFFFFFBF5),
+        bottomNavigationBar: const BottomNav(currentIndex: 0),
+        floatingActionButton: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.orange.withOpacity(0.35),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: FloatingActionButton(
+            elevation: 0,
+            backgroundColor: Colors.orange,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => QRScannerPage()),
+              );
+            },
+            child: const Icon(Iconsax.scan, size: 28),
+          ),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
         body: SafeArea(
           child: BlocBuilder<HomeBloc, HomeState>(
             builder: (context, state) {
-              return Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Halo ${state.user?.children.first.name ?? '-'}",
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange[500],
+              return Column(
+                children: [
+                  // 🌤 Header Section
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFFFFF4E6),
+                          Color(0xFFFFE0B2),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(28),
+                        bottomRight: Radius.circular(28),
                       ),
                     ),
-                    const SizedBox(height: 16),
-
-                    TextField(
-                      controller: _searchController,
-                      onChanged: (value) {
-                        context.read<HomeBloc>().add(SearchQueryChanged(value));
-                      },
-                      decoration: InputDecoration(
-                        hintText: "Search",
-                        prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide.none,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Halo ${state.user?.children.first.name ?? '-'} 👋",
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF6D4C41), // warm brown
+                          ),
                         ),
-                      ),
-                    ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          "Yuk dengarkan dongeng hari ini",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF8D6E63),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
 
-                    const SizedBox(height: 24),
-
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: state.filteredDongengList.length,
-                        itemBuilder: (context, index) {
-                          final story = state.filteredDongengList[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () {
-                                  context.read<HomeBloc>().add(DongengSelected());
-                                },
-                                child: StoryCard(
-                                  title: story.title,
-                                  ageGroup: "${story.ageStart}–${story.ageEnd} years old · 5 min read",
-                                  imageUrl: story.imageUrl,
-                                  label: story.isFree ? 'FREE' : 'PAID',
-                                  labelColor: story.isFree ? Colors.green : Colors.orange,
-                                ),
-                              ),
+                        // 🔍 Search Bar
+                        TextField(
+                          controller: _searchController,
+                          onChanged: (value) {
+                            context.read<HomeBloc>().add(SearchQueryChanged(value));
+                          },
+                          decoration: InputDecoration(
+                            hintText: "Cari dongeng favorit",
+                            prefixIcon: const Icon(Icons.search),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding:
+                            const EdgeInsets.symmetric(vertical: 14),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              borderSide: BorderSide.none,
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // 📚 Story List
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: state.filteredDongengList.length,
+                      itemBuilder: (context, index) {
+                        final story = state.filteredDongengList[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () {
+                              context.read<HomeBloc>().add(DongengSelected(story));
+                            },
+                            child: StoryCard(
+                              title: story.title,
+                              ageGroup:
+                              "${story.ageStart}–${story.ageEnd} years · 10 min",
+                              imageUrl: story.imageUrl,
+                              label: story.isFree ? 'FREE' : 'PAID',
+                              labelColor: story.isFree ? Colors.green : Colors.orange,
+                            ),
+                          ),
+                        );
+
+                      },
+                    ),
+                  ),
+                ],
               );
             },
           ),
         ),
+
 
       ),
     );

@@ -7,7 +7,7 @@ class DongengResponse {
   final int ageEnd;
   final String imageUrl;
   final bool isFree;
-  // final String audioUrl;
+  final String audioUrl;
   // final String label;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -20,7 +20,7 @@ class DongengResponse {
     required this.ageEnd,
     required this.isFree,
     required this.imageUrl,
-    // required this.audioUrl,
+    required this.audioUrl,
     // required this.label,
     required this.createdAt,
     required this.updatedAt,
@@ -35,7 +35,7 @@ class DongengResponse {
       ageEnd: json['age_end'],
       isFree: json['is_free'],
       imageUrl: json['image_url'],
-      // audioUrl: json['audio_url'],
+      audioUrl: json['audio_url'],
       // label: json['label'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
@@ -55,7 +55,7 @@ class DongengResponse {
       'age_end': ageEnd,
       'is_free': isFree,
       'image_url': imageUrl,
-      // 'audio_url': audioUrl,
+      'audio_url': audioUrl,
       // 'label': label,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),

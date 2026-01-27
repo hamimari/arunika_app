@@ -18,7 +18,7 @@ class SignupNavigator extends StatelessWidget {
             );
           case '/child-signup':
             return MaterialPageRoute(
-              builder: (_) => const ChildSignupScreen(),
+              builder: (_) => ChildSignupScreen(),
               settings: settings,
             );
           default:

@@ -12,37 +12,24 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 class ChildSignupScreen extends StatelessWidget {
-  final bool isEdit;
-  final VoidCallback? onSuccess;
-
-  const ChildSignupScreen({
-    super.key,
-    this.isEdit = false,
-    this.onSuccess,
-  });
 
   @override
   Widget build(BuildContext context) {
     return BlocListener<SignupBloc, SignupState>(
       listener: (context, state) {
-        if (isEdit) {
-          Navigator.pop(context);
-          onSuccess?.call();
-        } else {
-          context.go('/home');
-        }
-
         if (state.error != null) {
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (_) => AppErrorSheet(
-              title: isEdit ? 'Gagal Update' : 'Oops!',
+              title: 'Yah, ada kendala',
               message: state.error!,
               onConfirm: () {},
             ),
           );
+        } if (state.isSuccess) {
+          context.go('/home');
         }
       },
       child: Scaffold(

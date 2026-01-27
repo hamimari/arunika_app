@@ -1,12 +1,18 @@
+import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/navigation/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   FlutterNativeSplash.remove();
   setupLocator();
+
+  await locator<AuthNotifier>().checkAuth();
+
   runApp(const MyApp());
 }
 

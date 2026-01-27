@@ -19,25 +19,30 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      bottomNavigationBar: BottomNav(
-        currentIndex: 1,
-        onArPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => QRScannerPage()),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => QRScannerPage()),
-          );
-        },
-        backgroundColor: Colors.orange,
-        child: const Icon(Iconsax.scan),
+      backgroundColor: const Color(0xFFFFFBF5),
+      bottomNavigationBar: const BottomNav(currentIndex: 1),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.orange.withOpacity(0.35),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          elevation: 0,
+          backgroundColor: Colors.orange,
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => QRScannerPage()),
+            );
+          },
+          child: const Icon(Iconsax.scan, size: 30),
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       body: SafeArea(
@@ -58,14 +63,17 @@ class ProfileScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black12, blurRadius: 6),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.orange.withOpacity(0.08),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
                   ],
                 ),
                 child: Column(
                   children: [
-                    // ===== HEADER =====
-                    Stack(
+                    /*Stack(
                       children: [
                         Image.network(
                           'https://storage.googleapis.com/a1aa/image/8HOKyghgmBiIhH-KAyvq2Fgh9s_WmO1zezsACVtQpTs.jpg',
@@ -211,7 +219,190 @@ class ProfileScreen extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),*/
+                    Stack(
+                      children: [
+                        Container(
+                          height: 260,
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFFFFC26F), Color(0xFFFF9F43)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.vertical(
+                              bottom: Radius.circular(32),
+                            ),
+                          ),
+                        ),
+
+                        Positioned(
+                          bottom: 10,
+                          left: 0,
+                          right: 0,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.orange.withOpacity(0.08),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 36,
+                                  backgroundColor: Colors.orange.shade100,
+                                  backgroundImage: child != null
+                                      ? NetworkImage(
+                                    'https://api.dicebear.com/7.x/bottts/png?seed=${child.name}',
+                                  )
+                                      : null,
+                                  child: child == null
+                                      ? const Icon(Icons.child_care, color: Colors.orange)
+                                      : null,
+                                ),
+
+                                const SizedBox(width: 16),
+
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        child?.name ?? '-',
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        ageText,
+                                        style: const TextStyle(
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                IconButton(
+                                  icon: const Icon(Icons.edit, color: Colors.orange),
+                                  onPressed: () {
+                                    final profileBloc = context.read<ProfileBloc>();
+                                    final child = context.read<ProfileBloc>().state.user!.children.first;
+
+                                    showModalBottomSheet(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
+                                      isDismissible: true,
+                                      enableDrag: true,
+                                      builder: (_) {
+                                        return BlocProvider.value(
+                                          value: profileBloc
+                                            ..add(
+                                              ChildPrefilled(
+                                                name: child.name,
+                                                gender: child.gender,
+                                                birthDate: DateTime.parse(child.dateOfBirth),
+                                              ),
+                                            ),
+                                          child: SafeArea(
+                                            child: Padding(
+                                              padding: EdgeInsets.only(
+                                                bottom: MediaQuery.of(context).viewInsets.bottom,
+                                              ),
+                                              child: Center(
+                                                child: ConstrainedBox(
+                                                  constraints: const BoxConstraints(maxWidth: 520),
+                                                  child: Container(
+                                                    margin: const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 24,
+                                                    ),
+                                                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                                                    decoration: const BoxDecoration(
+                                                      color: Colors.white,
+                                                      borderRadius: BorderRadius.vertical(
+                                                        top: Radius.circular(20),
+                                                        bottom: Radius.circular(20),
+                                                      ),
+                                                    ),
+                                                    child: BlocListener<ProfileBloc, ProfileState>(
+                                                      listenWhen: (prev, curr) =>
+                                                      prev.isSuccess != curr.isSuccess || prev.error != curr.error,
+                                                      listener: (context, state) {
+                                                        if (state.isSuccess == true) {
+                                                          Navigator.pop(context); // close modal
+
+                                                          ScaffoldMessenger.of(context).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text('Profil berhasil diperbarui'),
+                                                              backgroundColor: Colors.green,
+                                                            ),
+                                                          );
+                                                        }
+                                                        if (state.error != null) {
+                                                          Navigator.pop(context); // close modal FIRST
+
+                                                          ScaffoldMessenger.of(context)
+                                                            ..clearSnackBars()
+                                                            ..showSnackBar(
+                                                              SnackBar(
+                                                                content: Text(state.error!),
+                                                                backgroundColor: Colors.red,
+                                                              ),
+                                                            );
+                                                        }
+                                                      },
+                                                      child: SingleChildScrollView(
+                                                        child: Column(
+                                                          children: [
+                                                            // drag handle
+                                                            Container(
+                                                              width: 40,
+                                                              height: 4,
+                                                              margin: const EdgeInsets.only(bottom: 16),
+                                                              decoration: BoxDecoration(
+                                                                color: Colors.grey.shade300,
+                                                                borderRadius: BorderRadius.circular(8),
+                                                              ),
+                                                            ),
+                                                            ChildForm(
+                                                              onSubmit: () {
+                                                                context.read<ProfileBloc>().add(EditSubmitted());
+                                                              },
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+
 
                     // ===== LOGOUT =====
                     Padding(

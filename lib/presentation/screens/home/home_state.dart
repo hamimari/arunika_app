@@ -31,4 +31,7 @@ class HomeState {
 }
 
 class NavigateToCategoryList extends HomeState {}
-class NavigateToDongengPlayer extends HomeState {}
+class NavigateToDongengPlayer extends HomeState {
+  final DongengResponse dongeng;
+  NavigateToDongengPlayer(this.dongeng);
+}
