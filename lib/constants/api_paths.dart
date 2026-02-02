@@ -5,4 +5,5 @@ class ApiPaths {
   static const String findUserById = "/user/";
   static const String updateUser = "/user";
   static const String fairyTales = "/fairy-tales";
+  static const String forgotPassword = "/forgot-password";
 }

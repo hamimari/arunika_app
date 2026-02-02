@@ -1,5 +1,6 @@
 import 'package:arunika_app/data/models/request/signin_request.dart';
 import 'package:arunika_app/data/models/request/signup_request.dart';
+import 'package:arunika_app/data/models/response/forgot_password_response.dart';
 import 'package:arunika_app/data/models/response/signin_response.dart';
 import 'package:arunika_app/data/models/response/signup_response.dart';
 
@@ -18,5 +19,10 @@ class AuthRepository {
   Future<SignInResponse> signin(SignInRequest request) async {
     final json = await api.signin(request.toJson());
     return SignInResponse.fromJson(json);
+  }
+
+  Future<ForgotPasswordResponse> forgotPassword(String email) async {
+    final json = await api.forgotPassword({'email': email});
+    return ForgotPasswordResponse.fromJson(json);
   }
 }

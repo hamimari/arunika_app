@@ -9,17 +9,16 @@ class SignupNavigator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Navigator(
+      initialRoute: '/',
       onGenerateRoute: (settings) {
         switch (settings.name) {
           case '/':
             return MaterialPageRoute(
               builder: (_) => const SignupScreen(),
-              settings: settings,
             );
           case '/child-signup':
             return MaterialPageRoute(
               builder: (_) => ChildSignupScreen(),
-              settings: settings,
             );
           default:
             return null;

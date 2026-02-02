@@ -9,6 +9,8 @@ import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_b
 import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_screen.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_bloc.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_screen.dart';
+import 'package:arunika_app/presentation/screens/forgotpassword/forgot_password_bloc.dart';
+import 'package:arunika_app/presentation/screens/forgotpassword/forgot_password_screen.dart';
 import 'package:arunika_app/presentation/screens/home/home_bloc.dart';
 import 'package:arunika_app/presentation/screens/home/home_event.dart';
 import 'package:arunika_app/presentation/screens/home/home_screen.dart';
@@ -86,13 +88,7 @@ class AppRouter {
           child: const ParentRegistrationSuccessScreen(),
         ),
       ),
-      /*GoRoute(
-        path: '/child-signup',
-        builder: (context, state) => BlocProvider(
-          create: (_) => SignupBloc(),
-          child: const ChildSignupScreen(),
-        ),
-      ),*/
+
       GoRoute(
         path: '/trial',
         builder: (context, state) => BlocProvider(
@@ -141,6 +137,15 @@ class AppRouter {
             child: const SignInScreen(),
           );
         },
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) {
+          return BlocProvider(
+            create: (_) => ForgotPasswordBloc(repository: locator<AuthRepository>()),
+            child: const ForgotPasswordScreen(),
+          );
+        }
       ),
     ],
   );

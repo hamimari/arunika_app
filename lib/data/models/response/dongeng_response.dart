@@ -8,7 +8,7 @@ class DongengResponse {
   final String imageUrl;
   final bool isFree;
   final String audioUrl;
-  // final String label;
+  final String duration;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted;
@@ -21,7 +21,7 @@ class DongengResponse {
     required this.isFree,
     required this.imageUrl,
     required this.audioUrl,
-    // required this.label,
+    required this.duration,
     required this.createdAt,
     required this.updatedAt,
     required this.isDeleted,
@@ -36,7 +36,7 @@ class DongengResponse {
       isFree: json['is_free'],
       imageUrl: json['image_url'],
       audioUrl: json['audio_url'],
-      // label: json['label'],
+      duration: json['duration'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       isDeleted: json['is_deleted'],
@@ -56,7 +56,7 @@ class DongengResponse {
       'is_free': isFree,
       'image_url': imageUrl,
       'audio_url': audioUrl,
-      // 'label': label,
+      'duration': duration,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'is_deleted': isDeleted,

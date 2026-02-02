@@ -152,6 +152,24 @@ class SignInScreen extends StatelessWidget {
                           );
                         },
                       ),
+                      const SizedBox(height: 8),
+
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: () {
+                            context.push('/forgot-password');
+                          },
+                          child: const Text(
+                            'Lupa kata sandi?',
+                            style: TextStyle(
+                              color: Colors.orange,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
 
                       const SizedBox(height: 24),
 

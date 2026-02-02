@@ -11,28 +11,6 @@ import 'package:iconsax/iconsax.dart';
 import '../widgets/bottom_nav.dart';
 
 class HomeScreen extends StatefulWidget {
-  static const List<Map<String, String>> categories = [
-    {
-      "title": "Numbers",
-      "image":
-          "https://storage.googleapis.com/a1aa/image/KTco9PlO4VnxwpIOmykV40oSaTChaGPp_g0n39XWZDs.jpg",
-    },
-    {
-      "title": "Shapes",
-      "image":
-          "https://storage.googleapis.com/a1aa/image/qSzsuL39YBR5CfR01URSfbRouZ7Q_2tImmwg-1eoKkI.jpg",
-    },
-    {
-      "title": "Vocab",
-      "image":
-          "https://storage.googleapis.com/a1aa/image/Vt4DLo0qLYSGDuRSmGEizcrwpaywqfa5vjg5z55fQ5c.jpg",
-    },
-    {
-      "title": "Dongeng",
-      "image":
-          "https://storage.googleapis.com/a1aa/image/hrtjK7BpRwCPJeq8wKrawJrq6dYsWJFSGknFf-ZeKxk.jpg",
-    },
-  ];
 
   const HomeScreen({super.key});
 
@@ -182,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                             child: StoryCard(
                               title: story.title,
                               ageGroup:
-                              "${story.ageStart}–${story.ageEnd} years · 10 min",
+                              "${story.ageStart}–${story.ageEnd} years · ${story.duration}",
                               imageUrl: story.imageUrl,
                               label: story.isFree ? 'FREE' : 'PAID',
                               labelColor: story.isFree ? Colors.green : Colors.orange,
