@@ -23,8 +23,12 @@ import 'package:arunika_app/presentation/screens/profile/profile_bloc.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_event.dart';
 import 'package:arunika_app/presentation/screens/signin/signin_bloc.dart';
 import 'package:arunika_app/presentation/screens/signin/signin_screen.dart';
+import 'package:arunika_app/presentation/screens/signup/child_signup_screen.dart';
 import 'package:arunika_app/presentation/screens/signup/parent_signup_success_screen.dart';
+import 'package:arunika_app/presentation/screens/signup/privacy_policy_screen.dart';
 import 'package:arunika_app/presentation/screens/signup/signup_bloc.dart';
+import 'package:arunika_app/presentation/screens/signup/signup_screen.dart';
+import 'package:arunika_app/presentation/screens/signup/terms_and_condition_screen.dart';
 import 'package:arunika_app/presentation/screens/signup/trial_screen.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -59,15 +63,29 @@ class AppRouter {
 
         },
       ),
-      GoRoute(
-        path: '/signup',
-        builder: (context, state) {
+
+      ShellRoute(
+        builder: (context, state, child) {
           return BlocProvider(
             create: (_) => SignupBloc(repository: locator<AuthRepository>()),
-            child: const SignupNavigator(),
+            child: child,
           );
         },
+        routes: [
+          GoRoute(
+            path: '/signup',
+            builder: (context, state) => const SignupScreen(),
+            routes: [
+              GoRoute(
+                path: 'child',
+                builder: (context, state) => ChildSignupScreen(),
+              ),
+            ],
+          ),
+        ],
       ),
+
+
 
       GoRoute(
         path: '/landing',
@@ -147,6 +165,15 @@ class AppRouter {
           );
         }
       ),
+      GoRoute(
+        path: '/terms',
+        builder: (context, state) => const TermsAndConditionsScreen(),
+      ),
+      GoRoute(
+        path: '/privacy',
+        builder: (context, state) => const PrivacyPolicyScreen(),
+      ),
+
     ],
   );
 }

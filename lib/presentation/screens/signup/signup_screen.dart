@@ -21,9 +21,7 @@ class SignupScreen extends StatelessWidget {
           context.read<SignupBloc>().add(
             NavigateToChildReset(!state.navigateToChild),
           );
-          // Navigator.of(context).pushNamed('/child-signup');
-          Navigator.of(context, rootNavigator: false).pushNamed('/child-signup');
-
+          context.push('/signup/child');
         }
       },
       child: Scaffold(

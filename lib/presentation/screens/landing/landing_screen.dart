@@ -17,51 +17,80 @@ class LandingScreen extends StatelessWidget {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFFFBF5), // soft cream
         body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 55, bottom: 100),
-                    child: Image.network(
-                      'https://raw.githubusercontent.com/hamimari/arunika_assets/main/landing_icon_transparent.png',
-                      width: 600,
-                      height: 400,
-                    ),
-                  ),
-                  const Text(
-                    'Halo! Selamat datang di arunika!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.orange,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Aplikasi belajar dengan eksperimen bermain untuk orang tua dan anak usia 1-10 tahun yang dilengkapi dengan karakter favorit dan permainan menarik.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
 
-                  // Register Button
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Column(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.orange.withOpacity(0.15),
+                                blurRadius: 30,
+                                offset: const Offset(0, 15),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(28),
+                            child: Image.network(
+                              'https://raw.githubusercontent.com/hamimari/arunika_assets/main/landing_icon_transparent.png',
+                              width: double.infinity,
+                              height: 280,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  const Text(
+                    'Halo! Selamat datang di Arunika 👋',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  const Text(
+                    'Aplikasi belajar berbasis bermain untuk anak usia 1–10 tahun.\n'
+                        'Dilengkapi karakter favorit, AR flashcard, dan dongeng interaktif.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      height: 1.6,
+                      color: Colors.black54,
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
                   SizedBox(
                     width: double.infinity,
+                    height: 52,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.orange,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 6,
+                        shadowColor: Colors.orange.withOpacity(0.4),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
                       onPressed: () {
@@ -69,36 +98,45 @@ class LandingScreen extends StatelessWidget {
                       },
                       child: const Text(
                         'Daftar Sekarang',
-                        style: TextStyle(fontSize: 16, color: Colors.white),
+                        style: TextStyle(
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 20),
 
-                  // Divider
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Expanded(child: Divider(color: Colors.grey)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        child:
-                            Text('Atau', style: TextStyle(color: Colors.grey)),
+                    children: [
+                      Expanded(
+                        child: Divider(color: Colors.grey.shade300),
                       ),
-                      Expanded(child: Divider(color: Colors.grey)),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'atau',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                      Expanded(
+                        child: Divider(color: Colors.grey.shade300),
+                      ),
                     ],
                   ),
+
                   const SizedBox(height: 20),
 
-                  // Login Button
                   SizedBox(
                     width: double.infinity,
+                    height: 52,
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: const BorderSide(color: Colors.orange),
+                        side: const BorderSide(color: Colors.orange, width: 1.4),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
                       onPressed: () {
@@ -106,8 +144,23 @@ class LandingScreen extends StatelessWidget {
                       },
                       child: const Text(
                         'Sudah punya akun? Masuk',
-                        style: TextStyle(color: Colors.orange, fontSize: 16),
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  Text(
+                    'Belajar • Bermain • Bertumbuh bersama Arunika',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: Colors.grey.shade500,
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
                 ],

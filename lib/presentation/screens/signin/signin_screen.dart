@@ -220,7 +220,7 @@ class SignInScreen extends StatelessWidget {
                             ),
                             recognizer: TapGestureRecognizer()
                               ..onTap = () {
-                                context.push('/signup');
+                                context.go('/signup');
                               },
                           ),
                         ],

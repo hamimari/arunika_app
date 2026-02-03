@@ -7,12 +7,39 @@ import 'package:arunika_app/presentation/screens/widgets/dropdown_field.dart';
 import 'package:arunika_app/presentation/screens/widgets/error_dialog.dart';
 import 'package:arunika_app/presentation/screens/widgets/progress_bar.dart';
 import 'package:arunika_app/presentation/screens/widgets/text_field.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-class ChildSignupScreen extends StatelessWidget {
+class ChildSignupScreen extends StatefulWidget {
   const ChildSignupScreen({super.key});
+
+  @override
+  State<ChildSignupScreen> createState() => _ChildSignupState();
+}
+
+class _ChildSignupState extends State<ChildSignupScreen> {
+  late final TextEditingController nameController;
+  late final TextEditingController birthDateController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final state = context.read<SignupBloc>().state;
+    nameController = TextEditingController(text: state.childName);
+    birthDateController = TextEditingController(text: state.childBirthDate != null
+        ? '${state.childBirthDate!.day}/${state.childBirthDate!.month}/${state.childBirthDate!.year}'
+        : '');
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    birthDateController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -161,6 +188,7 @@ class ChildSignupScreen extends StatelessWidget {
                           p.childNameError != c.childNameError,
                           builder: (context, state) {
                             return AppTextField(
+                              controller: nameController,
                               label: 'Nama Anak',
                               hint: 'Contoh: Rafatar',
                               onChanged: (value) => context
@@ -180,6 +208,7 @@ class ChildSignupScreen extends StatelessWidget {
                               p.childBirthDateError != c.childBirthDateError,
                           builder: (context, state) {
                             return AppDateField(
+                              controller: birthDateController,
                               label: 'Tanggal Lahir Anak',
                               value: state.childBirthDate,
                               hint: '22/11/2022',
@@ -240,33 +269,41 @@ class ChildSignupScreen extends StatelessWidget {
                                     );
                                   },
                                 ),
-                                const Expanded(
+                                Expanded(
                                   child: Padding(
-                                    padding: EdgeInsets.only(top: 10),
+                                    padding: const EdgeInsets.only(top: 10),
                                     child: Text.rich(
                                       TextSpan(
                                         text: 'Dengan mendaftar, Kamu menyetujui ',
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                           fontSize: 12,
                                           color: Colors.black54,
                                         ),
                                         children: [
                                           TextSpan(
                                             text: 'Syarat & Ketentuan',
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               color: Colors.orange,
                                               fontWeight: FontWeight.w600,
                                             ),
+                                            recognizer: TapGestureRecognizer()
+                                              ..onTap = () {
+                                                context.push('/terms');
+                                              },
                                           ),
-                                          TextSpan(text: ' dan '),
+                                          const TextSpan(text: ' dan '),
                                           TextSpan(
                                             text: 'Kebijakan Privasi',
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               color: Colors.orange,
                                               fontWeight: FontWeight.w600,
                                             ),
+                                            recognizer: TapGestureRecognizer()
+                                              ..onTap = () {
+                                                context.push('/privacy');
+                                              },
                                           ),
-                                          TextSpan(text: ' kami'),
+                                          const TextSpan(text: ' kami'),
                                         ],
                                       ),
                                     ),
