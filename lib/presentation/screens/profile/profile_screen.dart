@@ -1,6 +1,6 @@
 import 'package:arunika_app/core/storage/LocalProfileStorage.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
-import 'package:arunika_app/presentation/screens/arscanner/qr_scanner.dart';
+import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner.dart';
 import 'package:arunika_app/presentation/screens/profile/child_form.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_bloc.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_event.dart';

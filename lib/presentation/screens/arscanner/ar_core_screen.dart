@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'dart:math' as math;
 import 'package:ar_flutter_plugin_2/ar_flutter_plugin.dart';
 import 'package:ar_flutter_plugin_2/datatypes/config_planedetection.dart';
 import 'package:ar_flutter_plugin_2/datatypes/hittest_result_types.dart';
@@ -11,14 +11,12 @@ import 'package:ar_flutter_plugin_2/managers/ar_session_manager.dart';
 import 'package:ar_flutter_plugin_2/models/ar_anchor.dart';
 import 'package:ar_flutter_plugin_2/models/ar_hittest_result.dart';
 import 'package:ar_flutter_plugin_2/models/ar_node.dart';
-import 'package:arunika_app/presentation/screens/arscanner/debug_logger.dart';
-import 'package:arunika_app/presentation/screens/arscanner/qr_scanner.dart';
+import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner.dart';
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart' as vector;
 
 class ArCoreSurfacePlaceScreen extends StatefulWidget {
   final String modelUrl;
-
   const ArCoreSurfacePlaceScreen({required this.modelUrl, super.key});
 
   @override
@@ -30,10 +28,14 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
   late ARSessionManager arSessionManager;
   late ARObjectManager arObjectManager;
   late ARAnchorManager arAnchorManager;
-  ARNode? currentNode;
-  bool isPlaneDetected = false;
+
   List<ARNode> nodes = [];
   List<ARAnchor> anchors = [];
+
+  double _currentScale = 0.5;
+  double _currentRotationY = 0.0;
+
+  bool _isUpdating = false;
 
   @override
   void dispose() {
@@ -52,95 +54,36 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          ARView(
-            onARViewCreated: onARViewCreated,
-            planeDetectionConfig: PlaneDetectionConfig.horizontalAndVertical,
-          ),
-          Align(
-            alignment: FractionalOffset.bottomCenter,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: () => rotateObjectY(30), // Rotate 30 degrees
-                  child: Text("Rotate Object"),
-                ),
-              ],
+          GestureDetector(
+            onScaleUpdate: _onScaleUpdate,
+            child: ARView(
+              onARViewCreated: onARViewCreated,
+              planeDetectionConfig: PlaneDetectionConfig.horizontalAndVertical,
             ),
           ),
 
-          // Instruction overlay
-          // if (!isPlaneDetected)
-          //   Positioned.fill(
-          //     child: Container(
-          //       color: Colors.black.withOpacity(0.5),
-          //       child: Center(
-          //         child: Column(
-          //           mainAxisSize: MainAxisSize.min,
-          //           children: [
-          //             CircularProgressIndicator(
-          //               color: Colors.white,
-          //             ),
-          //             const SizedBox(height: 16),
-          //             const Text(
-          //               "Scanning environment...\nPoint your camera at a flat surface",
-          //               textAlign: TextAlign.center,
-          //               style: TextStyle(color: Colors.white, fontSize: 16),
-          //             ),
-          //           ],
-          //         ),
-          //       ),
-          //     ),
-          //   ),
+          /// ✅ Scan button only (center bottom)
           Positioned(
-            top: 40,
-            right: 20,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black.withOpacity(0.7),
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () async {
-                final log = await DebugLogger.readLog();
-                showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: Text("Debug Log"),
-                    content: SingleChildScrollView(child: Text(log)),
-                    actions: [
-                      TextButton(
-                        onPressed: () async {
-                          await DebugLogger.clearLog();
-                          Navigator.pop(context);
-                        },
-                        child: Text("Clear"),
-                      ),
-                    ],
-                  ),
+            bottom: 30,
+            left: 24,
+            right: 24,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => QRScannerPage()),
                 );
               },
-              child: Text("Logs"),
-            ),
-          ),
-
-          Positioned(
-            bottom: 40,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => QRScannerPage()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.orange,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.orange,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Text("Scan Again"),
               ),
+              icon: const Icon(Icons.qr_code_scanner),
+              label: const Text("Scan Again"),
             ),
           ),
         ],
@@ -149,22 +92,20 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
   }
 
   void onARViewCreated(
-    ARSessionManager sessionManager,
-    ARObjectManager objectManager,
-    ARAnchorManager anchorManager,
-    ARLocationManager locationManager,
-  ) async {
+      ARSessionManager sessionManager,
+      ARObjectManager objectManager,
+      ARAnchorManager anchorManager,
+      ARLocationManager locationManager,
+      ) async {
     arSessionManager = sessionManager;
     arObjectManager = objectManager;
     arAnchorManager = anchorManager;
 
     await arSessionManager.onInitialize(
       showPlanes: true,
-      showFeaturePoints: true,
+      showFeaturePoints: false,
       showWorldOrigin: false,
       handleTaps: true,
-      handlePans: true,
-      handleRotation: true
     );
     await arObjectManager.onInitialize();
     arSessionManager.onPlaneOrPointTap = onPlaneOrPointTapped;
@@ -172,10 +113,10 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
   }
 
   Future<void> onPlaneOrPointTapped(
-    List<ARHitTestResult> hitTestResults,
-  ) async {
-    var singleHitTestResult = hitTestResults.firstWhere(
-      (hitTestResult) => hitTestResult.type == ARHitTestResultType.plane,
+      List<ARHitTestResult> hitTestResults,
+      ) async {
+    final hit = hitTestResults.firstWhere(
+          (h) => h.type == ARHitTestResultType.plane,
     );
 
     if (anchors.isNotEmpty) {
@@ -188,57 +129,86 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
       nodes.clear();
     }
 
-    var newAnchor = ARPlaneAnchor(
-      transformation: singleHitTestResult.worldTransform,
-    );
-    bool? didAddAnchor = await arAnchorManager.addAnchor(newAnchor);
-    if (didAddAnchor!) {
-      anchors.add(newAnchor);
-      // Add note to anchor
-      var newNode = ARNode(
+    final anchor = ARPlaneAnchor(transformation: hit.worldTransform);
+    final didAddAnchor = await arAnchorManager.addAnchor(anchor);
+
+    if (didAddAnchor == true) {
+      anchors.add(anchor);
+
+      final node = ARNode(
         type: NodeType.webGLB,
         uri: widget.modelUrl,
-        scale: vector.Vector3(0.5, 0.5, 0.5),
-        position: vector.Vector3(0.0, 0.0, 0.0),
-        rotation: vector.Vector4(1.0, 0.0, 0.0, 0.0),
+        scale: vector.Vector3.all(_currentScale),
+        position: vector.Vector3.zero(),
+        rotation: quaternionFromY(_currentRotationY),
       );
-      bool? didAddNodeToAnchor = await arObjectManager.addNode(
-        newNode,
-        planeAnchor: newAnchor,
-      );
-      if (didAddNodeToAnchor!) {
-        this.nodes.add(newNode);
-      } else {
-        DebugLogger.log("Adding Node to Anchor failed");
-        AlertDialog(
-          title: Text("Error"),
-          content: Text("Adding Node to Anchor failed"),
-        );
+
+      final didAddNode =
+      await arObjectManager.addNode(node, planeAnchor: anchor);
+
+      if (didAddNode == true) {
+        nodes.add(node);
       }
-    } else {
-      DebugLogger.log("Adding Anchor failed");
-      AlertDialog(title: Text("Error"), content: Text("Adding Anchor failed"));
     }
   }
 
-  Future<void> rotateObjectY(double angleDegrees) async {
-    if (nodes.isEmpty || anchors.isEmpty) return;
+  /// ===============================
+  /// GESTURES
+  /// ===============================
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    if (nodes.isEmpty || _isUpdating) return;
+
+    // scale
+    _currentScale *= details.scale;
+    _currentScale = _currentScale.clamp(0.2, 2.5);
+
+    // swipe rotate
+    _currentRotationY += details.focalPointDelta.dx * 0.01;
+
+    _throttledApply();
+  }
+
+  /// ===============================
+  /// SAFE UPDATE (THROTTLED)
+  /// ===============================
+  void _throttledApply() async {
+    _isUpdating = true;
 
     final oldNode = nodes.removeLast();
+    final anchor = anchors.last as ARPlaneAnchor;
+
     await arObjectManager.removeNode(oldNode);
 
-    final anchor = anchors.last as ARPlaneAnchor;
     final newNode = ARNode(
       type: NodeType.webGLB,
       uri: oldNode.uri,
-      position: vector.Vector3(0.0, 0.0, 0.0),
-      rotation: vector.Vector4(0.0, 1.0, 0.0, vector.radians(angleDegrees)),
-      scale: oldNode.scale,
+      scale: vector.Vector3.all(_currentScale),
+      position: vector.Vector3.zero(),
+      rotation: quaternionFromY(_currentRotationY),
     );
 
-    final didAdd = await arObjectManager.addNode(newNode, planeAnchor: anchor);
+    final didAdd =
+    await arObjectManager.addNode(newNode, planeAnchor: anchor);
+
     if (didAdd == true) {
       nodes.add(newNode);
     }
+
+    await Future.delayed(const Duration(milliseconds: 30)); // smooth throttle
+    _isUpdating = false;
+  }
+
+  /// ===============================
+  /// QUATERNION
+  /// ===============================
+  vector.Vector4 quaternionFromY(double angle) {
+    final half = angle / 2;
+    return vector.Vector4(
+      0.0,
+      math.sin(half),
+      0.0,
+      math.cos(half),
+    );
   }
 }

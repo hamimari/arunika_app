@@ -1,4 +1,4 @@
-import 'package:arunika_app/presentation/screens/arscanner/qr_scanner.dart';
+import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner.dart';
 import 'package:arunika_app/presentation/screens/home/home_bloc.dart';
 import 'package:arunika_app/presentation/screens/home/home_event.dart';
 import 'package:arunika_app/presentation/screens/home/home_state.dart';
@@ -79,7 +79,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             builder: (context, state) {
               return Column(
                 children: [
-                  // 🌤 Header Section
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
@@ -143,7 +142,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
 
                   const SizedBox(height: 16),
 
-                  // 📚 Story List
                   Expanded(
                     child: ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 16),

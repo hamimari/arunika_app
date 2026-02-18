@@ -41,7 +41,7 @@ final authNotifier = locator<AuthNotifier>();
 class AppRouter {
   static final GoRouter router = GoRouter(
     refreshListenable: authNotifier,
-    initialLocation: '/',
+    initialLocation: '/home',
     routes: [
       GoRoute(
         path: '/',

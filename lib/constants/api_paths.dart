@@ -6,4 +6,5 @@ class ApiPaths {
   static const String updateUser = "/user";
   static const String fairyTales = "/fairy-tales";
   static const String forgotPassword = "/forgot-password";
+  static const String arModelById = "/ar/cards/";
 }
