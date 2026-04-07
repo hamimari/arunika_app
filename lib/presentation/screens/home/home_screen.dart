@@ -1,8 +1,11 @@
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner.dart';
+import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_bloc.dart';
 import 'package:arunika_app/presentation/screens/home/home_bloc.dart';
 import 'package:arunika_app/presentation/screens/home/home_event.dart';
 import 'package:arunika_app/presentation/screens/home/home_state.dart';
 import 'package:arunika_app/presentation/screens/home/story_card.dart';
+import 'package:arunika_app/di/locator.dart';
+import 'package:arunika_app/data/repositories/ar_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -11,7 +14,6 @@ import 'package:iconsax/iconsax.dart';
 import '../widgets/bottom_nav.dart';
 
 class HomeScreen extends StatefulWidget {
-
   const HomeScreen({super.key});
 
   @override
@@ -66,7 +68,13 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => QRScannerPage()),
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider(
+                    create: (_) =>
+                        QRScannerBloc(repository: locator<ArRepository>()),
+                    child: QRScannerPage(),
+                  ),
+                ),
               );
             },
             child: const Icon(Iconsax.scan, size: 28),
@@ -84,10 +92,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                     padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [
-                          Color(0xFFFFF4E6),
-                          Color(0xFFFFE0B2),
-                        ],
+                        colors: [Color(0xFFFFF4E6), Color(0xFFFFE0B2)],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                       ),
@@ -121,15 +126,18 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                         TextField(
                           controller: _searchController,
                           onChanged: (value) {
-                            context.read<HomeBloc>().add(SearchQueryChanged(value));
+                            context.read<HomeBloc>().add(
+                              SearchQueryChanged(value),
+                            );
                           },
                           decoration: InputDecoration(
                             hintText: "Cari dongeng favorit",
                             prefixIcon: const Icon(Icons.search),
                             filled: true,
                             fillColor: Colors.white,
-                            contentPadding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 14,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24),
                               borderSide: BorderSide.none,
@@ -153,19 +161,22 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                           child: InkWell(
                             borderRadius: BorderRadius.circular(20),
                             onTap: () {
-                              context.read<HomeBloc>().add(DongengSelected(story));
+                              context.read<HomeBloc>().add(
+                                DongengSelected(story),
+                              );
                             },
                             child: StoryCard(
                               title: story.title,
                               ageGroup:
-                              "${story.ageStart}–${story.ageEnd} years · ${story.duration}",
+                                  "${story.ageStart}–${story.ageEnd} years · ${story.duration}",
                               imageUrl: story.imageUrl,
                               label: story.isFree ? 'FREE' : 'PAID',
-                              labelColor: story.isFree ? Colors.green : Colors.orange,
+                              labelColor: story.isFree
+                                  ? Colors.green
+                                  : Colors.orange,
                             ),
                           ),
                         );
-
                       },
                     ),
                   ),
@@ -174,8 +185,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             },
           ),
         ),
-
-
       ),
     );
   }

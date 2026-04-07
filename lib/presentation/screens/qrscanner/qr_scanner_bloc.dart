@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:arunika_app/data/repositories/ar_repository.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_event.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_state.dart';
@@ -13,9 +11,9 @@ class QRScannerBloc extends Bloc<QRScannerEvent, QRScannerState> {
   }
 
   Future<void> _onFetchModelById(
-      FetchModelById event,
-      Emitter<QRScannerState> emit,
-      ) async {
+    FetchModelById event,
+    Emitter<QRScannerState> emit,
+  ) async {
     emit(ModelLoading());
 
     try {

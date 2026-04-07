@@ -8,6 +8,6 @@ class ArRepository {
 
   Future<ArCardResponse> findById(String userId) async {
     final json = await api.getById(userId);
-    return ArCardResponse.fromJson(json["data"]);
+    return ArCardResponse.fromJson(json);
   }
 }

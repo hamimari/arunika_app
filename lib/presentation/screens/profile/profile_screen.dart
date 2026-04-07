@@ -1,6 +1,9 @@
 import 'package:arunika_app/core/storage/LocalProfileStorage.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
+import 'package:arunika_app/data/repositories/ar_repository.dart';
+import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner.dart';
+import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_bloc.dart';
 import 'package:arunika_app/presentation/screens/profile/child_form.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_bloc.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_event.dart';
@@ -38,7 +41,13 @@ class ProfileScreen extends StatelessWidget {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => QRScannerPage()),
+              MaterialPageRoute(
+                builder: (_) => BlocProvider(
+                  create: (_) =>
+                      QRScannerBloc(repository: locator<ArRepository>()),
+                  child: QRScannerPage(),
+                ),
+              ),
             );
           },
           child: const Icon(Iconsax.scan, size: 30),
@@ -261,11 +270,14 @@ class ProfileScreen extends StatelessWidget {
                                   backgroundColor: Colors.orange.shade100,
                                   backgroundImage: child != null
                                       ? NetworkImage(
-                                    'https://api.dicebear.com/7.x/bottts/png?seed=${child.name}',
-                                  )
+                                          'https://api.dicebear.com/7.x/bottts/png?seed=${child.name}',
+                                        )
                                       : null,
                                   child: child == null
-                                      ? const Icon(Icons.child_care, color: Colors.orange)
+                                      ? const Icon(
+                                          Icons.child_care,
+                                          color: Colors.orange,
+                                        )
                                       : null,
                                 ),
 
@@ -273,7 +285,8 @@ class ProfileScreen extends StatelessWidget {
 
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         child?.name ?? '-',
@@ -294,10 +307,19 @@ class ProfileScreen extends StatelessWidget {
                                 ),
 
                                 IconButton(
-                                  icon: const Icon(Icons.edit, color: Colors.orange),
+                                  icon: const Icon(
+                                    Icons.edit,
+                                    color: Colors.orange,
+                                  ),
                                   onPressed: () {
-                                    final profileBloc = context.read<ProfileBloc>();
-                                    final child = context.read<ProfileBloc>().state.user!.children.first;
+                                    final profileBloc = context
+                                        .read<ProfileBloc>();
+                                    final child = context
+                                        .read<ProfileBloc>()
+                                        .state
+                                        .user!
+                                        .children
+                                        .first;
 
                                     showModalBottomSheet(
                                       context: context,
@@ -312,53 +334,93 @@ class ProfileScreen extends StatelessWidget {
                                               ChildPrefilled(
                                                 name: child.name,
                                                 gender: child.gender,
-                                                birthDate: DateTime.parse(child.dateOfBirth),
+                                                birthDate: DateTime.parse(
+                                                  child.dateOfBirth,
+                                                ),
                                               ),
                                             ),
                                           child: SafeArea(
                                             child: Padding(
                                               padding: EdgeInsets.only(
-                                                bottom: MediaQuery.of(context).viewInsets.bottom,
+                                                bottom: MediaQuery.of(
+                                                  context,
+                                                ).viewInsets.bottom,
                                               ),
                                               child: Center(
                                                 child: ConstrainedBox(
-                                                  constraints: const BoxConstraints(maxWidth: 520),
+                                                  constraints:
+                                                      const BoxConstraints(
+                                                        maxWidth: 520,
+                                                      ),
                                                   child: Container(
-                                                    margin: const EdgeInsets.symmetric(
-                                                      horizontal: 16,
-                                                      vertical: 24,
-                                                    ),
-                                                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                                                    margin:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 16,
+                                                          vertical: 24,
+                                                        ),
+                                                    padding:
+                                                        const EdgeInsets.fromLTRB(
+                                                          20,
+                                                          12,
+                                                          20,
+                                                          24,
+                                                        ),
                                                     decoration: const BoxDecoration(
                                                       color: Colors.white,
-                                                      borderRadius: BorderRadius.vertical(
-                                                        top: Radius.circular(20),
-                                                        bottom: Radius.circular(20),
-                                                      ),
+                                                      borderRadius:
+                                                          BorderRadius.vertical(
+                                                            top:
+                                                                Radius.circular(
+                                                                  20,
+                                                                ),
+                                                            bottom:
+                                                                Radius.circular(
+                                                                  20,
+                                                                ),
+                                                          ),
                                                     ),
                                                     child: BlocListener<ProfileBloc, ProfileState>(
                                                       listenWhen: (prev, curr) =>
-                                                      prev.isSuccess != curr.isSuccess || prev.error != curr.error,
+                                                          prev.isSuccess !=
+                                                              curr.isSuccess ||
+                                                          prev.error !=
+                                                              curr.error,
                                                       listener: (context, state) {
-                                                        if (state.isSuccess == true) {
-                                                          Navigator.pop(context); // close modal
+                                                        if (state.isSuccess ==
+                                                            true) {
+                                                          Navigator.pop(
+                                                            context,
+                                                          ); // close modal
 
-                                                          ScaffoldMessenger.of(context).showSnackBar(
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
                                                             const SnackBar(
-                                                              content: Text('Profil berhasil diperbarui'),
-                                                              backgroundColor: Colors.green,
+                                                              content: Text(
+                                                                'Profil berhasil diperbarui',
+                                                              ),
+                                                              backgroundColor:
+                                                                  Colors.green,
                                                             ),
                                                           );
                                                         }
-                                                        if (state.error != null) {
-                                                          Navigator.pop(context); // close modal FIRST
+                                                        if (state.error !=
+                                                            null) {
+                                                          Navigator.pop(
+                                                            context,
+                                                          ); // close modal FIRST
 
-                                                          ScaffoldMessenger.of(context)
+                                                          ScaffoldMessenger.of(
+                                                              context,
+                                                            )
                                                             ..clearSnackBars()
                                                             ..showSnackBar(
                                                               SnackBar(
-                                                                content: Text(state.error!),
-                                                                backgroundColor: Colors.red,
+                                                                content: Text(
+                                                                  state.error!,
+                                                                ),
+                                                                backgroundColor:
+                                                                    Colors.red,
                                                               ),
                                                             );
                                                         }
@@ -370,22 +432,35 @@ class ProfileScreen extends StatelessWidget {
                                                             Container(
                                                               width: 40,
                                                               height: 4,
-                                                              margin: const EdgeInsets.only(bottom: 16),
+                                                              margin:
+                                                                  const EdgeInsets.only(
+                                                                    bottom: 16,
+                                                                  ),
                                                               decoration: BoxDecoration(
-                                                                color: Colors.grey.shade300,
-                                                                borderRadius: BorderRadius.circular(8),
+                                                                color: Colors
+                                                                    .grey
+                                                                    .shade300,
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      8,
+                                                                    ),
                                                               ),
                                                             ),
                                                             ChildForm(
                                                               onSubmit: () {
-                                                                context.read<ProfileBloc>().add(EditSubmitted());
+                                                                context
+                                                                    .read<
+                                                                      ProfileBloc
+                                                                    >()
+                                                                    .add(
+                                                                      EditSubmitted(),
+                                                                    );
                                                               },
                                                             ),
                                                           ],
                                                         ),
                                                       ),
                                                     ),
-
                                                   ),
                                                 ),
                                               ),
@@ -402,7 +477,6 @@ class ProfileScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-
 
                     // ===== LOGOUT =====
                     Padding(
