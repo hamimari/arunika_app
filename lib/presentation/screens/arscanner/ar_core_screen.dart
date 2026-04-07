@@ -19,6 +19,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vector_math/vector_math_64.dart' as vector;
 
+// ── Placement state machine ───────────────────────────────────────────────────
+// Replaces the three independent boolean flags (_placed, _tapped, _planeDetected)
+// that were prone to race conditions when multiple events arrived close together.
+//
+//   scanning → ready    : first onPlaneDetected with count > 0
+//   ready    → placing  : first pointer-down (any number of simultaneous fingers)
+//   placing  → placed   : addNode succeeds
+//   placing  → ready    : placement fails (empty hits, AR error)
+enum _PlacementState { scanning, ready, placing, placed }
+
 class ArCoreSurfacePlaceScreen extends StatefulWidget {
   final String modelUrl;
   const ArCoreSurfacePlaceScreen({required this.modelUrl, super.key});
@@ -28,7 +38,8 @@ class ArCoreSurfacePlaceScreen extends StatefulWidget {
       _ArCoreSurfacePlaceScreenState();
 }
 
-class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
+class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
+    with SingleTickerProviderStateMixin {
   // ── AR managers (nullable so dispose() is safe before onARViewCreated) ────
   ARSessionManager? arSessionManager;
   ARObjectManager? arObjectManager;
@@ -37,38 +48,30 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
   List<ARNode> nodes = [];
   List<ARAnchor> anchors = [];
 
-  // ── Placement / detection state ───────────────────────────────────────────
-  bool _placed = false;
-  bool _isPlacing = false;
-  bool _planeDetected = false;
-  // _tapped: set to true synchronously (via setState) the moment the user taps,
-  // so the pulsing hand indicator disappears immediately — before any async
-  // AR work begins. Reset to false if placement ultimately fails so the user
-  // can try again.
-  bool _tapped = false;
-  // _showResizeHint: shown for a few seconds after a model is successfully
-  // placed to tell the user they can pinch-to-resize while the GLB loads.
+  // ── State machine ─────────────────────────────────────────────────────────
+  _PlacementState _state = _PlacementState.scanning;
+
+  // ── Ripple entrance animation ─────────────────────────────────────────────
+  // A screen-space ripple plays at the tap position the moment the user taps.
+  // It runs entirely in Flutter (no AR layer involvement), so it's immediate
+  // and smooth regardless of how long the native placement call takes.
+  late final AnimationController _rippleCtrl;
+  late final Animation<double> _rippleScale;
+  late final Animation<double> _rippleOpacity;
+  Offset _tapPosition = Offset.zero;
+  bool _showRipple = false;
+
+  // _showResizeHint: shown for a few seconds after placement.
   bool _showResizeHint = false;
 
-  // _glbReady: always true — we stream directly from the web URL.
-  // SceneView's ModelLoader handles HTTP downloads and caches the result
-  // internally, so no manual download step is needed.
-  final bool _glbReady = true;
-
   // ── Scale / rotation state ────────────────────────────────────────────────
-  // 0.5 m → 50 cm bounding box. Clearly visible on a floor from standing
-  // height (~1.5 m) and on a table from arm's length.
   double _currentScale = 0.5;
   double _currentRotationY = 0.0;
 
   double _pendingScale = 0.5;
   double _pendingRotationY = 0.0;
 
-  // ── Multi-touch tracking (Listener-based — does NOT enter gesture arena) ──
-  // Using Listener instead of GestureDetector is critical: ScaleGestureRecognizer
-  // in GestureDetector claims single-finger taps, preventing them from reaching
-  // the native AR layer (onPlaneOrPointTap never fires). Listener receives raw
-  // pointer events without competing in the gesture arena, so native taps work.
+  // ── Multi-touch tracking (Listener-based) ─────────────────────────────────
   final Map<int, Offset> _pointers = {};
   double _gestureBaseScale = 0.5;
   double _gestureBaseRotY = 0.0;
@@ -80,13 +83,35 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
   Timer? _debounceTimer;
 
   @override
+  void initState() {
+    super.initState();
+    _rippleCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _rippleScale = Tween<double>(
+      begin: 0.0,
+      end: 2.8,
+    ).animate(CurvedAnimation(parent: _rippleCtrl, curve: Curves.easeOut));
+    _rippleOpacity = Tween<double>(
+      begin: 0.7,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _rippleCtrl, curve: Curves.easeIn));
+    _rippleCtrl.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted) {
+        setState(() => _showRipple = false);
+        _rippleCtrl.reset();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _debounceTimer?.cancel();
+    _rippleCtrl.dispose();
 
     // Replace callbacks with no-ops FIRST — onPlaneOrPointTap and onPlaneDetected
     // are 'late' non-nullable fields in the plugin (can't be set to null).
-    // Swapping to no-ops prevents any late-arriving native events from calling
-    // back into a disposed widget and triggering setState-after-dispose crashes.
     if (arSessionManager != null) {
       arSessionManager!.onPlaneOrPointTap = (_) {};
       arSessionManager!.onPlaneDetected = (_) {};
@@ -115,9 +140,6 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
       body: Stack(
         children: [
           // ── AR view ──────────────────────────────────────────────────────
-          // Listener (not GestureDetector) so that single-finger taps are NOT
-          // consumed by Flutter's gesture arena and can reach the native AR
-          // layer → onPlaneOrPointTap fires → model gets placed.
           Listener(
             onPointerDown: _handlePointerDown,
             onPointerMove: _handlePointerMove,
@@ -129,33 +151,49 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
             ),
           ),
 
-          // ── Pulsing tap indicator (center) — visible once a plane is found
-          // and before the user has tapped. Hidden immediately on tap (_tapped).
-          if (_planeDetected && !_placed && !_tapped)
+          // ── Ripple at tap point ───────────────────────────────────────────
+          // Plays immediately on pointer-down (before any async AR work),
+          // giving instant visual feedback that the tap was registered.
+          if (_showRipple)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: _rippleCtrl,
+                  builder: (_, __) {
+                    const baseRadius = 44.0;
+                    final radius = baseRadius * _rippleScale.value;
+                    return CustomPaint(
+                      painter: _RipplePainter(
+                        center: _tapPosition,
+                        radius: radius,
+                        opacity: _rippleOpacity.value,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+
+          // ── Pulsing tap indicator (center) ────────────────────────────────
+          // Visible only when a plane is found AND the user hasn't tapped yet.
+          if (_state == _PlacementState.ready)
             const Positioned.fill(
               child: IgnorePointer(
                 child: Center(child: _PulsingTapIndicator()),
               ),
             ),
 
-          // ── Status banner — visible until the model is placed ─────────────
-          if (!_placed)
+          // ── Status banner ─────────────────────────────────────────────────
+          if (_state != _PlacementState.placed)
             Positioned(
               bottom: 110,
               left: 24,
               right: 24,
-              child: IgnorePointer(
-                child: _StatusBanner(
-                  planeDetected: _planeDetected,
-                  tapped: _tapped,
-                ),
-              ),
+              child: IgnorePointer(child: _StatusBanner(state: _state)),
             ),
 
           // ── Post-placement resize hint ────────────────────────────────────
-          // Shown briefly after placement so the user knows what to do while
-          // the GLB model is loading over the network.
-          if (_placed && _showResizeHint)
+          if (_state == _PlacementState.placed && _showResizeHint)
             Positioned(
               bottom: 110,
               left: 24,
@@ -239,7 +277,11 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
     arObjectManager = objectManager;
     arAnchorManager = anchorManager;
 
+    // showAnimatedGuide: true on the first call only — adds the native hand-rotate
+    // guide view once. The native session update callback auto-removes it as soon
+    // as ARCore detects the first tracked plane (no Dart involvement needed).
     await arSessionManager!.onInitialize(
+      showAnimatedGuide: true,
       showPlanes: true,
       showFeaturePoints: true,
       showWorldOrigin: false,
@@ -247,15 +289,16 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
     );
     await arObjectManager!.onInitialize();
 
-    // The native sessionConfiguration closure hard-codes planeFindingMode =
-    // DISABLED. handleInit overrides this via session.configure(), but
-    // sceneView.session is often null right after the view is created (ARCore
-    // starts asynchronously). Retry after a short delay so the session is
-    // available and plane detection actually gets enabled.
+    // Retry after 800ms — the native session is often not ready immediately and
+    // plane finding mode defaults to DISABLED until session.configure() runs.
+    // showAnimatedGuide: false here so we don't add a second guide on top of
+    // the first one (the native field check requires BOTH the arg AND the class
+    // field to be true, but after the first call the view is already present).
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted || arSessionManager == null) return;
 
     await arSessionManager!.onInitialize(
+      showAnimatedGuide: false,
       showPlanes: true,
       showFeaturePoints: true,
       showWorldOrigin: false,
@@ -269,22 +312,21 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
 
   void _onPlaneDetected(int count) {
     if (!mounted) return;
-    if (!_planeDetected && count > 0) {
-      setState(() => _planeDetected = true);
+    if (_state == _PlacementState.scanning && count > 0) {
+      setState(() => _state = _PlacementState.ready);
     }
   }
 
   // ── Tap-to-place ──────────────────────────────────────────────────────────
 
   Future<void> _onPlaneTapped(List<ARHitTestResult> hits) async {
-    // Guard: ignore if already placing, model not ready, or widget disposed.
-    if (_isPlacing || !_glbReady || !mounted) return;
+    // Only act when we're in the 'placing' state (pointer-down already fired).
+    if (_state != _PlacementState.placing || !mounted) return;
 
-    // Prefer a plane hit; fall back to a point (feature-point) hit.
-    // ARHitTestResultType values: plane, point, undefined.
-    // Early in a session only "point" hits exist (white dots); planes appear
-    // after the user sweeps the camera over the surface for a few seconds.
-    if (hits.isEmpty) return;
+    if (hits.isEmpty) {
+      if (mounted) setState(() => _state = _PlacementState.ready);
+      return;
+    }
 
     ARHitTestResult? hit;
     for (final h in hits) {
@@ -301,12 +343,10 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
         }
       }
     }
-    hit ??= hits.first; // last resort: accept any hit type
+    hit ??= hits.first;
 
-    _isPlacing = true;
     bool placementSucceeded = false;
     try {
-      // Remove previous anchor + node so the user can re-tap to reposition.
       if (anchors.isNotEmpty) {
         await arAnchorManager!.removeAnchor(anchors.first);
         if (!mounted) return;
@@ -322,8 +362,6 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
       final didAddAnchor = await arAnchorManager!.addAnchor(anchor);
       if (!mounted) return;
 
-      // Treat null as success — some ar_flutter_plugin_2 builds return null
-      // instead of true when the call actually succeeded.
       if (didAddAnchor != false) {
         anchors.add(anchor);
 
@@ -345,47 +383,39 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
           nodes.add(node);
           placementSucceeded = true;
           setState(() {
-            _placed = true;
+            _state = _PlacementState.placed;
             _showResizeHint = true;
           });
-          // Auto-dismiss the resize hint after 5 seconds.
           Future.delayed(const Duration(seconds: 5), () {
             if (mounted) setState(() => _showResizeHint = false);
           });
         }
       }
     } finally {
-      _isPlacing = false;
-      // If placement failed for any reason, reset _tapped so the user can
-      // try again and the pulsing indicator comes back.
-      if (!placementSucceeded && mounted && !_placed) {
-        setState(() => _tapped = false);
+      if (!placementSucceeded && mounted && _state == _PlacementState.placing) {
+        setState(() => _state = _PlacementState.ready);
       }
     }
   }
 
   // ── Listener-based multi-touch handlers ──────────────────────────────────
-  // Using raw Listener (not GestureDetector) so single-finger taps are NOT
-  // consumed by Flutter's ScaleGestureRecognizer and can reach the native AR
-  // layer. onPlaneOrPointTap only fires if Flutter doesn't win the gesture arena.
 
   void _handlePointerDown(PointerDownEvent event) {
     _pointers[event.pointer] = event.localPosition;
 
-    // Single-finger touch while waiting to place: hide the pulsing indicator
-    // immediately — this fires via Flutter's Listener before the native AR
-    // layer processes anything, so the response is instant.
-    // If placement ultimately doesn't happen (empty hit list, AR failure),
-    // a 3-second timer brings the indicator back so the user can try again.
-    if (_pointers.length == 1 && _planeDetected && !_placed && !_tapped) {
-      setState(() => _tapped = true);
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted && !_placed) setState(() => _tapped = false);
+    // Transition to 'placing' the instant the first finger touches down while
+    // the surface is ready. This hides the pulsing indicator immediately —
+    // no _pointers.length guard needed (any touch counts).
+    if (_state == _PlacementState.ready) {
+      setState(() {
+        _state = _PlacementState.placing;
+        _tapPosition = event.localPosition;
+        _showRipple = true;
       });
+      _rippleCtrl.forward();
     }
 
     if (_pointers.length >= 2) {
-      // Re-initialise baseline whenever a new finger touches down.
       final pts = _pointers.values.toList();
       _initialPointerDistance = math.max(1.0, (pts[0] - pts[1]).distance);
       _initialFocalPoint = (pts[0] + pts[1]) / 2;
@@ -395,11 +425,11 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
   }
 
   void _handlePointerMove(PointerMoveEvent event) {
-    if (!_placed || nodes.isEmpty) return;
+    if (_state != _PlacementState.placed || nodes.isEmpty) return;
     if (!_pointers.containsKey(event.pointer)) return;
     _pointers[event.pointer] = event.localPosition;
 
-    if (_pointers.length < 2) return; // ignore single-finger drags
+    if (_pointers.length < 2) return;
 
     final pts = _pointers.values.toList();
     final dist = (pts[0] - pts[1]).distance;
@@ -426,7 +456,6 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
   void _handlePointerUp(PointerUpEvent event) {
     _pointers.remove(event.pointer);
     if (_pointers.length < 2) {
-      // Gesture ended — update base for next gesture.
       _gestureBaseScale = _currentScale;
       _gestureBaseRotY = _currentRotationY;
     }
@@ -446,7 +475,7 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
   }
 
   Future<void> _applyUpdate() async {
-    if (nodes.isEmpty || _isUpdating || _isPlacing) return;
+    if (nodes.isEmpty || _isUpdating) return;
     if (arObjectManager == null || arAnchorManager == null) return;
     if (!mounted) return;
 
@@ -492,9 +521,36 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen> {
   }
 }
 
+// ── Ripple painter ────────────────────────────────────────────────────────────
+// Draws a single expanding circle at [center] with [radius] and [opacity].
+// Used as a screen-space feedback overlay at the tap position.
+
+class _RipplePainter extends CustomPainter {
+  final Offset center;
+  final double radius;
+  final double opacity;
+
+  const _RipplePainter({
+    required this.center,
+    required this.radius,
+    required this.opacity,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.green.shade400.withValues(alpha: opacity)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0;
+    canvas.drawCircle(center, radius, paint);
+  }
+
+  @override
+  bool shouldRepaint(_RipplePainter old) =>
+      old.radius != radius || old.opacity != opacity || old.center != center;
+}
+
 // ── Pulsing tap indicator ─────────────────────────────────────────────────────
-// Shown in the center of the screen once a flat surface is detected, prompting
-// the user to tap. Pulses continuously to draw attention.
 
 class _PulsingTapIndicator extends StatefulWidget {
   const _PulsingTapIndicator();
@@ -552,14 +608,11 @@ class _PulsingTapIndicatorState extends State<_PulsingTapIndicator>
 }
 
 // ── Status banner ─────────────────────────────────────────────────────────────
-// Shown at the bottom of the AR view (above the Scan Again button) to guide
-// the user through three phases: scanning, ready-to-tap, and placing.
 
 class _StatusBanner extends StatelessWidget {
-  final bool planeDetected;
-  final bool tapped;
+  final _PlacementState state;
 
-  const _StatusBanner({required this.planeDetected, required this.tapped});
+  const _StatusBanner({required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -567,33 +620,38 @@ class _StatusBanner extends StatelessWidget {
     final Widget leading;
     final String message;
 
-    if (tapped) {
-      // User tapped — async placement in progress.
-      bg = Colors.orange.shade800.withValues(alpha: 0.92);
-      leading = const SizedBox(
-        width: 18,
-        height: 18,
-        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-      );
-      message = 'Placing model\u2026';
-    } else if (planeDetected) {
-      // Plane found — prompt to tap.
-      bg = Colors.green.shade700.withValues(alpha: 0.92);
-      leading = const Icon(
-        Icons.check_circle_outline,
-        color: Colors.white,
-        size: 20,
-      );
-      message = 'Flat surface found! Tap to place';
-    } else {
-      // Still scanning.
-      bg = Colors.black.withValues(alpha: 0.60);
-      leading = const SizedBox(
-        width: 18,
-        height: 18,
-        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-      );
-      message = 'Slowly move your camera to find a flat surface';
+    switch (state) {
+      case _PlacementState.placing:
+        bg = Colors.orange.shade800.withValues(alpha: 0.92);
+        leading = const SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            color: Colors.white,
+          ),
+        );
+        message = 'Placing model\u2026';
+      case _PlacementState.ready:
+        bg = Colors.green.shade700.withValues(alpha: 0.92);
+        leading = const Icon(
+          Icons.check_circle_outline,
+          color: Colors.white,
+          size: 20,
+        );
+        message = 'Flat surface found! Tap to place';
+      case _PlacementState.scanning:
+      case _PlacementState.placed:
+        bg = Colors.black.withValues(alpha: 0.60);
+        leading = const SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            color: Colors.white,
+          ),
+        );
+        message = 'Slowly move your camera to find a flat surface';
     }
 
     return AnimatedContainer(
