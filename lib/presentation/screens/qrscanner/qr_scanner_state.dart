@@ -13,11 +13,12 @@ class ModelLoading extends QRScannerState {}
 
 class ModelLoaded extends QRScannerState {
   final String modelUrl;
+  final String? soundUrl;
 
-  const ModelLoaded(this.modelUrl);
+  const ModelLoaded(this.modelUrl, {this.soundUrl});
 
   @override
-  List<Object?> get props => [modelUrl];
+  List<Object?> get props => [modelUrl, soundUrl];
 }
 
 class ModelError extends QRScannerState {

@@ -56,16 +56,18 @@ class _QRScannerPageState extends State<QRScannerPage> {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (_) =>
-                    ArCoreSurfacePlaceScreen(modelUrl: state.modelUrl),
+                builder: (_) => ArCoreSurfacePlaceScreen(
+                  modelUrl: state.modelUrl,
+                  soundUrl: state.soundUrl,
+                ),
               ),
             );
           }
 
           if (state is ModelError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message)),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.message)));
             _resetScanner();
           }
         },
@@ -84,9 +86,7 @@ class _QRScannerPageState extends State<QRScannerPage> {
                 if (state is ModelLoading) {
                   return Container(
                     color: Colors.black45,
-                    child: const Center(
-                      child: CircularProgressIndicator(),
-                    ),
+                    child: const Center(child: CircularProgressIndicator()),
                   );
                 }
                 return const SizedBox();

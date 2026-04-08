@@ -19,7 +19,7 @@ class QRScannerBloc extends Bloc<QRScannerEvent, QRScannerState> {
     try {
       final response = await repository.findById(event.id);
       if (response.fileUrl != null) {
-        emit(ModelLoaded(response.fileUrl!));
+        emit(ModelLoaded(response.fileUrl!, soundUrl: response.audioUrl));
       } else {
         emit(const ModelError("Model not found"));
       }

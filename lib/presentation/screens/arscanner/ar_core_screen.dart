@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:ar_flutter_plugin_2/ar_flutter_plugin.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:ar_flutter_plugin_2/datatypes/config_planedetection.dart';
 import 'package:ar_flutter_plugin_2/datatypes/hittest_result_types.dart';
 import 'package:ar_flutter_plugin_2/datatypes/node_types.dart';
@@ -31,7 +32,12 @@ enum _PlacementState { scanning, ready, placing, placed }
 
 class ArCoreSurfacePlaceScreen extends StatefulWidget {
   final String modelUrl;
-  const ArCoreSurfacePlaceScreen({required this.modelUrl, super.key});
+  final String? soundUrl;
+  const ArCoreSurfacePlaceScreen({
+    required this.modelUrl,
+    this.soundUrl,
+    super.key,
+  });
 
   @override
   State<ArCoreSurfacePlaceScreen> createState() =>
@@ -82,6 +88,11 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
   bool _isUpdating = false;
   Timer? _debounceTimer;
 
+  // ── Audio ─────────────────────────────────────────────────────────────────
+  // Initialised only when soundUrl is provided; null otherwise so no resources
+  // are allocated when the feature is not in use.
+  AudioPlayer? _audioPlayer;
+
   @override
   void initState() {
     super.initState();
@@ -103,12 +114,18 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
         _rippleCtrl.reset();
       }
     });
+
+    final url = widget.soundUrl;
+    if (url != null && url.isNotEmpty) {
+      _audioPlayer = AudioPlayer();
+    }
   }
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
     _rippleCtrl.dispose();
+    _audioPlayer?.dispose();
 
     // Replace callbacks with no-ops FIRST — onPlaneOrPointTap and onPlaneDetected
     // are 'late' non-nullable fields in the plugin (can't be set to null).
@@ -225,6 +242,26 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
                         ),
                       ),
                     ],
+                  ),
+                ),
+              ),
+            ),
+
+          // ── Sound button ──────────────────────────────────────────────────
+          // Visible only after placement and when a soundUrl was provided.
+          // AnimatedOpacity fades it in/out without rebuilding the AR layer.
+          if (_audioPlayer != null)
+            Positioned(
+              bottom: 100,
+              right: 24,
+              child: AnimatedOpacity(
+                opacity: _state == _PlacementState.placed ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 300),
+                child: IgnorePointer(
+                  ignoring: _state != _PlacementState.placed,
+                  child: _SoundButton(
+                    player: _audioPlayer!,
+                    soundUrl: widget.soundUrl!,
                   ),
                 ),
               ),
@@ -518,6 +555,86 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
   vector.Vector4 quaternionFromY(double angle) {
     final half = angle / 2;
     return vector.Vector4(0.0, math.sin(half), 0.0, math.cos(half));
+  }
+}
+
+// ── Sound button ──────────────────────────────────────────────────────────────
+// Reacts to just_audio's playerStateStream so icon updates are immediate and
+// don't require any extra setState calls in the parent widget.
+
+class _SoundButton extends StatelessWidget {
+  final AudioPlayer player;
+  final String soundUrl;
+
+  const _SoundButton({required this.player, required this.soundUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<PlayerState>(
+      stream: player.playerStateStream,
+      builder: (context, snapshot) {
+        final playerState = snapshot.data;
+        final playing = playerState?.playing ?? false;
+        final processingState =
+            playerState?.processingState ?? ProcessingState.idle;
+
+        final bool isLoading =
+            processingState == ProcessingState.loading ||
+            processingState == ProcessingState.buffering;
+
+        final Widget icon;
+        if (isLoading) {
+          icon = const SizedBox(
+            width: 26,
+            height: 26,
+            child: CircularProgressIndicator(
+              color: Colors.white,
+              strokeWidth: 2.5,
+            ),
+          );
+        } else if (playing) {
+          icon = const Icon(Icons.stop_rounded, color: Colors.white, size: 30);
+        } else {
+          icon = const Icon(
+            Icons.volume_up_rounded,
+            color: Colors.white,
+            size: 30,
+          );
+        }
+
+        return ElevatedButton(
+          onPressed: () async {
+            try {
+              if (playing) {
+                await player.stop();
+              } else {
+                await player.setUrl(soundUrl);
+                await player.play();
+              }
+            } catch (_) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Could not play audio. Check your connection.',
+                    ),
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              }
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green.shade600,
+            foregroundColor: Colors.white,
+            shape: const CircleBorder(),
+            padding: const EdgeInsets.all(18),
+            elevation: 4,
+          ),
+          child: icon,
+        );
+      },
+    );
   }
 }
 

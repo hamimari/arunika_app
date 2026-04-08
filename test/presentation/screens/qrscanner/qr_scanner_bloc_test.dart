@@ -121,5 +121,55 @@ void main() {
         ),
       ],
     );
+    // ── soundUrl propagation ──────────────────────────────────────────────────
+
+    blocTest<QRScannerBloc, QRScannerState>(
+      'emits ModelLoaded with soundUrl when ArCardResponse includes audio_url',
+      build: () {
+        when(() => mockRepository.findById(any())).thenAnswer(
+          (_) async => ArCardResponse(
+            fileUrl: 'https://example.com/model.glb',
+            audioUrl: 'https://example.com/sound.mp3',
+          ),
+        );
+        return bloc;
+      },
+      act: (b) => b.add(const FetchModelById('abc123')),
+      expect: () => [
+        isA<ModelLoading>(),
+        isA<ModelLoaded>()
+            .having(
+              (s) => s.modelUrl,
+              'modelUrl',
+              'https://example.com/model.glb',
+            )
+            .having(
+              (s) => s.soundUrl,
+              'soundUrl',
+              'https://example.com/sound.mp3',
+            ),
+      ],
+    );
+
+    blocTest<QRScannerBloc, QRScannerState>(
+      'emits ModelLoaded with soundUrl null when ArCardResponse has no audio_url',
+      build: () {
+        when(() => mockRepository.findById(any())).thenAnswer(
+          (_) async => ArCardResponse(fileUrl: 'https://example.com/model.glb'),
+        );
+        return bloc;
+      },
+      act: (b) => b.add(const FetchModelById('abc123')),
+      expect: () => [
+        isA<ModelLoading>(),
+        isA<ModelLoaded>()
+            .having(
+              (s) => s.modelUrl,
+              'modelUrl',
+              'https://example.com/model.glb',
+            )
+            .having((s) => s.soundUrl, 'soundUrl', isNull),
+      ],
+    );
   });
 }
