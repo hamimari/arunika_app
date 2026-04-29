@@ -13,10 +13,10 @@ class ChildResponse {
 
   factory ChildResponse.fromJson(Map<String, dynamic> json) {
     return ChildResponse(
-      id: json['id'],
-      name: json['name'],
-      gender: json['gender'],
-      dateOfBirth: json['date_of_birth'],
+      id: json['id'] ?? "",
+      name: json['name'] ?? "",
+      gender: json['gender'] ?? "",
+      dateOfBirth: json['date_of_birth'] ?? "",
     );
   }
 

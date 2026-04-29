@@ -1,3 +1,4 @@
+import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/storage/LocalProfileStorage.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
 import 'package:arunika_app/data/models/request/signin_request.dart';
@@ -5,6 +6,7 @@ import 'package:arunika_app/data/models/response/signin_response.dart';
 import 'package:arunika_app/data/models/response/user_response.dart';
 import 'package:arunika_app/data/repositories/auth_repository.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
+import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/screens/signin/signin_event.dart';
 import 'package:arunika_app/presentation/screens/signin/signin_state.dart';
 import 'package:dio/dio.dart';
@@ -58,6 +60,7 @@ class SigninBloc extends Bloc<SigninEvent, SigninState> {
 
           await SecureTokenStorage.saveToken(response.token);
           await SecureTokenStorage.saveRefreshToken(response.refreshToken);
+          locator<AuthNotifier>().checkAuth();
           final UserResponse userResponse = await userRepository.findById(response.userId);
           if (userResponse.name.isEmpty) {
             emit(state.copyWith(

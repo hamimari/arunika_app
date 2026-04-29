@@ -1,8 +1,11 @@
-import 'package:arunika_app/presentation/screens/arscanner/qr_scanner.dart';
-import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_screen.dart';
+import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner.dart';
+import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_bloc.dart';
 import 'package:arunika_app/presentation/screens/home/home_bloc.dart';
 import 'package:arunika_app/presentation/screens/home/home_event.dart';
 import 'package:arunika_app/presentation/screens/home/home_state.dart';
+import 'package:arunika_app/presentation/screens/home/story_card.dart';
+import 'package:arunika_app/di/locator.dart';
+import 'package:arunika_app/data/repositories/ar_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -11,29 +14,6 @@ import 'package:iconsax/iconsax.dart';
 import '../widgets/bottom_nav.dart';
 
 class HomeScreen extends StatefulWidget {
-  static const List<Map<String, String>> categories = [
-    {
-      "title": "Numbers",
-      "image":
-          "https://storage.googleapis.com/a1aa/image/KTco9PlO4VnxwpIOmykV40oSaTChaGPp_g0n39XWZDs.jpg",
-    },
-    {
-      "title": "Shapes",
-      "image":
-          "https://storage.googleapis.com/a1aa/image/qSzsuL39YBR5CfR01URSfbRouZ7Q_2tImmwg-1eoKkI.jpg",
-    },
-    {
-      "title": "Vocab",
-      "image":
-          "https://storage.googleapis.com/a1aa/image/Vt4DLo0qLYSGDuRSmGEizcrwpaywqfa5vjg5z55fQ5c.jpg",
-    },
-    {
-      "title": "Dongeng",
-      "image":
-          "https://storage.googleapis.com/a1aa/image/hrtjK7BpRwCPJeq8wKrawJrq6dYsWJFSGknFf-ZeKxk.jpg",
-    },
-  ];
-
   const HomeScreen({super.key});
 
   @override
@@ -42,10 +22,18 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with RouteAware {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -54,115 +42,190 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     context.read<HomeBloc>().add(HomeInitial());
   }
 
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      context.read<HomeBloc>().add(LoadMoreDongeng());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<HomeBloc, HomeState>(
       listener: (context, state) {
-        if (state is NavigateToCategoryList) {
-          context.push('/dongeng-list');
-          context.read<HomeBloc>().add(HomeRefresh());
-        }
         if (state is NavigateToDongengPlayer) {
-          context.push('/dongeng-player');
+          context.push('/dongeng-player', extra: state.dongeng);
           _searchController.clear();
-          context.read<HomeBloc>().add(HomeRefresh());
+          context.read<HomeBloc>().add(ResetNavigation());
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
-        bottomNavigationBar: BottomNav(
-          currentIndex: 0,
-          onArPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => QRScannerPage()),
-            );
-          },
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => QRScannerPage()),
-            );
-          },
-          backgroundColor: Colors.orange,
-          child: const Icon(Iconsax.scan),
+        backgroundColor: const Color(0xFFFFFBF5),
+        bottomNavigationBar: const BottomNav(currentIndex: 0),
+        floatingActionButton: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.orange.withOpacity(0.35),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: FloatingActionButton(
+            elevation: 0,
+            backgroundColor: Colors.orange,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider(
+                    create: (_) =>
+                        QRScannerBloc(repository: locator<ArRepository>()),
+                    child: QRScannerPage(),
+                  ),
+                ),
+              );
+            },
+            child: const Icon(Iconsax.scan, size: 28),
+          ),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
         body: SafeArea(
           child: BlocBuilder<HomeBloc, HomeState>(
             builder: (context, state) {
-              return Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Halo ${state.user?.children.first.name ?? '-'}",
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange[500],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextField(
-                      controller: _searchController,
-                      onChanged: (value) {
-                        context.read<HomeBloc>().add(SearchQueryChanged(value));
-                      },
-                      decoration: InputDecoration(
-                        hintText: "Search",
-                        prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide.none,
+              final bool isNavigating = state is HomeNavigating;
+              return Stack(
+                children: [
+                  Column(
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFFFF4E6), Color(0xFFFFE0B2)],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                          borderRadius: BorderRadius.only(
+                            bottomLeft: Radius.circular(28),
+                            bottomRight: Radius.circular(28),
+                          ),
                         ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: state.filteredDongengList.length,
-                        itemBuilder: (context, index) {
-                          final story = state.filteredDongengList[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () {
-                                  context.read<HomeBloc>().add(DongengSelected());
-                                },
-                                child: StoryCard(
-                                  title: story.title,
-                                  ageGroup: "${story.ageStart}–${story.ageEnd} years old · 5 min read",
-                                  imageUrl: story.imageUrl,
-                                  label: story.isFree ? 'FREE' : 'PAID',
-                                  labelColor: story.isFree ? Colors.green : Colors.orange,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Halo ${state.user?.children.first.name ?? '-'} 👋",
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF6D4C41),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              "Yuk dengarkan dongeng hari ini",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF8D6E63),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            TextField(
+                              controller: _searchController,
+                              onChanged: (value) {
+                                context.read<HomeBloc>().add(
+                                  SearchQueryChanged(value),
+                                );
+                              },
+                              decoration: InputDecoration(
+                                hintText: "Cari dongeng favorit",
+                                prefixIcon: const Icon(Icons.search),
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                  borderSide: BorderSide.none,
                                 ),
                               ),
                             ),
-                          );
-                        },
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      Expanded(
+                        child: ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: state.dongengList.length +
+                              (state.isLoadingMore ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == state.dongengList.length) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: Colors.orange,
+                                  ),
+                                ),
+                              );
+                            }
+                            final story = state.dongengList[index];
+                            final bool isSelected = isNavigating &&
+                                (state as HomeNavigating).selectedId ==
+                                    story.id;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(20),
+                                onTap: isNavigating
+                                    ? null
+                                    : () {
+                                        context.read<HomeBloc>().add(
+                                          DongengSelected(story),
+                                        );
+                                      },
+                                child: StoryCard(
+                                  title: story.title,
+                                  ageGroup:
+                                      "${story.ageStart}–${story.ageEnd} years · ${story.duration}",
+                                  imageUrl: story.imageUrl,
+                                  label: story.isFree ? 'FREE' : 'PAID',
+                                  labelColor: story.isFree
+                                      ? Colors.green
+                                      : Colors.orange,
+                                  isLoading: isSelected,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (isNavigating)
+                    IgnorePointer(
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        child: const Center(
+                          child: CircularProgressIndicator(color: Colors.orange),
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                ],
               );
             },
           ),
         ),
-
       ),
     );
   }

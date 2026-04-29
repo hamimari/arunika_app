@@ -7,6 +7,7 @@ class AppDateField extends StatelessWidget {
   final String hint;
   final String? error;
   final ValueChanged<DateTime> onChanged;
+  final TextEditingController? controller;
 
   const AppDateField({
     super.key,
@@ -15,6 +16,7 @@ class AppDateField extends StatelessWidget {
     required this.hint,
     this.error,
     required this.onChanged,
+    this.controller,
   });
 
   @override
@@ -41,6 +43,7 @@ class AppDateField extends StatelessWidget {
           },
           child: AbsorbPointer(
             child: TextField(
+              controller: controller,
               decoration: InputDecoration(
                 hintText: value != null
                     ? DateFormat('dd/MM/yyyy').format(value!)

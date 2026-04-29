@@ -16,4 +16,9 @@ class AuthApi {
     final res = await dio.post(ApiPaths.signin, data: body);
     return res.data;
   }
+
+  Future<Map<String, dynamic>> forgotPassword(Map<String, dynamic> body) async {
+    final res = await dio.post(ApiPaths.forgotPassword, data: body);
+    return res.data;
+  }
 }
