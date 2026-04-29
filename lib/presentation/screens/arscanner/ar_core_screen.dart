@@ -118,6 +118,14 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
     final url = widget.soundUrl;
     if (url != null && url.isNotEmpty) {
       _audioPlayer = AudioPlayer();
+      // When audio finishes naturally, reset to idle so the button icon
+      // snaps back to the play state without requiring a manual stop.
+      _audioPlayer!.playerStateStream.listen((state) {
+        if (state.processingState == ProcessingState.completed) {
+          _audioPlayer!.stop();
+          _audioPlayer!.seek(Duration.zero);
+        }
+      });
     }
   }
 
@@ -252,7 +260,7 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
           // AnimatedOpacity fades it in/out without rebuilding the AR layer.
           if (_audioPlayer != null)
             Positioned(
-              bottom: 100,
+              bottom: MediaQuery.of(context).padding.bottom + 88,
               right: 24,
               child: AnimatedOpacity(
                 opacity: _state == _PlacementState.placed ? 1.0 : 0.0,
@@ -269,7 +277,7 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
 
           // ── Scan Again button ─────────────────────────────────────────────
           Positioned(
-            bottom: 30,
+            bottom: MediaQuery.of(context).padding.bottom + 16,
             left: 24,
             right: 24,
             child: ElevatedButton.icon(
@@ -625,7 +633,7 @@ class _SoundButton extends StatelessWidget {
             }
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green.shade600,
+            backgroundColor: Colors.orange,
             foregroundColor: Colors.white,
             shape: const CircleBorder(),
             padding: const EdgeInsets.all(18),

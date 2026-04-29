@@ -1,40 +1,30 @@
+import 'package:arunika_app/data/models/response/dongeng_page.dart';
 import 'package:arunika_app/data/models/response/dongeng_response.dart';
 import 'package:equatable/equatable.dart';
 
 class DongengDetailState extends Equatable {
-  final bool isPlaying;
-  final Duration position;
-  final Duration duration;
   final DongengResponse dongeng;
+  final int currentPageIndex;
 
   const DongengDetailState({
-    required this.isPlaying,
-    required this.position,
-    required this.duration,
     required this.dongeng,
+    this.currentPageIndex = 0,
   });
 
-  factory DongengDetailState.initial(DongengResponse selectedDongeng) => DongengDetailState(
-    isPlaying: false,
-    position: Duration.zero,
-    duration: Duration.zero,
-    dongeng: selectedDongeng,
-  );
+  List<DongengPage> get pages => dongeng.pages;
+  DongengPage? get currentPage =>
+      pages.isNotEmpty ? pages[currentPageIndex] : null;
+  bool get isFirstPage => currentPageIndex == 0;
+  bool get isLastPage =>
+      pages.isEmpty || currentPageIndex == pages.length - 1;
 
-  DongengDetailState copyWith({
-    bool? isPlaying,
-    Duration? position,
-    Duration? duration,
-    DongengResponse? dongeng,
-  }) {
+  DongengDetailState copyWith({int? currentPageIndex}) {
     return DongengDetailState(
-      isPlaying: isPlaying ?? this.isPlaying,
-      position: position ?? this.position,
-      duration: duration ?? this.duration,
-      dongeng: dongeng ?? this.dongeng,
+      dongeng: dongeng,
+      currentPageIndex: currentPageIndex ?? this.currentPageIndex,
     );
   }
 
   @override
-  List<Object?> get props => [isPlaying, position, duration, dongeng];
+  List<Object?> get props => [dongeng, currentPageIndex];
 }

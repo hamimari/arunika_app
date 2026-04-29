@@ -8,6 +8,7 @@ import 'package:arunika_app/presentation/navigation/signup_navigator.dart';
 import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_bloc.dart';
 import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_screen.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_bloc.dart';
+import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_event.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_screen.dart';
 import 'package:arunika_app/presentation/screens/forgotpassword/forgot_password_bloc.dart';
 import 'package:arunika_app/presentation/screens/forgotpassword/forgot_password_screen.dart';
@@ -33,15 +34,15 @@ import 'package:arunika_app/presentation/screens/signup/trial_screen.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../screens/profile/profile_screen.dart';
 
 final authNotifier = locator<AuthNotifier>();
+
 class AppRouter {
   static final GoRouter router = GoRouter(
     refreshListenable: authNotifier,
-    initialLocation: '/home',
+    initialLocation: '/',
     routes: [
       GoRoute(
         path: '/',
@@ -60,7 +61,6 @@ class AppRouter {
           if (isLoggedIn) {
             return '/home';
           }
-
         },
       ),
 
@@ -84,8 +84,6 @@ class AppRouter {
           ),
         ],
       ),
-
-
 
       GoRoute(
         path: '/landing',
@@ -116,13 +114,19 @@ class AppRouter {
       ),
       GoRoute(
         path: '/home',
-        builder: (context, state) =>
-            BlocProvider(create: (_) => HomeBloc(repository: locator<FairyTalesRepository>())..add(HomeInitial() as HomeEvent), child: const HomeScreen()),
+        builder: (context, state) => BlocProvider(
+          create: (_) =>
+              HomeBloc(repository: locator<FairyTalesRepository>())
+                ..add(HomeInitial() as HomeEvent),
+          child: const HomeScreen(),
+        ),
       ),
       GoRoute(
         path: '/dongeng-list',
         builder: (context, state) => BlocProvider(
-          create: (_) => DongengListBloc(),
+          create: (_) =>
+              DongengListBloc(repository: locator<FairyTalesRepository>())
+                ..add(LoadDongengList()),
           child: const DongengListScreen(),
         ),
       ),
@@ -130,7 +134,9 @@ class AppRouter {
       GoRoute(
         path: '/profile',
         builder: (context, state) => BlocProvider(
-          create: (_) => ProfileBloc(repository: locator<UserRepository>())..add(ProfileInitial()),
+          create: (_) =>
+              ProfileBloc(repository: locator<UserRepository>())
+                ..add(ProfileInitial()),
           child: const ProfileScreen(),
         ),
       ),
@@ -139,19 +145,20 @@ class AppRouter {
         path: '/dongeng-player',
         builder: (context, state) {
           final dongeng = state.extra as DongengResponse;
-
           return BlocProvider(
-            create: (_) => DongengDetailBloc(dongeng),
+            create: (_) => DongengDetailBloc(dongeng: dongeng),
             child: DongengDetailScreen(dongeng: dongeng),
           );
-        }
+        },
       ),
       GoRoute(
         path: '/signin',
         builder: (context, state) {
           return BlocProvider(
-            create: (_) => SigninBloc(repository: locator<AuthRepository>(),
-                userRepository: locator<UserRepository>()),
+            create: (_) => SigninBloc(
+              repository: locator<AuthRepository>(),
+              userRepository: locator<UserRepository>(),
+            ),
             child: const SignInScreen(),
           );
         },
@@ -160,10 +167,11 @@ class AppRouter {
         path: '/forgot-password',
         builder: (context, state) {
           return BlocProvider(
-            create: (_) => ForgotPasswordBloc(repository: locator<AuthRepository>()),
+            create: (_) =>
+                ForgotPasswordBloc(repository: locator<AuthRepository>()),
             child: const ForgotPasswordScreen(),
           );
-        }
+        },
       ),
       GoRoute(
         path: '/terms',
@@ -173,7 +181,6 @@ class AppRouter {
         path: '/privacy',
         builder: (context, state) => const PrivacyPolicyScreen(),
       ),
-
     ],
   );
 }

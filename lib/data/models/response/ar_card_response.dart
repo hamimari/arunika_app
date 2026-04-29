@@ -22,7 +22,7 @@ class ArCardResponse {
       title: json['title'] as String?,
       fileUrl: json['file_url'] as String?,
       shortCode: json['short_code'] as String?,
-      audioUrl: json['audio_url'] as String?,
+      audioUrl: json['sound_url'] as String?,
     );
   }
 }

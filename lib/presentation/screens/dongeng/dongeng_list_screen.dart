@@ -1,3 +1,4 @@
+import 'package:arunika_app/data/models/response/dongeng_response.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_bloc.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_event.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_state.dart';
@@ -9,117 +10,146 @@ import 'package:go_router/go_router.dart';
 class DongengListScreen extends StatelessWidget {
   const DongengListScreen({super.key});
 
-  static const List<Map<String, dynamic>> stories = [
-    {
-      'title': 'Poor Pluto',
-      'ageGroup': '6–9 years old · 5 min read',
-      'imageUrl':
-          'https://storage.googleapis.com/a1aa/image/2KbLEXPe53yJBZZcTS3MrE4GC4mmaJ6k0zqQT3Fw4Wc.jpg',
-      'label': 'PAID',
-      'labelColor': Colors.orange,
-    },
-    {
-      'title': 'Hansel & Grate',
-      'ageGroup': '9–12 years old · 7 min read',
-      'imageUrl':
-          'https://storage.googleapis.com/a1aa/image/2KbLEXPe53yJBZZcTS3MrE4GC4mmaJ6k0zqQT3Fw4Wc.jpg',
-      'label': 'FREE',
-      'labelColor': Colors.green,
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
-    return BlocListener<DongengListBloc, DongengListState>(
+    return BlocConsumer<DongengListBloc, DongengListState>(
+      buildWhen: (_, curr) => curr is! NavigateToDongengPlayer,
+      listenWhen: (_, curr) => curr is NavigateToDongengPlayer,
       listener: (context, state) {
         if (state is NavigateToDongengPlayer) {
-          context.push('/dongeng-player'); // <-- GoRouter style navigation
+          context.push('/dongeng-player', extra: state.dongeng);
+          context.read<DongengListBloc>().add(ResetDongengListNavigation());
         }
       },
-      child: Scaffold(
-        appBar: AppBar(
-          leading: BackButton(color: Colors.black),
-          backgroundColor: Colors.white,
-          elevation: 0,
-        ),
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Category title
-                const Text(
-                  'Dongeng',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange,
-                  ),
-                ),
-                const SizedBox(height: 24),
+      builder: (context, state) {
+        final bool isNavigating = state is DongengListNavigating;
 
-                // Story list
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: stories.length,
-                    itemBuilder: (context, index) {
-                      final story = stories[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () {
-                              context
-                                  .read<DongengListBloc>()
-                                  .add(DongengSelected());
-                            },
-                            child: StoryCard(
-                              title: story['title'],
-                              ageGroup: story['ageGroup'],
-                              imageUrl: story['imageUrl'],
-                              label: story['label'],
-                              labelColor: story['labelColor'],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
+        return Scaffold(
+          appBar: AppBar(
+            leading: const BackButton(color: Colors.black),
+            backgroundColor: Colors.white,
+            elevation: 0,
+            title: const Text(
+              'Dongeng',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.orange,
+              ),
             ),
           ),
-        ),
+          backgroundColor: const Color(0xFFFFFBF5),
+          body: Stack(
+            children: [
+              SafeArea(child: _buildBody(context, state)),
+              if (isNavigating)
+                IgnorePointer(
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    child: const Center(
+                      child: CircularProgressIndicator(color: Colors.orange),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          bottomNavigationBar: const BottomNav(currentIndex: 1),
+        );
+      },
+    );
+  }
 
-        // Bottom navigation
-        bottomNavigationBar: const BottomNav(currentIndex: 1),
-      ),
+  Widget _buildBody(BuildContext context, DongengListState state) {
+    if (state is DongengListLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.orange),
+      );
+    }
+
+    if (state is DongengListError) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.orange),
+              const SizedBox(height: 16),
+              Text(
+                state.message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                onPressed: () =>
+                    context.read<DongengListBloc>().add(LoadDongengList()),
+                child: const Text('Coba Lagi'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final List<DongengResponse> list;
+    if (state is DongengListLoaded) {
+      list = state.dongengList;
+    } else if (state is DongengListNavigating) {
+      list = state.dongengList;
+    } else {
+      return const Center(child: CircularProgressIndicator(color: Colors.orange));
+    }
+
+    if (list.isEmpty) {
+      return const Center(
+        child: Text(
+          'Belum ada dongeng tersedia.',
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      itemCount: list.length,
+      itemBuilder: (context, index) {
+        final story = list[index];
+        final bool isSelected = state is DongengListNavigating &&
+            state.selectedId == story.id;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: state is DongengListNavigating
+                  ? null
+                  : () => context
+                        .read<DongengListBloc>()
+                        .add(DongengItemSelected(story)),
+              child: _StoryCard(dongeng: story, isLoading: isSelected),
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
-class StoryCard extends StatelessWidget {
-  final String title;
-  final String ageGroup;
-  final String imageUrl;
-  final String label;
-  final Color labelColor;
+// ── Story card ─────────────────────────────────────────────────────────────────
 
-  const StoryCard({
-    super.key,
-    required this.title,
-    required this.ageGroup,
-    required this.imageUrl,
-    required this.label,
-    required this.labelColor,
-  });
+class _StoryCard extends StatelessWidget {
+  final DongengResponse dongeng;
+  final bool isLoading;
+
+  const _StoryCard({required this.dongeng, this.isLoading = false});
 
   @override
   Widget build(BuildContext context) {
+    final labelColor = dongeng.isFree ? Colors.green : Colors.orange;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -129,41 +159,63 @@ class StoryCard extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundImage: NetworkImage(imageUrl),
-            backgroundColor: labelColor.withOpacity(0.2),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: Image.network(
+              dongeng.imageUrl,
+              width: 56,
+              height: 56,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => CircleAvatar(
+                radius: 28,
+                backgroundColor: labelColor.withValues(alpha: 0.2),
+                child: Icon(Icons.book, color: labelColor),
+              ),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: labelColor,
-                    )),
+                Text(
+                  dongeng.title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: labelColor,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(ageGroup, style: const TextStyle(color: Colors.grey)),
+                Text(
+                  '${dongeng.ageStart.toInt()}–${dongeng.ageEnd.toInt()} tahun · ${dongeng.duration}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 13),
+                ),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: labelColor,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              label,
-              style: const TextStyle(
+          if (isLoading)
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: labelColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                dongeng.isFree ? 'FREE' : 'PAID',
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 10),
+                  fontSize: 10,
+                ),
+              ),
             ),
-          )
         ],
       ),
     );

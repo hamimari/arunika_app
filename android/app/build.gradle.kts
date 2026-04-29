@@ -41,14 +41,10 @@ android {
     }
 
     // ── ABI splits ────────────────────────────────────────────────────────────
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "armeabi-v7a", "x86_64")
-            isUniversalApk = false
-        }
-    }
+    // Disabled here — use `flutter build apk --split-per-abi` at the Flutter
+    // level instead, which correctly names the output files that the Flutter
+    // tool expects. Enabling Gradle-level splits produces per-ABI filenames
+    // (app-arm64-v8a-release.apk) that the Flutter tool cannot locate.
 
     // ── Signing configs ───────────────────────────────────────────────────────
     signingConfigs {

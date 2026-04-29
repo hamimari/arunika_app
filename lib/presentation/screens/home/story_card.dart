@@ -7,6 +7,7 @@ class StoryCard extends StatelessWidget {
   final String imageUrl;
   final String label;
   final Color labelColor;
+  final bool isLoading;
 
   const StoryCard({
     super.key,
@@ -15,6 +16,7 @@ class StoryCard extends StatelessWidget {
     required this.imageUrl,
     required this.label,
     required this.labelColor,
+    this.isLoading = false,
   });
 
   @override
@@ -101,6 +103,19 @@ class StoryCard extends StatelessWidget {
               ),
             ),
           ),
+
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.orange,
+                ),
+              ),
+            ),
         ],
       ),
     );

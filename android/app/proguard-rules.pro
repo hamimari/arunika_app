@@ -19,9 +19,22 @@
 -keep class io.github.sceneview.** { *; }
 -dontwarn io.github.sceneview.**
 
-# ── ar_flutter_plugin_2 (gordonwong wrapper) ─────────────────────────────────
--keep class com.gordonwong.** { *; }
--dontwarn com.gordonwong.**
+# ── ar_flutter_plugin_2 ───────────────────────────────────────────────────────
+-keep class com.uhg0.** { *; }
+-dontwarn com.uhg0.**
+
+# ── Filament (JNI bridge — native C++ calls back into these Java classes) ────
+# Without these, R8 renames Material/Texture/Engine and Filament silently
+# falls back to its error material (solid green).
+-keep class com.google.android.filament.** { *; }
+-keep interface com.google.android.filament.** { *; }
+-dontwarn com.google.android.filament.**
+
+# ── Filament gltfio / utils (GLB loading pipeline) ───────────────────────────
+-keep class com.google.android.filament.gltfio.** { *; }
+-keep class com.google.android.filament.utils.** { *; }
+-dontwarn com.google.android.filament.gltfio.**
+-dontwarn com.google.android.filament.utils.**
 
 # ── OkHttp3 (used by Dio for HTTP calls) ─────────────────────────────────────
 -keep class okhttp3.** { *; }
