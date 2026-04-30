@@ -45,9 +45,9 @@ class AuthInterceptor extends InterceptorsWrapper {
 
   @override
   Future<void> onError(
-      DioException err,
-      ErrorInterceptorHandler handler,
-      ) async {
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
     if (err.requestOptions.extra['isRefresh'] == true) {
       return handler.next(err);
     }
@@ -104,9 +104,8 @@ class AuthInterceptor extends InterceptorsWrapper {
       }
       return false;
     } catch (e) {
-      await SecureTokenStorage.clear();
+      await authNotifier.logout();
       return false;
     }
   }
-
 }

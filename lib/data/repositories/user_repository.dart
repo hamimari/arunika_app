@@ -9,7 +9,10 @@ class UserRepository {
 
   Future<UserResponse> findById(String userId) async {
     final json = await api.findById(userId);
-    return UserResponse.fromJson(json["data"]);
+    // Backend returns { "data": {...}, "subscription_status": "free"|"premium" }
+    final userData = Map<String, dynamic>.from(json['data'] as Map);
+    userData['subscription_status'] = json['subscription_status'] ?? 'free';
+    return UserResponse.fromJson(userData);
   }
 
   Future<UserResponse> update(UpdateUserRequest payload) async {

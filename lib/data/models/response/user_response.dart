@@ -9,6 +9,11 @@ class UserResponse {
   final String city;
   final List<ChildResponse> children;
 
+  /// 'free' or 'premium'
+  final String subscriptionStatus;
+
+  bool get isPremium => subscriptionStatus == 'premium';
+
   UserResponse({
     required this.id,
     required this.name,
@@ -17,19 +22,21 @@ class UserResponse {
     required this.address,
     required this.city,
     required this.children,
+    this.subscriptionStatus = 'free',
   });
 
   factory UserResponse.fromJson(Map<String, dynamic> json) {
     return UserResponse(
-      id: json['id'],
-      name: json['name'],
-      phoneNumber: json['phone_number'],
-      emailAddress: json['email_address'],
-      address: json['address'],
-      city: json['city'],
-      children: (json['children'] as List<dynamic>)
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      phoneNumber: json['phone_number'] ?? '',
+      emailAddress: json['email_address'] ?? '',
+      address: json['address'] ?? '',
+      city: json['city'] ?? '',
+      children: (json['children'] as List<dynamic>? ?? [])
           .map((childJson) => ChildResponse.fromJson(childJson))
           .toList(),
+      subscriptionStatus: json['subscription_status'] ?? 'free',
     );
   }
 
@@ -42,6 +49,20 @@ class UserResponse {
       'address': address,
       'city': city,
       'children': children.map((child) => child.toJson()).toList(),
+      'subscription_status': subscriptionStatus,
     };
+  }
+
+  UserResponse copyWith({String? subscriptionStatus}) {
+    return UserResponse(
+      id: id,
+      name: name,
+      phoneNumber: phoneNumber,
+      emailAddress: emailAddress,
+      address: address,
+      city: city,
+      children: children,
+      subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
+    );
   }
 }
