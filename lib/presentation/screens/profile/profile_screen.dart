@@ -8,6 +8,7 @@ import 'package:arunika_app/presentation/screens/profile/child_form.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_bloc.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_event.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_state.dart';
+import 'package:arunika_app/presentation/screens/widgets/error_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -285,14 +286,11 @@ class _EditProfileSheet extends StatelessWidget {
         }
         if (state.error != null) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context)
-            ..clearSnackBars()
-            ..showSnackBar(
-              SnackBar(
-                content: Text(state.error!),
-                backgroundColor: Colors.red,
-              ),
-            );
+          AppErrorSheet.show(
+            context,
+            title: 'Gagal Menyimpan',
+            message: state.error!,
+          );
         }
       },
       child: SafeArea(

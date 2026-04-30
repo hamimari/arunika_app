@@ -15,6 +15,7 @@ class TrialScreen extends StatefulWidget {
 
 class _TrialScreenState extends State<TrialScreen> {
   final _pageController = PageController();
+  // ignore: unused_field
   int _currentPage = 0;
 
   final List<String> imageAssets = [
@@ -43,8 +44,10 @@ class _TrialScreenState extends State<TrialScreen> {
           child: Stack(
             children: [
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 child: Column(
                   children: [
                     /*Align(
@@ -70,8 +73,9 @@ class _TrialScreenState extends State<TrialScreen> {
                               },
                               itemBuilder: (context, index) {
                                 return Container(
-                                  margin:
-                                      const EdgeInsets.symmetric(horizontal: 8),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.orange.shade100,
                                     borderRadius: BorderRadius.circular(12),
@@ -108,8 +112,10 @@ class _TrialScreenState extends State<TrialScreen> {
                     const Text(
                       'Coba Fitur Premium Gratis',
                       textAlign: TextAlign.center,
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     const Text(
@@ -152,7 +158,8 @@ class _TrialScreenState extends State<TrialScreen> {
 
                     const FeatureItem(text: 'Dongeng interaktif'),
                     const FeatureItem(
-                        text: 'Pembelajaran huruf, angka dan vocabulary'),
+                      text: 'Pembelajaran huruf, angka dan vocabulary',
+                    ),
                     const FeatureItem(text: 'Info dan tips parenting'),
                     const SizedBox(height: 24),
 
@@ -172,7 +179,9 @@ class _TrialScreenState extends State<TrialScreen> {
                         child: const Text(
                           'MULAI UJI COBA GRATIS',
                           style: TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold),
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -206,12 +215,7 @@ class FeatureItem extends StatelessWidget {
         children: [
           const Icon(Icons.check_circle, color: Colors.orange, size: 20),
           const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 14),
-            ),
-          ),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
         ],
       ),
     );

@@ -36,7 +36,9 @@ class _ChildFormState extends State<ChildForm> {
     emailController = TextEditingController(text: state.user?.emailAddress);
     cityController = TextEditingController(text: state.user?.city);
     addressController = TextEditingController(text: state.user?.address);
-    childNameController = TextEditingController(text: state.user?.children.first.name);
+    childNameController = TextEditingController(
+      text: state.user?.children.first.name,
+    );
   }
 
   @override
@@ -52,18 +54,30 @@ class _ChildFormState extends State<ChildForm> {
 
   @override
   Widget build(BuildContext context) {
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Section label: Orang Tua ──────────────────────────────────────
+        const _SectionLabel(
+          label: 'Data Orang Tua',
+          icon: Icons.person_outline_rounded,
+        ),
+        const SizedBox(height: 12),
+
+        // 1. Nama
         BlocBuilder<ProfileBloc, ProfileState>(
           buildWhen: (prev, curr) => prev.nameError != curr.nameError,
           builder: (context, state) {
             return AppTextField(
               controller: nameController,
-              label: 'Nama Kamu (Orang Tua)',
-              hint: 'Contoh : Nagita Slavina',
+              label: 'Nama Orang Tua',
+              hint: 'Contoh: Nagita Slavina',
+              prefix: const Icon(
+                Icons.person_outline_rounded,
+                color: Colors.orange,
+                size: 20,
+              ),
               onChanged: (value) =>
                   context.read<ProfileBloc>().add(NameChanged(value)),
               error: state.nameError,
@@ -71,20 +85,9 @@ class _ChildFormState extends State<ChildForm> {
           },
         ),
 
-        BlocBuilder<ProfileBloc, ProfileState>(
-          buildWhen: (prev, curr) => prev.phoneError != curr.phoneError,
-          builder: (context, state) {
-            return AppPhoneTextField(
-              controller: phoneController,
-              label: 'Nomor Telepon',
-              hint: '812356789',
-              onChanged: (value) => context.read<ProfileBloc>()
-                  .add(PhoneChanged(value)),
-              error: state.phoneError,
-            );
-          },
-        ),
+        const SizedBox(height: 12),
 
+        // 2. Email
         BlocBuilder<ProfileBloc, ProfileState>(
           buildWhen: (prev, curr) => prev.emailError != curr.emailError,
           builder: (context, state) {
@@ -92,13 +95,38 @@ class _ChildFormState extends State<ChildForm> {
               controller: emailController,
               label: 'Email',
               hint: 'nagita.slavina@mail.com',
-              onChanged: (value) => context.read<ProfileBloc>()
-                  .add(EmailChanged(value)),
+              prefix: const Icon(
+                Icons.email_outlined,
+                color: Colors.orange,
+                size: 20,
+              ),
+              onChanged: (value) =>
+                  context.read<ProfileBloc>().add(EmailChanged(value)),
               error: state.emailError,
             );
           },
         ),
 
+        const SizedBox(height: 12),
+
+        // 3. Nomor Telepon
+        BlocBuilder<ProfileBloc, ProfileState>(
+          buildWhen: (prev, curr) => prev.phoneError != curr.phoneError,
+          builder: (context, state) {
+            return AppPhoneTextField(
+              controller: phoneController,
+              label: 'Nomor Telepon',
+              hint: '812356789',
+              onChanged: (value) =>
+                  context.read<ProfileBloc>().add(PhoneChanged(value)),
+              error: state.phoneError,
+            );
+          },
+        ),
+
+        const SizedBox(height: 12),
+
+        // 4. Kota Tinggal
         BlocBuilder<ProfileBloc, ProfileState>(
           buildWhen: (prev, curr) => prev.cityError != curr.cityError,
           builder: (context, state) {
@@ -106,13 +134,21 @@ class _ChildFormState extends State<ChildForm> {
               controller: cityController,
               label: 'Kota Tinggal',
               hint: 'Jakarta',
-              onChanged: (value) => context.read<ProfileBloc>()
-                  .add(CityChanged(value)),
+              prefix: const Icon(
+                Icons.location_city_outlined,
+                color: Colors.orange,
+                size: 20,
+              ),
+              onChanged: (value) =>
+                  context.read<ProfileBloc>().add(CityChanged(value)),
               error: state.cityError,
             );
           },
         ),
 
+        const SizedBox(height: 12),
+
+        // 5. Alamat Lengkap
         BlocBuilder<ProfileBloc, ProfileState>(
           buildWhen: (prev, curr) => prev.addressError != curr.addressError,
           builder: (context, state) {
@@ -120,13 +156,25 @@ class _ChildFormState extends State<ChildForm> {
               controller: addressController,
               label: 'Alamat Lengkap',
               hint: 'Jl. Mawar No. 123, Jakarta',
-              onChanged: (value) => context.read<ProfileBloc>()
-                  .add(AddressChanged(value)),
+              prefix: const Icon(
+                Icons.home_outlined,
+                color: Colors.orange,
+                size: 20,
+              ),
+              onChanged: (value) =>
+                  context.read<ProfileBloc>().add(AddressChanged(value)),
               error: state.addressError,
             );
           },
         ),
 
+        const SizedBox(height: 24),
+
+        // ── Section label: Anak ───────────────────────────────────────────
+        const _SectionLabel(label: 'Data Anak', icon: Icons.child_care_rounded),
+        const SizedBox(height: 12),
+
+        // 6. Nama Anak
         BlocBuilder<ProfileBloc, ProfileState>(
           buildWhen: (p, c) => p.childNameError != c.childNameError,
           builder: (context, state) {
@@ -134,6 +182,11 @@ class _ChildFormState extends State<ChildForm> {
               controller: childNameController,
               label: 'Nama Anak',
               hint: 'Contoh: Rafatar',
+              prefix: const Icon(
+                Icons.face_rounded,
+                color: Colors.orange,
+                size: 20,
+              ),
               error: state.childNameError,
               onChanged: (v) =>
                   context.read<ProfileBloc>().add(ChildNameChanged(v)),
@@ -141,6 +194,9 @@ class _ChildFormState extends State<ChildForm> {
           },
         ),
 
+        const SizedBox(height: 12),
+
+        // 7. Tanggal Lahir
         BlocBuilder<ProfileBloc, ProfileState>(
           builder: (context, state) {
             return AppDateField(
@@ -154,6 +210,9 @@ class _ChildFormState extends State<ChildForm> {
           },
         ),
 
+        const SizedBox(height: 12),
+
+        // 8. Jenis Kelamin
         BlocBuilder<ProfileBloc, ProfileState>(
           builder: (context, state) {
             return AppDropdownField(
@@ -171,16 +230,43 @@ class _ChildFormState extends State<ChildForm> {
           },
         ),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 28),
+
         BlocBuilder<ProfileBloc, ProfileState>(
           builder: (context, state) {
             return AppButton(
-              text: 'Simpan',
+              text: 'Simpan Perubahan',
               loading: state.isSubmitting,
               enabled: true,
               onPressed: widget.onSubmit,
             );
           },
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  final IconData icon;
+
+  const _SectionLabel({required this.label, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.orange),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.orange.shade700,
+            letterSpacing: 0.3,
+          ),
         ),
       ],
     );

@@ -1,5 +1,4 @@
 import 'package:arunika_app/data/models/response/child_response.dart';
-import 'package:arunika_app/data/models/response/signup_response.dart';
 
 abstract class SignupEvent {}
 
@@ -57,15 +56,18 @@ class ObscurePasswordToggled extends SignupEvent {
   final bool obscure;
   ObscurePasswordToggled(this.obscure);
 }
+
 class NavigateToChildReset extends SignupEvent {
   final bool navigateToChild;
   NavigateToChildReset(this.navigateToChild);
 }
+
 class PrefillChildData extends SignupEvent {
   final ChildResponse child;
 
   PrefillChildData(this.child);
 }
+
 class ChildPrefilled extends SignupEvent {
   final String name;
   final String gender;

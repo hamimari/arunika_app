@@ -16,6 +16,7 @@ import 'package:arunika_app/data/repositories/ar_repository.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_bloc.dart';
+import 'package:arunika_app/presentation/screens/widgets/error_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vector_math/vector_math_64.dart' as vector;
@@ -621,13 +622,11 @@ class _SoundButton extends StatelessWidget {
               }
             } catch (_) {
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Could not play audio. Check your connection.',
-                    ),
-                    duration: Duration(seconds: 3),
-                  ),
+                AppErrorSheet.show(
+                  context,
+                  title: 'Audio Tidak Tersedia',
+                  message:
+                      'Tidak dapat memutar audio. Periksa koneksi internet Anda.',
                 );
               }
             }

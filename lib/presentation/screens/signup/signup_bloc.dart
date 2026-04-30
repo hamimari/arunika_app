@@ -2,7 +2,6 @@ import 'package:arunika_app/core/storage/LocalProfileStorage.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
 import 'package:arunika_app/data/models/converter/user_response_converter.dart';
 import 'package:arunika_app/data/models/request/signup_request.dart';
-import 'package:arunika_app/data/models/response/child_response.dart';
 import 'package:arunika_app/data/models/response/signup_response.dart';
 import 'package:arunika_app/data/repositories/auth_repository.dart';
 import 'package:dio/dio.dart';
@@ -42,19 +41,23 @@ class SignupBloc extends Bloc<SignupEvent, SignupState> {
     on<PrefillChildData>((event, emit) {
       final child = event.child;
 
-      emit(state.copyWith(
-        childName: child.name,
-        childBirthDate: DateTime.parse(child.dateOfBirth),
-        childGender: child.gender,
-      ));
+      emit(
+        state.copyWith(
+          childName: child.name,
+          childBirthDate: DateTime.parse(child.dateOfBirth),
+          childGender: child.gender,
+        ),
+      );
     });
 
     on<ChildPrefilled>((event, emit) {
-      emit(state.copyWith(
-        childName: event.name,
-        childGender: event.gender,
-        childBirthDate: event.birthDate,
-      ));
+      emit(
+        state.copyWith(
+          childName: event.name,
+          childGender: event.gender,
+          childBirthDate: event.birthDate,
+        ),
+      );
     });
 
     on<NextButtonPressed>((event, emit) {
@@ -71,7 +74,9 @@ class SignupBloc extends Bloc<SignupEvent, SignupState> {
           ? 'Kata sandi tidak boleh kosong'
           : null;
       final cityError = state.city.isEmpty ? 'Kota tidak boleh kosong' : null;
-      final addressError = state.address.isEmpty ? 'Alamat tidak boleh kosong' : null;
+      final addressError = state.address.isEmpty
+          ? 'Alamat tidak boleh kosong'
+          : null;
 
       final hasError = [
         nameError,
@@ -157,34 +162,43 @@ class SignupBloc extends Bloc<SignupEvent, SignupState> {
 
           final SignUpResponse response = await repository.signup(request);
           if (response.token.isEmpty) {
-            emit(state.copyWith(
-              isSubmitting: false,
-              error: 'Sedang terjadi kesalahan, silakan coba beberapa saat lagi',
-              isSuccess: false,
-            ));
+            emit(
+              state.copyWith(
+                isSubmitting: false,
+                error:
+                    'Sedang terjadi kesalahan, silakan coba beberapa saat lagi',
+                isSuccess: false,
+              ),
+            );
             return;
           }
           await SecureTokenStorage.saveToken(response.token);
           await SecureTokenStorage.saveRefreshToken(response.refreshToken);
-          await LocalProfileStorage.save(UserResponseConverter.toUserResponse(response));
+          await LocalProfileStorage.save(
+            UserResponseConverter.toUserResponse(response),
+          );
 
-          emit(state.copyWith(
-            isSubmitting: false,
-            isSuccess: true,
-          ));
+          emit(state.copyWith(isSubmitting: false, isSuccess: true));
         } on DioException catch (e) {
-          final message = e.response?.data['error'] ?? 'Sedang terjadi kesalahan, silakan coba beberapa saat lagi';
-          emit(state.copyWith(
-            isSubmitting: false,
-            error: message,
-            isSuccess: false,
-          ));
+          final message =
+              e.response?.data['error'] ??
+              'Sedang terjadi kesalahan, silakan coba beberapa saat lagi';
+          emit(
+            state.copyWith(
+              isSubmitting: false,
+              error: message,
+              isSuccess: false,
+            ),
+          );
         } catch (e) {
-          emit(state.copyWith(
-            isSubmitting: false,
-            error: 'Sedang terjadi kesalahan, silakan coba beberapa saat lagi',
-            isSuccess: false,
-          ));
+          emit(
+            state.copyWith(
+              isSubmitting: false,
+              error:
+                  'Sedang terjadi kesalahan, silakan coba beberapa saat lagi',
+              isSuccess: false,
+            ),
+          );
         }
       }
     });

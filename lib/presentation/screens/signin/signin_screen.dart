@@ -20,17 +20,10 @@ class SignInScreen extends StatelessWidget {
         }
 
         if (state.error != null) {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) {
-              return AppErrorSheet(
-                message: state.error!,
-                onConfirm: () {  },
-                title: "Oops!",
-              );
-            },
+          AppErrorSheet.show(
+            context,
+            title: 'Gagal Masuk',
+            message: state.error!,
           );
         }
       },
@@ -39,7 +32,15 @@ class SignInScreen extends StatelessWidget {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          leading: BackButton(color: Colors.black),
+          leading: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.black,
+              size: 20,
+            ),
+            onPressed: () =>
+                context.canPop() ? context.pop() : context.go('/landing'),
+          ),
         ),
         body: SafeArea(
           child: SingleChildScrollView(
@@ -99,7 +100,7 @@ class SignInScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.orange.withOpacity(0.08),
+                        color: Colors.orange.withValues(alpha: 0.08),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -108,13 +109,15 @@ class SignInScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       BlocBuilder<SigninBloc, SigninState>(
-                        buildWhen: (prev, curr) => prev.emailError != curr.emailError,
+                        buildWhen: (prev, curr) =>
+                            prev.emailError != curr.emailError,
                         builder: (context, state) {
                           return AppTextField(
                             label: 'Email',
                             hint: 'nagita.slavina@mail.com',
-                            onChanged: (value) =>
-                                context.read<SigninBloc>().add(EmailChanged(value)),
+                            onChanged: (value) => context
+                                .read<SigninBloc>()
+                                .add(EmailChanged(value)),
                             error: state.emailError,
                           );
                         },
@@ -122,18 +125,17 @@ class SignInScreen extends StatelessWidget {
 
                       const SizedBox(height: 12),
 
-
                       BlocBuilder<SigninBloc, SigninState>(
                         buildWhen: (prev, curr) =>
-                        prev.passwordError != curr.passwordError ||
+                            prev.passwordError != curr.passwordError ||
                             prev.obscurePassword != curr.obscurePassword,
                         builder: (context, state) {
                           return AppTextField(
                             label: 'Kata Sandi',
                             hint: 'Masukkan kata sandi',
-                            onChanged: (value) => context.read<SigninBloc>().add(
-                              PasswordChanged(value),
-                            ),
+                            onChanged: (value) => context
+                                .read<SigninBloc>()
+                                .add(PasswordChanged(value)),
                             error: state.passwordError,
                             obscure: state.obscurePassword,
                             suffix: IconButton(
@@ -145,7 +147,9 @@ class SignInScreen extends StatelessWidget {
                               ),
                               onPressed: () {
                                 context.read<SigninBloc>().add(
-                                  ObscurePasswordToggled(!state.obscurePassword),
+                                  ObscurePasswordToggled(
+                                    !state.obscurePassword,
+                                  ),
                                 );
                               },
                             ),
@@ -208,9 +212,7 @@ class SignInScreen extends StatelessWidget {
                     child: Text.rich(
                       TextSpan(
                         text: 'Belum punya akun? ',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                        ),
+                        style: TextStyle(color: Colors.grey.shade600),
                         children: [
                           TextSpan(
                             text: 'Daftar di sini',

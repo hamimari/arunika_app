@@ -2,6 +2,7 @@ import 'package:arunika_app/presentation/screens/arscanner/ar_core_screen.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_bloc.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_event.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_state.dart';
+import 'package:arunika_app/presentation/screens/widgets/error_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
@@ -65,10 +66,11 @@ class _QRScannerPageState extends State<QRScannerPage> {
           }
 
           if (state is ModelError) {
-            ScaffoldMessenger.of(
+            AppErrorSheet.show(
               context,
-            ).showSnackBar(SnackBar(content: Text(state.message)));
-            _resetScanner();
+              title: 'Gagal Memuat Model',
+              message: state.message,
+            ).then((_) => _resetScanner());
           }
         },
         child: Stack(

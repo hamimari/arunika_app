@@ -1,7 +1,6 @@
 import 'package:arunika_app/presentation/screens/signup/signup_bloc.dart';
 import 'package:arunika_app/presentation/screens/signup/signup_event.dart';
 import 'package:arunika_app/presentation/screens/signup/signup_state.dart';
-import 'package:arunika_app/presentation/screens/widgets/app_button.dart';
 import 'package:arunika_app/presentation/screens/widgets/phone_text_field.dart';
 import 'package:arunika_app/presentation/screens/widgets/progress_bar.dart';
 import 'package:arunika_app/presentation/screens/widgets/text_field.dart';
@@ -29,7 +28,14 @@ class SignupScreen extends StatelessWidget {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          leading: const BackButton(color: Colors.black),
+          leading: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.black,
+              size: 20,
+            ),
+            onPressed: () => context.go('/signin'),
+          ),
         ),
         body: SafeArea(
           child: SingleChildScrollView(
@@ -37,7 +43,6 @@ class SignupScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 // Progress
                 const AppProgress(value: 0.5),
                 const SizedBox(height: 28),
@@ -90,7 +95,7 @@ class SignupScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.orange.withOpacity(0.08),
+                        color: Colors.orange.withValues(alpha: 0.08),
                         blurRadius: 25,
                         offset: const Offset(0, 10),
                       ),
@@ -98,15 +103,21 @@ class SignupScreen extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-
+                      // 1. Nama Orang Tua
                       BlocBuilder<SignupBloc, SignupState>(
                         buildWhen: (p, c) => p.nameError != c.nameError,
                         builder: (context, state) {
                           return AppTextField(
                             label: 'Nama Orang Tua',
                             hint: 'Contoh: Nagita Slavina',
-                            onChanged: (value) =>
-                                context.read<SignupBloc>().add(NameChanged(value)),
+                            prefix: const Icon(
+                              Icons.person_outline_rounded,
+                              color: Colors.orange,
+                              size: 20,
+                            ),
+                            onChanged: (value) => context
+                                .read<SignupBloc>()
+                                .add(NameChanged(value)),
                             error: state.nameError,
                           );
                         },
@@ -114,29 +125,21 @@ class SignupScreen extends StatelessWidget {
 
                       const SizedBox(height: 12),
 
-                      BlocBuilder<SignupBloc, SignupState>(
-                        buildWhen: (p, c) => p.phoneError != c.phoneError,
-                        builder: (context, state) {
-                          return AppPhoneTextField(
-                            label: 'Nomor Telepon',
-                            hint: '812356789',
-                            onChanged: (value) =>
-                                context.read<SignupBloc>().add(PhoneChanged(value)),
-                            error: state.phoneError,
-                          );
-                        },
-                      ),
-
-                      const SizedBox(height: 12),
-
+                      // 2. Email
                       BlocBuilder<SignupBloc, SignupState>(
                         buildWhen: (p, c) => p.emailError != c.emailError,
                         builder: (context, state) {
                           return AppTextField(
                             label: 'Email',
                             hint: 'nagita.slavina@mail.com',
-                            onChanged: (value) =>
-                                context.read<SignupBloc>().add(EmailChanged(value)),
+                            prefix: const Icon(
+                              Icons.email_outlined,
+                              color: Colors.orange,
+                              size: 20,
+                            ),
+                            onChanged: (value) => context
+                                .read<SignupBloc>()
+                                .add(EmailChanged(value)),
                             error: state.emailError,
                           );
                         },
@@ -144,14 +147,38 @@ class SignupScreen extends StatelessWidget {
 
                       const SizedBox(height: 12),
 
+                      // 3. Nomor Telepon
+                      BlocBuilder<SignupBloc, SignupState>(
+                        buildWhen: (p, c) => p.phoneError != c.phoneError,
+                        builder: (context, state) {
+                          return AppPhoneTextField(
+                            label: 'Nomor Telepon',
+                            hint: '812356789',
+                            onChanged: (value) => context
+                                .read<SignupBloc>()
+                                .add(PhoneChanged(value)),
+                            error: state.phoneError,
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // 4. Kota Tinggal
                       BlocBuilder<SignupBloc, SignupState>(
                         buildWhen: (p, c) => p.cityError != c.cityError,
                         builder: (context, state) {
                           return AppTextField(
                             label: 'Kota Tinggal',
                             hint: 'Jakarta',
-                            onChanged: (value) =>
-                                context.read<SignupBloc>().add(CityChanged(value)),
+                            prefix: const Icon(
+                              Icons.location_city_outlined,
+                              color: Colors.orange,
+                              size: 20,
+                            ),
+                            onChanged: (value) => context
+                                .read<SignupBloc>()
+                                .add(CityChanged(value)),
                             error: state.cityError,
                           );
                         },
@@ -159,14 +186,21 @@ class SignupScreen extends StatelessWidget {
 
                       const SizedBox(height: 12),
 
+                      // 5. Alamat Lengkap
                       BlocBuilder<SignupBloc, SignupState>(
                         buildWhen: (p, c) => p.addressError != c.addressError,
                         builder: (context, state) {
                           return AppTextField(
                             label: 'Alamat Lengkap',
                             hint: 'Jl. Mawar No. 123, Jakarta',
-                            onChanged: (value) =>
-                                context.read<SignupBloc>().add(AddressChanged(value)),
+                            prefix: const Icon(
+                              Icons.home_outlined,
+                              color: Colors.orange,
+                              size: 20,
+                            ),
+                            onChanged: (value) => context
+                                .read<SignupBloc>()
+                                .add(AddressChanged(value)),
                             error: state.addressError,
                           );
                         },
@@ -174,16 +208,23 @@ class SignupScreen extends StatelessWidget {
 
                       const SizedBox(height: 12),
 
+                      // 6. Kata Sandi
                       BlocBuilder<SignupBloc, SignupState>(
                         buildWhen: (p, c) =>
-                        p.passwordError != c.passwordError ||
+                            p.passwordError != c.passwordError ||
                             p.obscurePassword != c.obscurePassword,
                         builder: (context, state) {
                           return AppTextField(
                             label: 'Kata Sandi',
                             hint: 'Minimal 8 karakter',
-                            onChanged: (value) =>
-                                context.read<SignupBloc>().add(PasswordChanged(value)),
+                            prefix: const Icon(
+                              Icons.lock_outline_rounded,
+                              color: Colors.orange,
+                              size: 20,
+                            ),
+                            onChanged: (value) => context
+                                .read<SignupBloc>()
+                                .add(PasswordChanged(value)),
                             error: state.passwordError,
                             obscure: state.obscurePassword,
                             suffix: IconButton(
@@ -195,7 +236,9 @@ class SignupScreen extends StatelessWidget {
                               ),
                               onPressed: () {
                                 context.read<SignupBloc>().add(
-                                  ObscurePasswordToggled(!state.obscurePassword),
+                                  ObscurePasswordToggled(
+                                    !state.obscurePassword,
+                                  ),
                                 );
                               },
                             ),
@@ -271,4 +314,3 @@ class SignupScreen extends StatelessWidget {
     );
   }
 }
-
