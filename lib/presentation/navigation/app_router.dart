@@ -1,3 +1,9 @@
+import 'package:arunika_app/data/models/response/counting_question.dart';
+import 'package:arunika_app/data/models/response/tracing_item.dart';
+import 'package:arunika_app/presentation/screens/counting/counting_exercise_screen.dart';
+import 'package:arunika_app/presentation/screens/counting/counting_list_screen.dart';
+import 'package:arunika_app/presentation/screens/tracing/tracing_exercise_screen.dart';
+import 'package:arunika_app/presentation/screens/tracing/tracing_list_screen.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
 import 'package:arunika_app/data/models/response/dongeng_response.dart';
@@ -207,6 +213,29 @@ class AppRouter {
         builder: (context, state) {
           final packName = state.extra as String? ?? 'Paket Premium';
           return UnlockSuccessScreen(packName: packName);
+        },
+      ),
+
+      // ── Tracing ────────────────────────────────────────────────────────────
+      GoRoute(path: '/tracing', builder: (_, __) => const TracingListScreen()),
+      GoRoute(
+        path: '/tracing/exercise',
+        builder: (context, state) {
+          final item = state.extra as TracingItem;
+          return TracingExerciseScreen(item: item);
+        },
+      ),
+
+      // ── Counting ───────────────────────────────────────────────────────────
+      GoRoute(
+        path: '/counting',
+        builder: (_, __) => const CountingListScreen(),
+      ),
+      GoRoute(
+        path: '/counting/exercise',
+        builder: (context, state) {
+          final questions = state.extra as List<CountingQuestion>;
+          return CountingExerciseScreen(questions: questions);
         },
       ),
     ],

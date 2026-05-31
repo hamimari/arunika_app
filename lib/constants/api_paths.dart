@@ -19,4 +19,8 @@ class ApiPaths {
   static const String dongengPopular = "/fairy-tales/popular";
   static String dongengPlay(String id) => "/fairy-tales/$id/play";
   static const String premiumPacks = "/premium/packs";
+  static const String countingQuestions = "/counting/questions";
+  static const String countingProgress = "/counting/progress";
+  static const String tracingItems = "/tracing/items";
+  static const String tracingProgress = "/tracing/progress";
 }

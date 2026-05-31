@@ -129,6 +129,7 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
                   SliverToBoxAdapter(
                     child: _CategoriesSection(key: ValueKey(_refreshCounter)),
                   ),
+                  SliverToBoxAdapter(child: _EducationSection()),
                   SliverToBoxAdapter(
                     child: BlocBuilder<PremiumPackCubit, PremiumPackState>(
                       builder: (context, packState) {
@@ -892,6 +893,107 @@ class _CategoriesSectionState extends State<_CategoriesSection> {
                 .toList(),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _EducationSection extends StatelessWidget {
+  const _EducationSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Aktivitas Belajar', style: AppTextStyles.subheading),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _EducationTile(
+                  icon: Icons.edit_outlined,
+                  label: 'Menelusuri',
+                  color: const Color(0xFFE8F8EA),
+                  iconColor: const Color(0xFF4CAF50),
+                  onTap: () => context.push('/tracing'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _EducationTile(
+                  icon: Icons.calculate_outlined,
+                  label: 'Menghitung',
+                  color: const Color(0xFFFFF8E0),
+                  iconColor: AppColors.primaryOrange,
+                  onTap: () => context.push('/counting'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EducationTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color iconColor;
+  final VoidCallback onTap;
+
+  const _EducationTile({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.iconColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryOrange.withValues(alpha: 0.10),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: AppTextStyles.body.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textDark,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
