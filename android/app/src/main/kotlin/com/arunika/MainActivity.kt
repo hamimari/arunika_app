@@ -1,4 +1,4 @@
-package com.example.arunika_app
+package com.arunika
 
 import io.flutter.embedding.android.FlutterActivity
 

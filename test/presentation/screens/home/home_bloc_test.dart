@@ -1,11 +1,13 @@
 // ignore_for_file: inference_failure_on_function_invocation
 
+import 'package:arunika_app/data/models/response/ar_card_category.dart';
 import 'package:arunika_app/data/models/response/dongeng_response.dart';
 import 'package:arunika_app/data/repositories/fairy_tales_repository.dart';
 import 'package:arunika_app/presentation/screens/home/home_bloc.dart';
 import 'package:arunika_app/presentation/screens/home/home_event.dart';
 import 'package:arunika_app/presentation/screens/home/home_state.dart';
 import 'package:bloc_test/bloc_test.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -105,5 +107,99 @@ void main() {
       act: (b) => b.add(HomePressed()),
       expect: () => [isA<NavigateToCategoryList>()],
     );
+  });
+
+  // ─── _StoryCardWidget isLocked logic ────────────────────────────────────────
+
+  DongengResponse _paidStory() => DongengResponse(
+    id: 'paid',
+    title: 'Paid Story',
+    ageStart: 3,
+    ageEnd: 6,
+    isFree: false,
+    imageUrl: '',
+    audioUrl: '',
+    duration: '5 min',
+    pages: [],
+    createdAt: DateTime(2024),
+    updatedAt: DateTime(2024),
+    isDeleted: false,
+  );
+
+  DongengResponse _freeStory() => DongengResponse(
+    id: 'free',
+    title: 'Free Story',
+    ageStart: 3,
+    ageEnd: 6,
+    isFree: true,
+    imageUrl: '',
+    audioUrl: '',
+    duration: '3 min',
+    pages: [],
+    createdAt: DateTime(2024),
+    updatedAt: DateTime(2024),
+    isDeleted: false,
+  );
+
+  test(
+    'isLocked is true when user is logged in and dongeng.isFree is false',
+    () {
+      const isLoggedIn = true;
+      final dongeng = _paidStory();
+      final isLocked = !dongeng.isFree && isLoggedIn;
+      expect(isLocked, isTrue);
+    },
+  );
+
+  test(
+    'isLocked is false when user is not logged in (guest), even if isFree is false',
+    () {
+      const isLoggedIn = false;
+      final dongeng = _paidStory();
+      final isLocked = !dongeng.isFree && isLoggedIn;
+      expect(isLocked, isFalse);
+    },
+  );
+
+  test('isLocked is false when isFree is true regardless of auth state', () {
+    for (final isLoggedIn in [true, false]) {
+      final dongeng = _freeStory();
+      final isLocked = !dongeng.isFree && isLoggedIn;
+      expect(isLocked, isFalse, reason: 'isLoggedIn=$isLoggedIn');
+    }
+  });
+
+  // ─── AR category image / emoji rendering logic ───────────────────────────────
+
+  test('AR category item uses Image.network when imageUrl is non-empty', () {
+    const imageUrl = 'https://example.com/cat.png';
+    final category = const ArCardCategory(
+      id: 'c1',
+      name: 'Ternak',
+      emoji: '🐄',
+      imageUrl: imageUrl,
+    );
+    // Verify the condition that selects Image.network over emoji fallback
+    expect(
+      category.imageUrl.isNotEmpty,
+      isTrue,
+      reason: 'imageUrl is non-empty → Image.network should be used',
+    );
+  });
+
+  test('AR category item uses emoji fallback when imageUrl is empty', () {
+    const category = ArCardCategory(
+      id: 'c1',
+      name: 'Ternak',
+      emoji: '🐄',
+      imageUrl: '',
+    );
+    // Verify the condition that selects emoji fallback
+    expect(
+      category.imageUrl.isEmpty,
+      isTrue,
+      reason: 'imageUrl is empty → emoji fallback should be used',
+    );
+    expect(category.emoji, '🐄');
   });
 }

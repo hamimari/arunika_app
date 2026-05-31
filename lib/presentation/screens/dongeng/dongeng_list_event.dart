@@ -14,3 +14,9 @@ class DongengItemSelected extends DongengListEvent {
 /// Reset the one-shot navigation state back to [DongengListLoaded] after the
 /// screen has handled the push, so the user can re-select the same story.
 class ResetDongengListNavigation extends DongengListEvent {}
+
+/// Client-side search by title.
+class SearchDongeng extends DongengListEvent {
+  final String query;
+  SearchDongeng(this.query);
+}

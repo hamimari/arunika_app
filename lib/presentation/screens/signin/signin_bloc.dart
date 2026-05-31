@@ -16,7 +16,8 @@ class SigninBloc extends Bloc<SigninEvent, SigninState> {
   final AuthRepository repository;
   final UserRepository userRepository;
 
-  SigninBloc({required this.repository, required this.userRepository}): super(SigninInitial()){
+  SigninBloc({required this.repository, required this.userRepository})
+    : super(SigninInitial()) {
     on<EmailChanged>((event, emit) {
       emit(state.copyWith(email: event.email, emailError: null));
     });
@@ -44,10 +45,7 @@ class SigninBloc extends Bloc<SigninEvent, SigninState> {
 
       if (hasError) {
         emit(
-          state.copyWith(
-            emailError: emailError,
-            passwordError: passwordError,
-          ),
+          state.copyWith(emailError: emailError, passwordError: passwordError),
         );
       } else {
         emit(state.copyWith(isLoading: true));
@@ -60,42 +58,51 @@ class SigninBloc extends Bloc<SigninEvent, SigninState> {
 
           await SecureTokenStorage.saveToken(response.token);
           await SecureTokenStorage.saveRefreshToken(response.refreshToken);
+          await SecureTokenStorage.saveUserId(response.userId);
           locator<AuthNotifier>().checkAuth();
-          final UserResponse userResponse = await userRepository.findById(response.userId);
+          final UserResponse userResponse = await userRepository.findById(
+            response.userId,
+          );
           if (userResponse.name.isEmpty) {
-            emit(state.copyWith(
-              isLoading: false,
-              error: 'Sedang terjadi kesalahan, silakan coba beberapa saat lagi',
-              isSuccess: false,
-            ));
+            emit(
+              state.copyWith(
+                isLoading: false,
+                error:
+                    'Sedang terjadi kesalahan, silakan coba beberapa saat lagi',
+                isSuccess: false,
+              ),
+            );
             return;
           }
           await LocalProfileStorage.save(userResponse);
 
-          emit(state.copyWith(
-            isLoading: false,
-            isSuccess: true,
-          ));
+          emit(state.copyWith(isLoading: false, isSuccess: true));
         } on DioException catch (e) {
-          if (e.response != null && e.response!.statusCode != null && e.response!.statusCode! >= 400 && e.response!.statusCode! < 500) {
-            emit(state.copyWith(
-              isLoading: false,
-              passwordError: 'Email atau kata sandi salah',
-              isSuccess: false,
-            ));
+          if (e.response != null &&
+              e.response!.statusCode != null &&
+              e.response!.statusCode! >= 400 &&
+              e.response!.statusCode! < 500) {
+            emit(
+              state.copyWith(
+                isLoading: false,
+                passwordError: 'Email atau kata sandi salah',
+                isSuccess: false,
+              ),
+            );
           } else {
-            emit(state.copyWith(
-              isLoading: false,
-              error: e.response!.data['error'] ??
-                  'Sedang terjadi kesalahan, silakan coba beberapa saat lagi',
-              isSuccess: false,
-            ));
+            emit(
+              state.copyWith(
+                isLoading: false,
+                error:
+                    e.response!.data['error'] ??
+                    'Sedang terjadi kesalahan, silakan coba beberapa saat lagi',
+                isSuccess: false,
+              ),
+            );
           }
           rethrow;
         }
-
       }
     });
   }
-
 }

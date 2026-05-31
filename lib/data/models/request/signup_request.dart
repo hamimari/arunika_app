@@ -1,6 +1,3 @@
-import 'package:arunika_app/data/models/response/child_response.dart';
-import 'package:arunika_app/data/models/response/signup_response.dart';
-
 class SignUpRequest {
   final String name;
   final String phoneNumber;
@@ -51,10 +48,6 @@ class ChildRequest {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'gender': gender,
-      'date_of_birth': dateOfBirth,
-    };
+    return {'name': name, 'gender': gender, 'date_of_birth': dateOfBirth};
   }
 }

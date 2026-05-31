@@ -33,7 +33,7 @@ class BottomNav extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: active ? Colors.orange.withOpacity(0.15) : Colors.transparent,
+          color: active ? Colors.orange.withValues(alpha: 0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Icon(

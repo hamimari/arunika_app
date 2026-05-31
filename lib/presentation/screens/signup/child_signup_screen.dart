@@ -29,9 +29,11 @@ class _ChildSignupState extends State<ChildSignupScreen> {
 
     final state = context.read<SignupBloc>().state;
     nameController = TextEditingController(text: state.childName);
-    birthDateController = TextEditingController(text: state.childBirthDate != null
-        ? '${state.childBirthDate!.day}/${state.childBirthDate!.month}/${state.childBirthDate!.year}'
-        : '');
+    birthDateController = TextEditingController(
+      text: state.childBirthDate != null
+          ? '${state.childBirthDate!.day}/${state.childBirthDate!.month}/${state.childBirthDate!.year}'
+          : '',
+    );
   }
 
   @override
@@ -59,8 +61,8 @@ class _ChildSignupState extends State<ChildSignupScreen> {
         }
 
         if (state.isSuccess) {
-          Navigator.of(context).popUntil((route) => route.isFirst); // exit signup flow
-          context.go('/home'); // now safe
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          context.go('/shell');
         }
       },
       child: Scaffold(
@@ -75,10 +77,7 @@ class _ChildSignupState extends State<ChildSignupScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [
-                        Colors.orange.shade400,
-                        Colors.orange.shade300,
-                      ],
+                      colors: [Colors.orange.shade400, Colors.orange.shade300],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -94,7 +93,7 @@ class _ChildSignupState extends State<ChildSignupScreen> {
                         left: 0,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.25),
+                            color: Colors.white.withValues(alpha: 0.25),
                             shape: BoxShape.circle,
                           ),
                           child: IconButton(
@@ -127,20 +126,20 @@ class _ChildSignupState extends State<ChildSignupScreen> {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            Container(
-                              height: 90,
-                              width: 90,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.25),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.child_care_rounded,
-                                size: 48,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
+                            // Container(
+                            //   height: 90,
+                            //   width: 90,
+                            //   decoration: BoxDecoration(
+                            //     color: Colors.white.withValues(alpha: 0.25),
+                            //     shape: BoxShape.circle,
+                            //   ),
+                            //   child: const Icon(
+                            //     Icons.child_care_rounded,
+                            //     size: 48,
+                            //     color: Colors.white,
+                            //   ),
+                            // ),
+                            // const SizedBox(height: 12),
                             const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 24),
                               child: Text(
@@ -170,7 +169,7 @@ class _ChildSignupState extends State<ChildSignupScreen> {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.orange.withOpacity(0.08),
+                          color: Colors.orange.withValues(alpha: 0.08),
                           blurRadius: 24,
                           offset: const Offset(0, 12),
                         ),
@@ -185,7 +184,7 @@ class _ChildSignupState extends State<ChildSignupScreen> {
                         // Nama Anak
                         BlocBuilder<SignupBloc, SignupState>(
                           buildWhen: (p, c) =>
-                          p.childNameError != c.childNameError,
+                              p.childNameError != c.childNameError,
                           builder: (context, state) {
                             return AppTextField(
                               controller: nameController,
@@ -204,7 +203,7 @@ class _ChildSignupState extends State<ChildSignupScreen> {
                         // Tanggal Lahir
                         BlocBuilder<SignupBloc, SignupState>(
                           buildWhen: (p, c) =>
-                          p.childBirthDate != c.childBirthDate ||
+                              p.childBirthDate != c.childBirthDate ||
                               p.childBirthDateError != c.childBirthDateError,
                           builder: (context, state) {
                             return AppDateField(
@@ -227,7 +226,7 @@ class _ChildSignupState extends State<ChildSignupScreen> {
                         // Gender
                         BlocBuilder<SignupBloc, SignupState>(
                           buildWhen: (p, c) =>
-                          p.childGenderError != c.childGenderError,
+                              p.childGenderError != c.childGenderError,
                           builder: (context, state) {
                             return AppDropdownField(
                               label: 'Jenis Kelamin',
@@ -236,16 +235,18 @@ class _ChildSignupState extends State<ChildSignupScreen> {
                               error: state.childGenderError,
                               items: const [
                                 DropdownMenuItem(
-                                    value: 'Laki-Laki',
-                                    child: Text('Laki-Laki')),
+                                  value: 'Laki-Laki',
+                                  child: Text('Laki-Laki'),
+                                ),
                                 DropdownMenuItem(
-                                    value: 'Perempuan',
-                                    child: Text('Perempuan')),
+                                  value: 'Perempuan',
+                                  child: Text('Perempuan'),
+                                ),
                               ],
                               onChanged: (val) {
-                                context
-                                    .read<SignupBloc>()
-                                    .add(ChildGenderChanged(val));
+                                context.read<SignupBloc>().add(
+                                  ChildGenderChanged(val),
+                                );
                               },
                             );
                           },
@@ -274,7 +275,8 @@ class _ChildSignupState extends State<ChildSignupScreen> {
                                     padding: const EdgeInsets.only(top: 10),
                                     child: Text.rich(
                                       TextSpan(
-                                        text: 'Dengan mendaftar, Kamu menyetujui ',
+                                        text:
+                                            'Dengan mendaftar, Kamu menyetujui ',
                                         style: const TextStyle(
                                           fontSize: 12,
                                           color: Colors.black54,
@@ -324,9 +326,9 @@ class _ChildSignupState extends State<ChildSignupScreen> {
                               enabled: state.tncAccepted,
                               loading: state.isSubmitting,
                               onPressed: () {
-                                context
-                                    .read<SignupBloc>()
-                                    .add(SignupSubmitted());
+                                context.read<SignupBloc>().add(
+                                  SignupSubmitted(),
+                                );
                               },
                             );
                           },
@@ -343,4 +345,3 @@ class _ChildSignupState extends State<ChildSignupScreen> {
     );
   }
 }
-

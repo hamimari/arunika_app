@@ -38,5 +38,24 @@ void main() {
 
       expect(() => repo.findById('bad'), throwsException);
     });
+    test('getPrintablePdf calls correct endpoint and returns bytes', () async {
+      final fakeBytes = [37, 80, 68, 70]; // %PDF
+      when(
+        () => mockApi.getPrintablePdf('cat-ternak'),
+      ).thenAnswer((_) async => fakeBytes);
+
+      final result = await repo.getPrintablePdf('cat-ternak');
+
+      verify(() => mockApi.getPrintablePdf('cat-ternak')).called(1);
+      expect(result, fakeBytes);
+    });
+
+    test('getPrintablePdf propagates exception on non-200 status', () async {
+      when(
+        () => mockApi.getPrintablePdf(any()),
+      ).thenThrow(Exception('404 Not Found'));
+
+      expect(() => repo.getPrintablePdf('unknown'), throwsException);
+    });
   });
 }

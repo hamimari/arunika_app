@@ -1,6 +1,7 @@
 import 'package:arunika_app/presentation/screens/signup/signup_bloc.dart';
 import 'package:arunika_app/presentation/screens/signup/signup_event.dart';
 import 'package:arunika_app/presentation/screens/signup/signup_state.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -15,7 +16,6 @@ class TrialScreen extends StatefulWidget {
 
 class _TrialScreenState extends State<TrialScreen> {
   final _pageController = PageController();
-  int _currentPage = 0;
 
   final List<String> imageAssets = [
     'https://media-hosting.imagekit.io/84d696c7d57244b8/4735474.jpg?Expires=1839336090&Key-Pair-Id=K2ZIVPTIP2VGHC&Signature=ZGhG5FNwwibanNAswfEWbG79qo-NPLrJ~Vq6RSIf0XvlwKlvgh6tBH~MT-QWdUMwVBr~URyoxZygeB58oziPYb501SDiaFl6LiHet9MDl~Wqfdjj8iZlJbXUl7-pwxQBRFj~G5xsURsguL5EDFJIRS5QguajXxHti4DjKFYJECnzVg-R2g6zxTbF5wrmFMiaGNeiFSP~cOq6XSNuQD3RKMwRS7J7DQY~vczvV-w6q7A6teZn8uTQtfY7skkcwPmWnRP0igjpUXdYaYB9MGJdi2oNBEcV9SAcSDCL-UFvWHU68iB82f7LtiXMBm8WcgJx4Lo8k8IybDNWjMmRP8J6EA__',
@@ -34,7 +34,7 @@ class _TrialScreenState extends State<TrialScreen> {
     return BlocListener<SignupBloc, SignupState>(
       listener: (context, state) {
         if (state is NavigateToHomePage) {
-          context.push('/home');
+          context.go('/shell');
         }
       },
       child: Scaffold(
@@ -43,17 +43,19 @@ class _TrialScreenState extends State<TrialScreen> {
           child: Stack(
             children: [
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 child: Column(
                   children: [
-                    /*Align(
-                    alignment: Alignment.topRight,
-                    child: IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => context.go('/landing'),
+                      ),
                     ),
-                  ),*/
                     const SizedBox(height: 8),
 
                     // Carousel with Dots
@@ -65,13 +67,14 @@ class _TrialScreenState extends State<TrialScreen> {
                             child: PageView.builder(
                               controller: _pageController,
                               itemCount: imageAssets.length,
-                              onPageChanged: (index) {
-                                setState(() => _currentPage = index);
+                              onPageChanged: (_) {
+                                setState(() {});
                               },
                               itemBuilder: (context, index) {
                                 return Container(
-                                  margin:
-                                      const EdgeInsets.symmetric(horizontal: 8),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.orange.shade100,
                                     borderRadius: BorderRadius.circular(12),
@@ -108,8 +111,10 @@ class _TrialScreenState extends State<TrialScreen> {
                     const Text(
                       'Coba Fitur Premium Gratis',
                       textAlign: TextAlign.center,
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     const Text(
@@ -152,7 +157,8 @@ class _TrialScreenState extends State<TrialScreen> {
 
                     const FeatureItem(text: 'Dongeng interaktif'),
                     const FeatureItem(
-                        text: 'Pembelajaran huruf, angka dan vocabulary'),
+                      text: 'Pembelajaran huruf, angka dan vocabulary',
+                    ),
                     const FeatureItem(text: 'Info dan tips parenting'),
                     const SizedBox(height: 24),
 
@@ -172,7 +178,9 @@ class _TrialScreenState extends State<TrialScreen> {
                         child: const Text(
                           'MULAI UJI COBA GRATIS',
                           style: TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold),
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -181,6 +189,57 @@ class _TrialScreenState extends State<TrialScreen> {
                     const Text(
                       'Perpanjang otomatis. Batalkan kapan saja.',
                       style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Login / register links
+                    Center(
+                      child: Text.rich(
+                        TextSpan(
+                          text: 'Sudah punya akun? ',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black54,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: 'Masuk di sini',
+                              style: const TextStyle(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => context.go('/signin'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Center(
+                      child: Text.rich(
+                        TextSpan(
+                          text: 'Belum punya akun? ',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black54,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: 'Daftar sekarang',
+                              style: const TextStyle(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => context.go('/signup'),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -206,12 +265,7 @@ class FeatureItem extends StatelessWidget {
         children: [
           const Icon(Icons.check_circle, color: Colors.orange, size: 20),
           const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 14),
-            ),
-          ),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
         ],
       ),
     );

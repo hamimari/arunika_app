@@ -1,4 +1,5 @@
 import 'package:arunika_app/core/storage/LocalProfileStorage.dart';
+import 'package:arunika_app/core/storage/SecureStorageToken.dart';
 import 'package:arunika_app/data/models/request/update_user_request.dart';
 import 'package:arunika_app/data/models/response/user_response.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
@@ -11,7 +12,19 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
   ProfileBloc({required this.repository}) : super(ProfileState()) {
     on<ProfileInitial>((event, emit) async {
-      final profile = await LocalProfileStorage.get();
+      UserResponse? profile = await LocalProfileStorage.get();
+      // API fallback: if nothing in local storage, fetch from network
+      if (profile == null) {
+        final userId = await SecureTokenStorage.getUserId();
+        if (userId != null) {
+          try {
+            profile = await repository.findById(userId);
+            await LocalProfileStorage.save(profile);
+          } catch (_) {
+            // stay null — UI will show empty state
+          }
+        }
+      }
       if (profile != null) {
         emit(state.copyWith(user: profile));
         emit(state.copyWith(name: profile.name));
@@ -19,14 +32,16 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         emit(state.copyWith(email: profile.emailAddress));
         emit(state.copyWith(city: profile.city));
         emit(state.copyWith(address: profile.address));
-        emit(
-          state.copyWith(
-            childBirthDate: profile.children.isNotEmpty
-                ? DateTime.parse(profile.children.first.dateOfBirth)
-                : null,
-          ),
-        );
-        emit(state.copyWith(childGender: profile.children.first.gender));
+        if (profile.children.isNotEmpty) {
+          emit(
+            state.copyWith(
+              childBirthDate: DateTime.parse(
+                profile.children.first.dateOfBirth,
+              ),
+            ),
+          );
+          emit(state.copyWith(childGender: profile.children.first.gender));
+        }
       }
     });
     on<NameChanged>((event, emit) {
@@ -122,26 +137,24 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
               name: state.childName,
               gender: state.childGender!,
               birthDate: state.childBirthDate!.toIso8601String(),
-              id: state.user!.children.first.id
+              id: state.user!.children.first.id,
             ),
           ],
         );
         try {
           final UserResponse response = await repository.update(request);
           await LocalProfileStorage.save(response);
-          emit(state.copyWith(
-            isSuccess: true,
-            user: response,
-          ));
+          emit(state.copyWith(isSuccess: true, user: response));
         } catch (_) {
-          emit(state.copyWith(
-            error: 'Sedang terjadi kesalahan, silakan coba beberapa saat lagi',
-            isSuccess: false,
-          ));
+          emit(
+            state.copyWith(
+              error:
+                  'Sedang terjadi kesalahan, silakan coba beberapa saat lagi',
+              isSuccess: false,
+            ),
+          );
           return;
         }
-
-
       }
     });
   }

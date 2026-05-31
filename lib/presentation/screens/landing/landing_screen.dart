@@ -34,7 +34,7 @@ class LandingScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(28),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.orange.withOpacity(0.15),
+                                color: Colors.orange.withValues(alpha: 0.15),
                                 blurRadius: 30,
                                 offset: const Offset(0, 15),
                               ),
@@ -88,7 +88,7 @@ class LandingScreen extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.orange,
                         elevation: 6,
-                        shadowColor: Colors.orange.withOpacity(0.4),
+                        shadowColor: Colors.orange.withValues(alpha: 0.4),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),

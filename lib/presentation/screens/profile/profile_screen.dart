@@ -1,9 +1,5 @@
-import 'package:arunika_app/core/storage/LocalProfileStorage.dart';
-import 'package:arunika_app/core/storage/SecureStorageToken.dart';
-import 'package:arunika_app/data/repositories/ar_repository.dart';
+import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/di/locator.dart';
-import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner.dart';
-import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_bloc.dart';
 import 'package:arunika_app/presentation/screens/profile/child_form.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_bloc.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_event.dart';
@@ -12,8 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-
-import '../widgets/bottom_nav.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -53,37 +47,6 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBF5),
-      bottomNavigationBar: const BottomNav(currentIndex: 1),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.orange.withValues(alpha: 0.35),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: FloatingActionButton(
-          elevation: 0,
-          backgroundColor: Colors.orange,
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => BlocProvider(
-                  create: (_) =>
-                      QRScannerBloc(repository: locator<ArRepository>()),
-                  child: QRScannerPage(),
-                ),
-              ),
-            );
-          },
-          child: const Icon(Iconsax.scan, size: 30),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       body: SafeArea(
         child: BlocBuilder<ProfileBloc, ProfileState>(
           builder: (context, state) {
@@ -220,9 +183,8 @@ class ProfileScreen extends StatelessWidget {
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           onPressed: () async {
-                            await SecureTokenStorage.clear();
-                            await LocalProfileStorage.clear();
-                            if (context.mounted) context.go('/signin');
+                            await locator<AuthNotifier>().logout();
+                            if (context.mounted) context.go('/landing');
                           },
                           icon: const Icon(
                             Iconsax.logout,

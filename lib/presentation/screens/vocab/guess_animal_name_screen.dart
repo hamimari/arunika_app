@@ -1,4 +1,3 @@
-import 'package:arunika_app/presentation/screens/dialog/success_dialog_screen.dart';
 import 'package:flutter/material.dart';
 
 class GuessAnimalNameScreen extends StatefulWidget {
@@ -69,9 +68,11 @@ class _GuessAnimalNameScreenState extends State<GuessAnimalNameScreen> {
                       backgroundColor: selected == null
                           ? Colors.orange
                           : // lock color after selection
-                          (txt == correct
-                              ? Colors.green
-                              : (txt == selected ? Colors.red : Colors.orange)),
+                            (txt == correct
+                                ? Colors.green
+                                : (txt == selected
+                                      ? Colors.red
+                                      : Colors.orange)),
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(44),
                       shape: RoundedRectangleBorder(
@@ -79,16 +80,8 @@ class _GuessAnimalNameScreenState extends State<GuessAnimalNameScreen> {
                       ),
                     ),
                     onPressed: selected == null
-                        ? () => showDialog(
-                              context: context,
-                              barrierDismissible: false,
-                              builder: (_) => const SuccessDialog(
-                                lesson: 12,
-                                userName: 'Oliver',
-                                reward: 10,
-                              ),
-                            )
-                        : null, // disable after choose
+                        ? () => _onAnswerTap(txt)
+                        : null,
                     child: Text(txt),
                   ),
                 ),

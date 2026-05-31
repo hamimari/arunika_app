@@ -8,6 +8,7 @@ class UserResponse {
   final String address;
   final String city;
   final List<ChildResponse> children;
+  final bool isSubscribed;
 
   UserResponse({
     required this.id,
@@ -17,6 +18,7 @@ class UserResponse {
     required this.address,
     required this.city,
     required this.children,
+    this.isSubscribed = false,
   });
 
   factory UserResponse.fromJson(Map<String, dynamic> json) {
@@ -27,9 +29,12 @@ class UserResponse {
       emailAddress: json['email_address'],
       address: json['address'],
       city: json['city'],
-      children: (json['children'] as List<dynamic>)
-          .map((childJson) => ChildResponse.fromJson(childJson))
-          .toList(),
+      children:
+          (json['children'] as List<dynamic>?)
+              ?.map((childJson) => ChildResponse.fromJson(childJson))
+              .toList() ??
+          [],
+      isSubscribed: json['is_subscribed'] as bool? ?? false,
     );
   }
 
@@ -42,6 +47,7 @@ class UserResponse {
       'address': address,
       'city': city,
       'children': children.map((child) => child.toJson()).toList(),
+      'is_subscribed': isSubscribed,
     };
   }
 }

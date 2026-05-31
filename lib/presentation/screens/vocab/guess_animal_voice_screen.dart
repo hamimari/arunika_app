@@ -1,12 +1,44 @@
 import 'package:arunika_app/presentation/screens/dialog/success_dialog_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart';
 
-class GuessAnimalVoiceScreen extends StatelessWidget {
+class GuessAnimalVoiceScreen extends StatefulWidget {
   const GuessAnimalVoiceScreen({super.key});
 
-  void _playSound() {
-    debugPrint('🔊 Play animal sound');
-    // TODO: integrate audioplayer here
+  @override
+  State<GuessAnimalVoiceScreen> createState() => _GuessAnimalVoiceScreenState();
+}
+
+class _GuessAnimalVoiceScreenState extends State<GuessAnimalVoiceScreen> {
+  final AudioPlayer _player = AudioPlayer();
+  bool _isPlaying = false;
+
+  // Placeholder audio URL — replace with the actual animal sound URL when
+  // this screen is wired up to a real animal data source.
+  static const String _soundUrl =
+      'https://www.soundjay.com/animal/sounds/cow-1.mp3';
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  Future<void> _playSound() async {
+    if (_isPlaying) {
+      await _player.stop();
+      setState(() => _isPlaying = false);
+      return;
+    }
+    try {
+      await _player.setUrl(_soundUrl);
+      setState(() => _isPlaying = true);
+      await _player.play();
+    } catch (_) {
+      // Silently ignore playback errors (e.g., network unavailable).
+    } finally {
+      if (mounted) setState(() => _isPlaying = false);
+    }
   }
 
   void _onImageTap(BuildContext context, String url) {
@@ -15,14 +47,10 @@ class GuessAnimalVoiceScreen extends StatelessWidget {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const SuccessDialog(
-        lesson: 12,
-        userName: 'Oliver',
-        reward: 10,
-      ),
+      builder: (_) =>
+          const SuccessDialog(lesson: 12, userName: 'Oliver', reward: 10),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -44,8 +72,11 @@ class GuessAnimalVoiceScreen extends StatelessWidget {
               Align(
                 alignment: Alignment.centerRight,
                 child: IconButton(
-                  icon: const Icon(Icons.volume_up,
-                      color: Colors.orange, size: 32),
+                  icon: Icon(
+                    _isPlaying ? Icons.stop_circle : Icons.volume_up,
+                    color: Colors.orange,
+                    size: 32,
+                  ),
                   onPressed: _playSound,
                 ),
               ),
@@ -59,13 +90,13 @@ class GuessAnimalVoiceScreen extends StatelessWidget {
                   children: pictures
                       .map(
                         (url) => ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: InkWell(
-                        onTap: () => _onImageTap(context, url),
-                        child: Image.network(url, fit: BoxFit.cover),
-                      ),
-                    ),
-                  )
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            onTap: () => _onImageTap(context, url),
+                            child: Image.network(url, fit: BoxFit.cover),
+                          ),
+                        ),
+                      )
                       .toList(),
                 ),
               ),
@@ -84,10 +115,12 @@ class GuessAnimalVoiceScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: const Text(
-                    'PLAY SOUND',
-                    style:
-                    TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  child: Text(
+                    _isPlaying ? 'STOP' : 'PLAY SOUND',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),

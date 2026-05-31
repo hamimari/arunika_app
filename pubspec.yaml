@@ -45,9 +45,17 @@ dependencies:
   get_it: ^7.6.4
   flutter_secure_storage: ^9.2.2
   just_audio: ^0.9.36
+  google_fonts: ^6.2.1
+  confetti: ^0.7.0
   vector_math: ^2.1.4
   equatable: ^2.0.5
   flutter_native_splash: ^2.4.0
+  webview_flutter: ^4.10.0
+  share_plus: ^10.1.4
+  open_file: ^3.5.11
+  qr_flutter: ^4.1.0
+  firebase_core: ^3.6.0
+  firebase_crashlytics: ^4.1.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -59,7 +67,6 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.13.1
-  flutter_native_splash: ^2.4.0
   bloc_test: ^9.1.7
   mocktail: ^1.0.4
 
@@ -76,6 +83,7 @@ flutter:
 
   assets:
     - assets/splash.png
+    - assets/images/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

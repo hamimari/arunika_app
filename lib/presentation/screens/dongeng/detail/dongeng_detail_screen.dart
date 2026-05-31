@@ -47,10 +47,10 @@ class _DongengDetailScreenState extends State<DongengDetailScreen> {
       backgroundColor: Colors.black,
       body: BlocBuilder<DongengDetailBloc, DongengDetailState>(
         builder: (context, state) {
-          // if (state.pages.isNotEmpty) {
-          return _PageReaderView(state: state, dongeng: widget.dongeng);
-          // }
-          // return _NoContentView(dongeng: widget.dongeng);
+          if (state.pages.isNotEmpty) {
+            return _PageReaderView(state: state, dongeng: widget.dongeng);
+          }
+          return _NoContentView(dongeng: widget.dongeng);
         },
       ),
     );
@@ -444,7 +444,7 @@ class _NoContentView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const BackButton(),
+          const BackButton(color: Colors.white),
           Image.network(
             dongeng.imageUrl,
             height: 140,
