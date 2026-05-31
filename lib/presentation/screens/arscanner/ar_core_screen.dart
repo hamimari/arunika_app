@@ -33,9 +33,17 @@ enum _PlacementState { scanning, ready, placing, placed }
 class ArCoreSurfacePlaceScreen extends StatefulWidget {
   final String modelUrl;
   final String? soundUrl;
+
+  /// When [true] (default), the bottom button is "Scan Again" which replaces
+  /// this screen with a fresh [QRScannerPage].  Set to [false] when navigating
+  /// from [ArCardDetailScreen] — the button becomes a plain "Back" that pops
+  /// back to the detail screen.
+  final bool showScanAgain;
+
   const ArCoreSurfacePlaceScreen({
     required this.modelUrl,
     this.soundUrl,
+    this.showScanAgain = true,
     super.key,
   });
 
@@ -256,54 +264,64 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
             ),
 
           // ── Sound button ──────────────────────────────────────────────────
-          // Visible only after placement and when a soundUrl was provided.
-          // AnimatedOpacity fades it in/out without rebuilding the AR layer.
+          // Visible as soon as a soundUrl is provided — player is ready before
+          // placement, so the user can listen while scanning for a surface.
           if (_audioPlayer != null)
             Positioned(
               bottom: MediaQuery.of(context).padding.bottom + 88,
               right: 24,
-              child: AnimatedOpacity(
-                opacity: _state == _PlacementState.placed ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 300),
-                child: IgnorePointer(
-                  ignoring: _state != _PlacementState.placed,
-                  child: _SoundButton(
-                    player: _audioPlayer!,
-                    soundUrl: widget.soundUrl!,
-                  ),
-                ),
+              child: _SoundButton(
+                player: _audioPlayer!,
+                soundUrl: widget.soundUrl!,
               ),
             ),
 
-          // ── Scan Again button ─────────────────────────────────────────────
+          // ── Bottom action button ──────────────────────────────────────────
+          // "Scan Again"  — when opened from the QR scanner (default).
+          // "Back"        — when opened from ArCardDetailScreen; pops back.
           Positioned(
             bottom: MediaQuery.of(context).padding.bottom + 16,
             left: 24,
             right: 24,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => BlocProvider(
-                      create: (_) =>
-                          QRScannerBloc(repository: locator<ArRepository>()),
-                      child: QRScannerPage(),
+            child: widget.showScanAgain
+                ? ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BlocProvider(
+                            create: (_) => QRScannerBloc(
+                              repository: locator<ArRepository>(),
+                            ),
+                            child: QRScannerPage(),
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.orange,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
+                    icon: const Icon(Icons.qr_code_scanner),
+                    label: const Text('Scan Again'),
+                  )
+                : ElevatedButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.orange,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    label: const Text('Back'),
                   ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.orange,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              icon: const Icon(Icons.qr_code_scanner),
-              label: const Text("Scan Again"),
-            ),
           ),
         ],
       ),

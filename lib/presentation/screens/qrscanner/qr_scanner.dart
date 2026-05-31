@@ -4,6 +4,7 @@ import 'package:arunika_app/presentation/screens/arscanner/ar_core_screen.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_bloc.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_event.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_state.dart';
+import 'package:arunika_app/presentation/screens/widgets/login_required_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
@@ -15,7 +16,8 @@ class QRScannerPage extends StatefulWidget {
   State<QRScannerPage> createState() => _QRScannerPageState();
 }
 
-class _QRScannerPageState extends State<QRScannerPage> {
+class _QRScannerPageState extends State<QRScannerPage>
+    with WidgetsBindingObserver {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   QRViewController? controller;
   bool scanned = false;
@@ -23,9 +25,26 @@ class _QRScannerPageState extends State<QRScannerPage> {
   String _detectedCode = '';
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     // controller self-disposes when QRView is un-mounted
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (controller == null) return;
+    if (state == AppLifecycleState.paused) {
+      controller!.pauseCamera();
+    } else if (state == AppLifecycleState.resumed) {
+      controller!.resumeCamera();
+    }
   }
 
   void _onQRViewCreated(QRViewController controller) {
@@ -88,6 +107,11 @@ class _QRScannerPageState extends State<QRScannerPage> {
               ),
             );
             _resetScanner();
+          }
+
+          if (state is ModelUnauthorized) {
+            _resetScanner();
+            showLoginRequiredDialog(context, featureLabel: 'fitur AR');
           }
         },
         child: Stack(
@@ -311,10 +335,10 @@ class _QRScannerPageState extends State<QRScannerPage> {
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          const Text(
-                                            '🦌',
-                                            style: TextStyle(fontSize: 16),
-                                          ),
+                                          // const Text(
+                                          //   '🦌',
+                                          //   style: TextStyle(fontSize: 16),
+                                          // ),
                                           const SizedBox(width: 8),
                                           Text(
                                             'Lihat AR',

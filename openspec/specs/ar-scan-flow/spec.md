@@ -8,15 +8,17 @@ The scan screen SHALL display a full-screen camera viewfinder with an animated c
 - **THEN** the camera feed is displayed with an animated scan frame overlay
 
 ### Requirement: AR experience screen
-After a successful scan, the app SHALL display the AR experience screen showing the 3D animal model in AR with action buttons: Info, Suara, Tari, Makan.
+After a successful QR scan confirmation, the app SHALL fetch the AR card data (3D model URL and optional sound URL) and navigate to the AR experience screen (`ArCoreSurfacePlaceScreen`). Navigation MUST occur automatically once the bloc emits `ModelLoaded` — no further user action required after tapping "Lihat AR".
 
 #### Scenario: AR model appears after scan
-- **WHEN** a valid AR card is scanned
-- **THEN** the 3D animal appears in AR with an idle animation and the action buttons are shown
+- **WHEN** a valid AR card QR code is scanned
+- **AND** the user taps "Lihat AR" on the confirmation card
+- **THEN** the app fetches the AR card record by ID
+- **AND** navigates to `ArCoreSurfacePlaceScreen` with the resolved `modelUrl` and `soundUrl`
 
-#### Scenario: Action buttons trigger interactions
-- **WHEN** the user taps "Tari" or "Makan"
-- **THEN** the corresponding animal animation plays
+#### Scenario: Navigation does not require second tap
+- **WHEN** `QRScannerBloc` emits `ModelLoaded` in the bottom nav scan tab
+- **THEN** the app pushes `ArCoreSurfacePlaceScreen` without requiring any additional user interaction
 
 ### Requirement: Fun fact overlay after interaction
 After the user interacts with the AR animal, the app SHALL display a "Tahukah kamu?" fun fact overlay card with educational text and a sound button.

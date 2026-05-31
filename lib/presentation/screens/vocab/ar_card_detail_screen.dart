@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:arunika_app/constants/app_colors.dart';
@@ -15,16 +16,21 @@ class ArCardDetailScreen extends StatefulWidget {
 
 class _ArCardDetailScreenState extends State<ArCardDetailScreen> {
   late final AudioPlayer _audioPlayer;
+  StreamSubscription<PlayerState>? _playerSubscription;
   bool _isPlaying = false;
 
   @override
   void initState() {
     super.initState();
     _audioPlayer = AudioPlayer();
-    _audioPlayer.playerStateStream.listen((state) {
+    _playerSubscription = _audioPlayer.playerStateStream.listen((state) {
       if (mounted) {
+        // Explicitly check processingState so the button snaps back to idle
+        // when playback ends naturally (completed), not just when stopped.
+        final isNowPlaying =
+            state.playing && state.processingState != ProcessingState.completed;
         setState(() {
-          _isPlaying = state.playing;
+          _isPlaying = isNowPlaying;
         });
       }
     });
@@ -32,6 +38,7 @@ class _ArCardDetailScreenState extends State<ArCardDetailScreen> {
 
   @override
   void dispose() {
+    _playerSubscription?.cancel();
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -157,7 +164,8 @@ class _ArCardDetailScreenState extends State<ArCardDetailScreen> {
                       MaterialPageRoute(
                         builder: (_) => ArCoreSurfacePlaceScreen(
                           modelUrl: card.fileUrl ?? '',
-                          soundUrl: card.audioUrl ?? '',
+                          soundUrl: card.audioUrl,
+                          showScanAgain: false,
                         ),
                       ),
                     );
