@@ -125,80 +125,87 @@ class _CollectionViewState extends State<_CollectionView> {
 
               // Grid / Loading / Error
               Expanded(
-                child: BlocBuilder<CollectionBlocHandler, CollectionState>(
-                  builder: (context, state) {
-                    if (state is CollectionLoading) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primaryOrange,
-                        ),
-                      );
-                    }
-                    if (state is CollectionError) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
-                              size: 48,
-                              color: AppColors.primaryOrange,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              state.message,
-                              textAlign: TextAlign.center,
+                child: RefreshIndicator(
+                  color: AppColors.primaryOrange,
+                  onRefresh: () async {
+                    context.read<CollectionBlocHandler>().add(LoadArCards());
+                  },
+                  child: BlocBuilder<CollectionBlocHandler, CollectionState>(
+                    builder: (context, state) {
+                      if (state is CollectionLoading) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.primaryOrange,
+                          ),
+                        );
+                      }
+                      if (state is CollectionError) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                size: 48,
+                                color: AppColors.primaryOrange,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                state.message,
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.body.copyWith(
+                                  color: AppColors.mediumBrown,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () => context
+                                    .read<CollectionBlocHandler>()
+                                    .add(LoadArCards()),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primaryOrange,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Coba Lagi',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      if (state is CollectionLoaded) {
+                        final cards = state.displayed;
+                        if (cards.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'Tidak ada kartu yang ditemukan.',
                               style: AppTextStyles.body.copyWith(
                                 color: AppColors.mediumBrown,
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: () => context
-                                  .read<CollectionBlocHandler>()
-                                  .add(LoadArCards()),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primaryOrange,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                          );
+                        }
+                        return GridView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 14,
+                                crossAxisSpacing: 14,
+                                childAspectRatio: 0.78,
                               ),
-                              child: const Text(
-                                'Coba Lagi',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                    if (state is CollectionLoaded) {
-                      final cards = state.displayed;
-                      if (cards.isEmpty) {
-                        return Center(
-                          child: Text(
-                            'Tidak ada kartu yang ditemukan.',
-                            style: AppTextStyles.body.copyWith(
-                              color: AppColors.mediumBrown,
-                            ),
-                          ),
+                          itemCount: cards.length,
+                          itemBuilder: (_, i) => _ArCardItem(card: cards[i]),
                         );
                       }
-                      return GridView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 14,
-                              crossAxisSpacing: 14,
-                              childAspectRatio: 0.78,
-                            ),
-                        itemCount: cards.length,
-                        itemBuilder: (_, i) => _ArCardItem(card: cards[i]),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
+                      return const SizedBox.shrink();
+                    },
+                  ),
                 ),
               ),
             ],

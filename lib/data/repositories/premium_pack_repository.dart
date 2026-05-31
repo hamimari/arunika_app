@@ -32,10 +32,7 @@ class PremiumPackRepository {
       _cacheTimestamps[key] = DateTime.now();
       return packs;
     } catch (_) {
-      // Return static fallback so the upgrade screen always shows something
-      if (type == 'content') return PremiumPacks.contentPacks;
-      if (type == 'subscription') return PremiumPacks.subscriptionPacks;
-      return [...PremiumPacks.contentPacks, ...PremiumPacks.subscriptionPacks];
+      rethrow;
     }
   }
 

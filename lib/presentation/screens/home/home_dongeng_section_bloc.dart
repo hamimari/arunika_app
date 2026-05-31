@@ -31,6 +31,11 @@ class HomeDongengSectionBloc extends Cubit<HomeDongengState> {
     _load();
   }
 
+  Future<void> reload() async {
+    emit(HomeDongengLoading());
+    await _load();
+  }
+
   Future<void> _load() async {
     try {
       // Fetch popular list from fairy tales repository

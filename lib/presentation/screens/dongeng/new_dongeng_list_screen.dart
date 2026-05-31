@@ -240,13 +240,26 @@ class _NewDongengListScreenState extends State<NewDongengListScreen> {
 
         Expanded(
           child: list.isEmpty
-              ? Center(
-                  child: Text(
-                    _isSearching
-                        ? 'Tidak ada dongeng yang cocok.'
-                        : 'Belum ada dongeng tersedia.',
-                    style: AppTextStyles.body.copyWith(
-                      color: AppColors.lockGrey,
+              ? LayoutBuilder(
+                  builder: (context, constraints) => RefreshIndicator(
+                    color: AppColors.primaryOrange,
+                    onRefresh: () async =>
+                        context.read<DongengListBloc>().add(LoadDongengList()),
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: SizedBox(
+                        height: constraints.maxHeight,
+                        child: Center(
+                          child: Text(
+                            _isSearching
+                                ? 'Tidak ada dongeng yang cocok.'
+                                : 'Belum ada dongeng tersedia.',
+                            style: AppTextStyles.body.copyWith(
+                              color: AppColors.lockGrey,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 )
@@ -263,19 +276,25 @@ class _NewDongengListScreenState extends State<NewDongengListScreen> {
   ) {
     // In search mode, show a flat list. Normal mode: featured + list.
     if (_isSearching) {
-      return ListView.builder(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-        itemCount: list.length,
-        itemBuilder: (_, i) {
-          final story = list[i];
-          final isSelected =
-              state is DongengListNavigating && state.selectedId == story.id;
-          return _StoryRow(
-            dongeng: story,
-            isLoading: isSelected,
-            onTap: () => _onTap(context, story),
-          );
-        },
+      return RefreshIndicator(
+        color: AppColors.primaryOrange,
+        onRefresh: () async =>
+            context.read<DongengListBloc>().add(LoadDongengList()),
+        child: ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          itemCount: list.length,
+          itemBuilder: (_, i) {
+            final story = list[i];
+            final isSelected =
+                state is DongengListNavigating && state.selectedId == story.id;
+            return _StoryRow(
+              dongeng: story,
+              isLoading: isSelected,
+              onTap: () => _onTap(context, story),
+            );
+          },
+        ),
       );
     }
 
@@ -283,63 +302,69 @@ class _NewDongengListScreenState extends State<NewDongengListScreen> {
     final featured = list.first;
     final rest = list.length > 1 ? list.sublist(1) : <DongengResponse>[];
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Featured card
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _FeaturedCard(
-              dongeng: featured,
-              onTap: () => _onTap(context, featured),
+    return RefreshIndicator(
+      color: AppColors.primaryOrange,
+      onRefresh: () async =>
+          context.read<DongengListBloc>().add(LoadDongengList()),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Featured card
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _FeaturedCard(
+                dongeng: featured,
+                onTap: () => _onTap(context, featured),
+              ),
             ),
-          ),
 
-          const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-          // Popular section header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  AppStrings.dongengPopular,
-                  style: AppTextStyles.subheading,
-                ),
-                TextButton(
-                  onPressed: () {},
-                  child: Text(
-                    AppStrings.dongengSeeAll,
-                    style: AppTextStyles.body.copyWith(
-                      color: AppColors.primaryOrange,
+            // Popular section header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    AppStrings.dongengPopular,
+                    style: AppTextStyles.subheading,
+                  ),
+                  TextButton(
+                    onPressed: () {},
+                    child: Text(
+                      AppStrings.dongengSeeAll,
+                      style: AppTextStyles.body.copyWith(
+                        color: AppColors.primaryOrange,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // Story list rows
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-            itemCount: rest.length,
-            itemBuilder: (_, i) {
-              final story = rest[i];
-              final isSelected =
-                  state is DongengListNavigating &&
-                  state.selectedId == story.id;
-              return _StoryRow(
-                dongeng: story,
-                isLoading: isSelected,
-                onTap: () => _onTap(context, story),
-              );
-            },
-          ),
-        ],
+            // Story list rows
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              itemCount: rest.length,
+              itemBuilder: (_, i) {
+                final story = rest[i];
+                final isSelected =
+                    state is DongengListNavigating &&
+                    state.selectedId == story.id;
+                return _StoryRow(
+                  dongeng: story,
+                  isLoading: isSelected,
+                  onTap: () => _onTap(context, story),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

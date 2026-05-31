@@ -25,6 +25,11 @@ class HomeBannerCubit extends Cubit<HomeBannerState> {
     _load();
   }
 
+  Future<void> reload() async {
+    emit(HomeBannerLoading());
+    await _load();
+  }
+
   Future<void> _load() async {
     final banners = await _repo.getActiveBanners();
     if (isClosed) return;

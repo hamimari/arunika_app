@@ -144,74 +144,80 @@ class ProfileScreen extends StatelessWidget {
 
                 // ── Info cards ────────────────────────────────────────────
                 Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    children: [
-                      _InfoCard(
-                        icon: Iconsax.user,
-                        label: 'Orang Tua',
-                        value: parentName,
-                      ),
-                      const SizedBox(height: 12),
-                      _InfoCard(
-                        icon: Iconsax.sms,
-                        label: 'Email',
-                        value: user?.emailAddress ?? '-',
-                      ),
-                      const SizedBox(height: 12),
-                      _InfoCard(
-                        icon: Iconsax.call,
-                        label: 'Nomor Telepon',
-                        value: user?.phoneNumber ?? '-',
-                      ),
-                      const SizedBox(height: 12),
-                      _InfoCard(
-                        icon: Iconsax.location,
-                        label: 'Kota',
-                        value: user?.city ?? '-',
-                      ),
-                      const SizedBox(height: 12),
-                      _InfoCard(
-                        icon: Iconsax.home,
-                        label: 'Alamat',
-                        value: user?.address ?? '-',
-                      ),
-                      const SizedBox(height: 28),
+                  child: RefreshIndicator(
+                    color: Colors.orange,
+                    onRefresh: () async =>
+                        context.read<ProfileBloc>().add(ProfileInitial()),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      children: [
+                        _InfoCard(
+                          icon: Iconsax.user,
+                          label: 'Orang Tua',
+                          value: parentName,
+                        ),
+                        const SizedBox(height: 12),
+                        _InfoCard(
+                          icon: Iconsax.sms,
+                          label: 'Email',
+                          value: user?.emailAddress ?? '-',
+                        ),
+                        const SizedBox(height: 12),
+                        _InfoCard(
+                          icon: Iconsax.call,
+                          label: 'Nomor Telepon',
+                          value: user?.phoneNumber ?? '-',
+                        ),
+                        const SizedBox(height: 12),
+                        _InfoCard(
+                          icon: Iconsax.location,
+                          label: 'Kota',
+                          value: user?.city ?? '-',
+                        ),
+                        const SizedBox(height: 12),
+                        _InfoCard(
+                          icon: Iconsax.home,
+                          label: 'Alamat',
+                          value: user?.address ?? '-',
+                        ),
+                        const SizedBox(height: 28),
 
-                      // ── Logout ────────────────────────────────────────
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () async {
-                            await locator<AuthNotifier>().logout();
-                            if (context.mounted) context.go('/landing');
-                          },
-                          icon: const Icon(
-                            Iconsax.logout,
-                            color: Colors.orange,
-                          ),
-                          label: const Text(
-                            'Keluar',
-                            style: TextStyle(
+                        // ── Logout ────────────────────────────────────────
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              await locator<AuthNotifier>().logout();
+                              if (context.mounted) context.go('/landing');
+                            },
+                            icon: const Icon(
+                              Iconsax.logout,
                               color: Colors.orange,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
                             ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: const BorderSide(
-                              color: Colors.orange,
-                              width: 1.5,
+                            label: const Text(
+                              'Keluar',
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: const BorderSide(
+                                color: Colors.orange,
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                        const SizedBox(height: 24),
+                      ],
+                    ),
                   ),
                 ),
               ],

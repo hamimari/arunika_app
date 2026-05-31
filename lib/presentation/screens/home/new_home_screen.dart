@@ -14,6 +14,7 @@ import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/navigation/main_shell.dart';
 import 'package:arunika_app/presentation/screens/home/home_banner_cubit.dart';
 import 'package:arunika_app/presentation/screens/home/home_dongeng_section_bloc.dart';
+import 'package:arunika_app/presentation/screens/premium/premium_pack_cubit.dart';
 import 'package:arunika_app/presentation/screens/widgets/login_required_dialog.dart';
 import 'package:arunika_app/presentation/screens/vocab/collection_screen.dart';
 import 'package:go_router/go_router.dart';
@@ -33,7 +34,7 @@ class NewHomeScreen extends StatefulWidget {
 class _NewHomeScreenState extends State<NewHomeScreen> {
   late final AuthNotifier _authNotifier;
   ChildResponse? _child;
-  bool _isSubscribed = false;
+  int _refreshCounter = 0;
 
   @override
   void initState() {
@@ -54,7 +55,6 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
       // Immediately clear stale profile so rebuild shows logged-out state
       setState(() {
         _child = null;
-        _isSubscribed = false;
       });
     }
     _loadProfile();
@@ -66,7 +66,6 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
       if (mounted) {
         setState(() {
           _child = null;
-          _isSubscribed = false;
         });
       }
       return;
@@ -77,7 +76,6 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
         _child = profile?.children.isNotEmpty == true
             ? profile!.children.first
             : null;
-        _isSubscribed = profile?.isSubscribed ?? false;
       });
     }
   }
@@ -89,6 +87,10 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
       providers: [
         BlocProvider(create: (_) => HomeBannerCubit()),
         BlocProvider(create: (_) => HomeDongengSectionBloc()),
+        BlocProvider(
+          create: (_) =>
+              PremiumPackCubit('subscription')..loadPacks(fresh: true),
+        ),
       ],
       child: Scaffold(
         backgroundColor: const Color(0xFFFFEDD5),
@@ -100,26 +102,61 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
               end: Alignment.center,
             ),
           ),
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(
-                child: _HomeHeader(isLoggedIn: isLoggedIn, child: _child),
-              ),
-              SliverToBoxAdapter(child: _BannerCarouselSection()),
-              SliverToBoxAdapter(
-                child: _StoriesSection(isLoggedIn: isLoggedIn),
-              ),
-              SliverToBoxAdapter(child: _CategoriesSection()),
-              SliverToBoxAdapter(
-                child: _PremiumBanner(
-                  isLoggedIn: isLoggedIn,
-                  isSubscribed: _isSubscribed,
+          child: Builder(
+            builder: (ctx) => RefreshIndicator(
+              color: AppColors.primaryOrange,
+              onRefresh: () async {
+                setState(() => _refreshCounter++);
+                await Future.wait([
+                  _loadProfile(),
+                  ctx.read<HomeBannerCubit>().reload(),
+                  ctx.read<HomeDongengSectionBloc>().reload(),
+                  ctx.read<PremiumPackCubit>().loadPacks(fresh: true),
+                ]);
+              },
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
                 ),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: _HomeHeader(isLoggedIn: isLoggedIn, child: _child),
+                  ),
+                  SliverToBoxAdapter(child: _BannerCarouselSection()),
+                  SliverToBoxAdapter(
+                    child: _StoriesSection(isLoggedIn: isLoggedIn),
+                  ),
+                  SliverToBoxAdapter(
+                    child: _CategoriesSection(key: ValueKey(_refreshCounter)),
+                  ),
+                  SliverToBoxAdapter(
+                    child: BlocBuilder<PremiumPackCubit, PremiumPackState>(
+                      builder: (context, packState) {
+                        // Hide while still loading (avoids flash when all packs
+                        // turn out to be inactive).
+                        if (packState is PremiumPackInitial ||
+                            packState is PremiumPackLoading) {
+                          return const SizedBox.shrink();
+                        }
+                        // Hide when the API confirms no active packages,
+                        // or when the API is unreachable (fail-safe: don't show
+                        // a CTA for packages we can't confirm exist).
+                        if (packState is PremiumPackError) {
+                          return const SizedBox.shrink();
+                        }
+                        if (packState is PremiumPackLoaded &&
+                            packState.packs.every((p) => !p.isActive)) {
+                          return const SizedBox.shrink();
+                        }
+                        return const _PremiumBanner();
+                      },
+                    ),
+                  ),
+                  SliverToBoxAdapter(child: _PrintableSection()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                ],
               ),
-              SliverToBoxAdapter(child: _PrintableSection()),
-              const SliverToBoxAdapter(child: SizedBox(height: 32)),
-            ],
+            ),
           ),
         ),
       ),
@@ -779,7 +816,7 @@ class _StoryCardWidget extends StatelessWidget {
 // ─── Categories Section ───────────────────────────────────────────────────────
 
 class _CategoriesSection extends StatefulWidget {
-  const _CategoriesSection();
+  const _CategoriesSection({super.key});
 
   @override
   State<_CategoriesSection> createState() => _CategoriesSectionState();
@@ -934,13 +971,10 @@ class _CategoryTile extends StatelessWidget {
 // ─── Premium Banner ───────────────────────────────────────────────────────────
 
 class _PremiumBanner extends StatelessWidget {
-  final bool isLoggedIn;
-  final bool isSubscribed;
-  const _PremiumBanner({required this.isLoggedIn, this.isSubscribed = false});
+  const _PremiumBanner();
 
   @override
   Widget build(BuildContext context) {
-    if (isLoggedIn && isSubscribed) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
       child: GestureDetector(

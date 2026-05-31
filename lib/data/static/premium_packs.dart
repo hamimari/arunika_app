@@ -8,6 +8,7 @@ class PremiumPack {
   final int priceIdr;
   final bool isBestValue;
   final String? badgeLabel;
+  final bool isActive;
 
   const PremiumPack({
     required this.id,
@@ -16,6 +17,7 @@ class PremiumPack {
     required this.priceIdr,
     this.isBestValue = false,
     this.badgeLabel,
+    this.isActive = true,
   });
 
   factory PremiumPack.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class PremiumPack {
       priceIdr: json['price_idr'] as int,
       isBestValue: (json['is_best_value'] as bool?) ?? false,
       badgeLabel: json['badge_label'] as String?,
+      isActive: (json['is_active'] as bool?) ?? true,
     );
   }
 

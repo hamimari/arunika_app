@@ -29,7 +29,8 @@ class PremiumPackCubit extends Cubit<PremiumPackState> {
 
   PremiumPackCubit(this._type) : super(PremiumPackInitial());
 
-  Future<void> loadPacks() async {
+  Future<void> loadPacks({bool fresh = false}) async {
+    if (fresh) _repo.clearCache();
     emit(PremiumPackLoading());
     try {
       final packs = await _repo.fetchPacks(type: _type);
