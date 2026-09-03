@@ -32,9 +32,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ApiPaths.paymentCreate,
         data: {'plan_name': widget.pack.name, 'amount': widget.pack.priceRaw},
       );
-      final data = res.data as Map<String, dynamic>;
+      final data = res.data['data'] as Map<String, dynamic>;
       setState(() {
-        _snapToken = data['snap_token'] as String?;
+        _snapToken = data['token'] as String?;
         _isLoadingToken = false;
       });
     } catch (_) {
@@ -238,7 +238,7 @@ class _MidtransSnapWebViewState extends State<_MidtransSnapWebView> {
 
   static const _snapClientKey = String.fromEnvironment(
     'MIDTRANS_CLIENT_KEY',
-    defaultValue: 'SB-Mid-client-sandbox-placeholder',
+    defaultValue: 'Mid-client-5P_BEJCnBYCnPP3W',
   );
 
   @override
@@ -301,16 +301,9 @@ class _MidtransSnapWebViewState extends State<_MidtransSnapWebView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.creamBackground,
-      appBar: AppBar(
-        title: const Text('Pembayaran'),
-        backgroundColor: AppColors.creamBackground,
-        elevation: 0,
-        leading: BackButton(
-          color: AppColors.deepBrown,
-          onPressed: widget.onClose,
-        ),
+      body: SafeArea(
+        child: WebViewWidget(controller: _controller),
       ),
-      body: WebViewWidget(controller: _controller),
     );
   }
 }
