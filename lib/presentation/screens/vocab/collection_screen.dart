@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/data/models/response/ar_card_category.dart';
 import 'package:arunika_app/data/models/response/ar_card_response.dart';
 import 'package:arunika_app/data/repositories/ar_repository.dart';
@@ -10,9 +11,18 @@ import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/core/utils/auth_guard.dart';
 import 'package:arunika_app/presentation/screens/vocab/ar_card_detail_screen.dart';
 import 'package:arunika_app/presentation/screens/vocab/collection_bloc.dart';
+import 'package:arunika_app/presentation/screens/widgets/category_dropdowns.dart';
 import 'package:arunika_app/presentation/screens/widgets/login_required_dialog.dart';
+import 'package:arunika_app/presentation/screens/widgets/ownership_filter_sheet.dart';
 import 'package:arunika_app/presentation/screens/vocab/collection_bloc_handler.dart';
 import 'package:arunika_app/constants/app_strings.dart';
+
+CategoryOption _fromArCardCategory(ArCardCategory c) => CategoryOption(
+  id: c.id,
+  name: c.name,
+  emoji: c.emoji,
+  children: c.children.map(_fromArCardCategory).toList(),
+);
 
 class CollectionScreen extends StatelessWidget {
   final String? initialCategoryId;
@@ -93,33 +103,47 @@ class _CollectionViewState extends State<_CollectionView> {
                 ),
               ),
 
-              // Category dropdowns
-              BlocBuilder<CollectionBlocHandler, CollectionState>(
-                builder: (context, state) {
-                  if (state is! CollectionLoaded) {
-                    return const SizedBox.shrink();
-                  }
-                  ArCardCategory? activeCat;
-                  try {
-                    activeCat = state.activeCategoryId != null
-                        ? state.categories.firstWhere(
-                            (c) => c.id == state.activeCategoryId,
-                          )
-                        : null;
-                  } catch (_) {}
-                  return _CategoryDropdowns(
-                    categories: state.categories,
-                    activeCategoryId: state.activeCategoryId,
-                    activeSubCategoryId: state.activeSubCategoryId,
-                    activeCat: activeCat,
-                    onCategoryChanged: (id) => context
-                        .read<CollectionBlocHandler>()
-                        .add(FilterByCategory(id)),
-                    onSubCategoryChanged: (id) => context
-                        .read<CollectionBlocHandler>()
-                        .add(FilterBySubCategory(id)),
-                  );
-                },
+              // Category dropdown(s) + gear icon opening the ownership
+              // ("Kepemilikan") filter sheet — replaces the old "Sudah
+              // dibeli saja" chip.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                child: BlocBuilder<CollectionBlocHandler, CollectionState>(
+                  builder: (context, state) {
+                    if (state is! CollectionLoaded) {
+                      return const SizedBox.shrink();
+                    }
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: CategoryDropdowns(
+                            categories: state.categories
+                                .map(_fromArCardCategory)
+                                .toList(),
+                            activeCategoryId: state.activeCategoryId,
+                            activeSubCategoryId: state.activeSubCategoryId,
+                            onCategoryChanged: (id) => context
+                                .read<CollectionBlocHandler>()
+                                .add(FilterByCategory(id)),
+                            onSubCategoryChanged: (id) => context
+                                .read<CollectionBlocHandler>()
+                                .add(FilterBySubCategory(id)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilterIconButton(
+                          onTap: () => showOwnershipFilterSheet(
+                            context,
+                            currentOwnedOnly: state.ownedOnly,
+                            onApply: (v) => context
+                                .read<CollectionBlocHandler>()
+                                .add(ToggleOwnedOnly(v)),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
               const SizedBox(height: 8),
 
@@ -329,7 +353,14 @@ class _ArCardItem extends StatelessWidget {
         } else if (!isLoggedIn) {
           showLoginRequiredDialog(context, featureLabel: 'koleksi kartu AR');
         } else {
-          guardPremium(context);
+          goToProductPurchase(
+            context,
+            productId: card.productId,
+            title: card.title ?? 'Kartu AR',
+            priceIdr: card.priceIdr,
+            contentType: PurchasedContentType.arCard,
+            subtitle: 'Akses ke kartu AR ${card.title ?? ''}'.trim(),
+          );
         }
       },
       child: Container(
@@ -480,120 +511,6 @@ class _ArCardItem extends StatelessWidget {
   }
 }
 
-// ── Category Dropdowns ────────────────────────────────────────────────────────
-
-class _CategoryDropdowns extends StatelessWidget {
-  final List<ArCardCategory> categories;
-  final String? activeCategoryId;
-  final String? activeSubCategoryId;
-  final ArCardCategory? activeCat;
-  final ValueChanged<String?> onCategoryChanged;
-  final ValueChanged<String?> onSubCategoryChanged;
-
-  const _CategoryDropdowns({
-    required this.categories,
-    required this.activeCategoryId,
-    required this.activeSubCategoryId,
-    required this.activeCat,
-    required this.onCategoryChanged,
-    required this.onSubCategoryChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasSubs = activeCat != null && activeCat!.children.isNotEmpty;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-      child: Row(
-        children: [
-          Expanded(
-            child: _StyledDropdown<String?>(
-              value: activeCategoryId,
-              hint: 'Semua Kategori',
-              items: [
-                const DropdownMenuItem(value: null, child: Text('Semua')),
-                ...categories.map(
-                  (cat) => DropdownMenuItem(
-                    value: cat.id,
-                    child: Text('${cat.emoji} ${cat.name}'.trim()),
-                  ),
-                ),
-              ],
-              onChanged: onCategoryChanged,
-            ),
-          ),
-          if (hasSubs) ...[
-            const SizedBox(width: 8),
-            Expanded(
-              child: _StyledDropdown<String?>(
-                value: activeSubCategoryId,
-                hint: 'Semua Sub',
-                items: [
-                  const DropdownMenuItem(value: null, child: Text('Semua')),
-                  ...activeCat!.children.map(
-                    (sub) => DropdownMenuItem(
-                      value: sub.id,
-                      child: Text('${sub.emoji} ${sub.name}'.trim()),
-                    ),
-                  ),
-                ],
-                onChanged: onSubCategoryChanged,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _StyledDropdown<T> extends StatelessWidget {
-  final T value;
-  final String hint;
-  final List<DropdownMenuItem<T>> items;
-  final ValueChanged<T?> onChanged;
-
-  const _StyledDropdown({
-    required this.value,
-    required this.hint,
-    required this.items,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.lockGrey, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T>(
-          value: value,
-          hint: Text(
-            hint,
-            style: AppTextStyles.caption.copyWith(color: AppColors.textMedium),
-          ),
-          isExpanded: true,
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: AppColors.primaryOrange,
-            size: 20,
-          ),
-          style: AppTextStyles.caption.copyWith(color: AppColors.textDark),
-          items: items,
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-}
+// Category dropdown row + gear icon now live in
+// lib/presentation/screens/widgets/category_dropdowns.dart, shared with the
+// dongeng screen.

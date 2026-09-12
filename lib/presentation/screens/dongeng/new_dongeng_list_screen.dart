@@ -2,15 +2,27 @@ import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/core/utils/auth_guard.dart';
+import 'package:arunika_app/data/models/purchasable_item.dart';
+import 'package:arunika_app/data/models/response/dongeng_category.dart';
 import 'package:arunika_app/data/models/response/dongeng_response.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_bloc.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_event.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_state.dart';
+import 'package:arunika_app/presentation/screens/widgets/category_dropdowns.dart';
 import 'package:arunika_app/presentation/screens/widgets/login_required_dialog.dart';
+import 'package:arunika_app/presentation/screens/widgets/ownership_filter_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+
+CategoryOption _fromDongengCategory(DongengCategory c) => CategoryOption(
+  id: c.id,
+  name: c.name,
+  emoji: c.emoji,
+  children: c.children.map(_fromDongengCategory).toList(),
+);
 
 class NewDongengListScreen extends StatefulWidget {
   const NewDongengListScreen({super.key});
@@ -238,6 +250,46 @@ class _NewDongengListScreenState extends State<NewDongengListScreen> {
           ),
         ),
 
+        // Category filter dropdown(s) + gear icon opening the ownership
+        // ("Kepemilikan") filter sheet — replaces the old "Sudah dibeli
+        // saja" chip.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: CategoryDropdowns(
+                  categories: state is DongengListLoaded
+                      ? state.categories.map(_fromDongengCategory).toList()
+                      : const [],
+                  activeCategoryId: state is DongengListLoaded
+                      ? state.activeCategoryId
+                      : null,
+                  activeSubCategoryId: state is DongengListLoaded
+                      ? state.activeSubCategoryId
+                      : null,
+                  onCategoryChanged: (id) => context
+                      .read<DongengListBloc>()
+                      .add(FilterByDongengCategory(id)),
+                  onSubCategoryChanged: (id) => context
+                      .read<DongengListBloc>()
+                      .add(FilterByDongengSubCategory(id)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilterIconButton(
+                onTap: () => showOwnershipFilterSheet(
+                  context,
+                  currentOwnedOnly:
+                      state is DongengListLoaded && state.ownedOnly,
+                  onApply: (v) =>
+                      context.read<DongengListBloc>().add(FilterOwnedOnly(v)),
+                ),
+              ),
+            ],
+          ),
+        ),
+
         Expanded(
           child: list.isEmpty
               ? LayoutBuilder(
@@ -370,12 +422,19 @@ class _NewDongengListScreenState extends State<NewDongengListScreen> {
   }
 
   void _onTap(BuildContext context, DongengResponse story) {
-    if (story.isFree) {
+    if (story.isUnlocked) {
       context.read<DongengListBloc>().add(DongengItemSelected(story));
     } else if (!locator<AuthNotifier>().isLoggedIn) {
       showLoginRequiredDialog(context, featureLabel: 'dongeng premium');
     } else {
-      context.push('/premium');
+      goToProductPurchase(
+        context,
+        productId: story.productId,
+        title: story.title,
+        priceIdr: story.priceIdr,
+        contentType: PurchasedContentType.dongeng,
+        subtitle: 'Akses ke dongeng ${story.title}',
+      );
     }
   }
 }
@@ -588,7 +647,7 @@ class _StoryRow extends StatelessWidget {
                   color: AppColors.primaryOrange,
                 ),
               )
-            else if (dongeng.isFree)
+            else if (dongeng.isUnlocked)
               const Icon(
                 Icons.play_circle_fill_rounded,
                 color: AppColors.primaryOrange,

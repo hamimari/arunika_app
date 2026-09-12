@@ -57,5 +57,34 @@ void main() {
 
       expect(() => repo.getPrintablePdf('unknown'), throwsException);
     });
+
+    test('findByProductId returns the card matching that product id', () async {
+      when(() => mockApi.findAll()).thenAnswer(
+        (_) async => {
+          'data': [
+            {'id': 'card-1', 'product_id': 'prod-1'},
+            {'id': 'card-2', 'product_id': 'prod-2'},
+          ],
+        },
+      );
+
+      final result = await repo.findByProductId('prod-2');
+
+      expect(result?.id, 'card-2');
+    });
+
+    test('findByProductId returns null when no card matches', () async {
+      when(() => mockApi.findAll()).thenAnswer(
+        (_) async => {
+          'data': [
+            {'id': 'card-1', 'product_id': 'prod-1'},
+          ],
+        },
+      );
+
+      final result = await repo.findByProductId('missing');
+
+      expect(result, isNull);
+    });
   });
 }

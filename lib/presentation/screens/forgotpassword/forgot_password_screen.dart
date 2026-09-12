@@ -14,7 +14,24 @@ class ForgotPasswordScreen extends StatelessWidget {
     final emailController = TextEditingController();
 
     return BlocListener<ForgotPasswordBloc, ForgotPasswordState>(
+      listenWhen: (prev, curr) =>
+          (curr.isSubmitted && !prev.isSubmitted) ||
+          (curr.error != null && curr.error != prev.error),
       listener: (context, state) {
+        if (state.error != null) {
+          showModalBottomSheet(
+            context: context,
+            backgroundColor: Colors.transparent,
+            builder: (_) => AppErrorSheet(
+              title: "Gagal Mengirim",
+              message: state.error!,
+              onConfirm: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          );
+          return;
+        }
         if (state.isSubmitted) {
           showModalBottomSheet(
             context: context,
@@ -86,31 +103,52 @@ class ForgotPasswordScreen extends StatelessWidget {
 
                       const SizedBox(height: 24),
 
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            context.read<ForgotPasswordBloc>().add(
-                              ForgotPasswordSubmitted(emailController.text),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                      BlocBuilder<ForgotPasswordBloc, ForgotPasswordState>(
+                        buildWhen: (prev, curr) =>
+                            prev.isLoading != curr.isLoading,
+                        builder: (context, state) {
+                          return SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: state.isLoading
+                                  ? null
+                                  : () {
+                                      context.read<ForgotPasswordBloc>().add(
+                                        ForgotPasswordSubmitted(
+                                          emailController.text,
+                                        ),
+                                      );
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: state.isLoading
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2.5,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Kirim Link Reset',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                             ),
-                            elevation: 0,
-                          ),
-                          child: const Text(
-                            'Kirim Link Reset',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
                     ],
                   ),

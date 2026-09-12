@@ -1,10 +1,11 @@
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
+import 'package:arunika_app/core/utils/dongeng_tab_controller.dart';
+import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/data/models/response/dongeng_response.dart';
 import 'package:arunika_app/data/repositories/auth_repository.dart';
 import 'package:arunika_app/data/repositories/fairy_tales_repository.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
-import 'package:arunika_app/data/static/premium_packs.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/navigation/main_shell.dart';
 import 'package:arunika_app/presentation/navigation/signup_navigator.dart';
@@ -70,9 +71,14 @@ class AppRouter {
             scanScreen: const ArScanShell(),
             collectionScreen: const CollectionScreen(),
             dongengScreen: BlocProvider(
-              create: (_) =>
-                  DongengListBloc(repository: locator<FairyTalesRepository>())
-                    ..add(LoadDongengList()),
+              create: (_) {
+                final highlightProductId =
+                    DongengTabController.pendingHighlightProductId;
+                DongengTabController.pendingHighlightProductId = null;
+                return DongengListBloc(
+                  repository: locator<FairyTalesRepository>(),
+                )..add(LoadDongengList(highlightProductId: highlightProductId));
+              },
               child: const NewDongengListScreen(),
             ),
             parentScreen: BlocProvider(
@@ -189,15 +195,18 @@ class AppRouter {
       // ── Premium upgrade ────────────────────────────────────────────────────
       GoRoute(
         path: '/premium',
-        builder: (_, __) => const PremiumUpgradeScreen(),
+        builder: (_, state) {
+          final subscriptionOnly = state.extra as bool? ?? false;
+          return PremiumUpgradeScreen(subscriptionOnly: subscriptionOnly);
+        },
       ),
 
       // ── Payment ────────────────────────────────────────────────────────────
       GoRoute(
         path: '/payment',
         builder: (context, state) {
-          final pack = state.extra as PremiumPack;
-          return PaymentScreen(pack: pack);
+          final item = state.extra as PurchasableItem;
+          return PaymentScreen(item: item);
         },
       ),
 
@@ -205,8 +214,8 @@ class AppRouter {
       GoRoute(
         path: '/unlock-success',
         builder: (context, state) {
-          final packName = state.extra as String? ?? 'Paket Premium';
-          return UnlockSuccessScreen(packName: packName);
+          final item = state.extra as PurchasableItem;
+          return UnlockSuccessScreen(item: item);
         },
       ),
     ],

@@ -3,13 +3,21 @@ import 'package:confetti/confetti.dart';
 import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
+import 'package:arunika_app/core/storage/LocalProfileStorage.dart';
+import 'package:arunika_app/core/storage/SecureStorageToken.dart';
+import 'package:arunika_app/core/utils/dongeng_tab_controller.dart';
+import 'package:arunika_app/data/models/purchasable_item.dart';
+import 'package:arunika_app/data/repositories/ar_repository.dart';
+import 'package:arunika_app/data/repositories/user_repository.dart';
+import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/navigation/main_shell.dart';
+import 'package:arunika_app/presentation/screens/vocab/ar_card_detail_screen.dart';
 import 'package:go_router/go_router.dart';
 
 class UnlockSuccessScreen extends StatefulWidget {
-  final String packName;
+  final PurchasableItem item;
 
-  const UnlockSuccessScreen({super.key, required this.packName});
+  const UnlockSuccessScreen({super.key, required this.item});
 
   @override
   State<UnlockSuccessScreen> createState() => _UnlockSuccessScreenState();
@@ -17,18 +25,103 @@ class UnlockSuccessScreen extends StatefulWidget {
 
 class _UnlockSuccessScreenState extends State<UnlockSuccessScreen> {
   late final ConfettiController _confetti;
+  bool _isOpeningCard = false;
 
   @override
   void initState() {
     super.initState();
     _confetti = ConfettiController(duration: const Duration(seconds: 4));
     _confetti.play();
+    _refreshProfile();
+  }
+
+  // Refresh the cached profile so the home screen's premium banner reflects
+  // the new subscription/entitlement immediately, instead of waiting for the
+  // next pull-to-refresh or app restart.
+  Future<void> _refreshProfile() async {
+    final userId = await SecureTokenStorage.getUserId();
+    if (userId == null) return;
+    try {
+      final profile = await locator<UserRepository>().findById(userId);
+      await LocalProfileStorage.save(profile);
+    } catch (_) {
+      // best-effort — home screen will still refetch on its own next load
+    }
   }
 
   @override
   void dispose() {
     _confetti.dispose();
     super.dispose();
+  }
+
+  // Subscription purchases land on the profile page (shows the new plan);
+  // single-dongeng purchases land on the dongeng tab with the story pinned
+  // as the featured item (list stays unfiltered); a single AR card purchase
+  // opens straight into that card's detail screen; everything else (content
+  // bundles) keeps the previous default of the collection tab.
+  Future<void> _onExplorePressed(BuildContext context) async {
+    final item = widget.item;
+
+    if (item.isSubscriptionPurchase) {
+      _goToShellTab(MainShellTab.parent);
+      return;
+    }
+
+    if (item.isDongengPurchase) {
+      DongengTabController.pendingHighlightProductId = item.id;
+      _goToShellTab(MainShellTab.dongeng);
+      return;
+    }
+
+    if (item.contentType == PurchasedContentType.arCard) {
+      setState(() => _isOpeningCard = true);
+      final card = await locator<ArRepository>()
+          .findByProductId(item.id)
+          .catchError((_) => null);
+      if (!context.mounted) return;
+      setState(() => _isOpeningCard = false);
+      if (card != null) {
+        _goToShellTab(
+          MainShellTab.collection,
+          then: (shellContext) => Navigator.push(
+            shellContext,
+            MaterialPageRoute(builder: (_) => ArCardDetailScreen(card: card)),
+          ),
+        );
+        return;
+      }
+    }
+
+    _goToShellTab(MainShellTab.collection);
+  }
+
+  void _goToShellTab(int tab, {void Function(BuildContext)? then}) {
+    context.go('/shell');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      MainShell.shellKey.currentState?.switchTab(tab);
+      final shellContext = MainShell.shellKey.currentContext;
+      if (then != null && shellContext != null) {
+        then(shellContext);
+      }
+    });
+  }
+
+  // Turns the purchased item's own real subtitle into checklist lines,
+  // instead of a generic hardcoded list unrelated to what was actually
+  // bought. Package subtitles list their contents joined by "+" (e.g. "8
+  // Hewan Hutan + 2 Dongeng"); single-product subtitles are already a
+  // single descriptive line (e.g. "Akses ke dongeng Kancil dan Buaya").
+  List<String> _unlockedItemLines() {
+    final subtitle = widget.item.subtitle;
+    if (subtitle.contains('+')) {
+      return subtitle
+          .split('+')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+    return [subtitle];
   }
 
   @override
@@ -81,7 +174,7 @@ class _UnlockSuccessScreenState extends State<UnlockSuccessScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    widget.packName,
+                    widget.item.name,
                     style: AppTextStyles.subheading,
                     textAlign: TextAlign.center,
                   ),
@@ -110,30 +203,53 @@ class _UnlockSuccessScreenState extends State<UnlockSuccessScreen> {
                       ],
                     ),
                     child: Column(
-                      children: AppStrings.unlockItems.map((item) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.successGreen,
-                                  shape: BoxShape.circle,
+                      children: [
+                        ..._unlockedItemLines().map((item) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.successGreen,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.check,
+                                    color: AppColors.white,
+                                    size: 18,
+                                  ),
                                 ),
-                                child: const Icon(
-                                  Icons.check,
-                                  color: AppColors.white,
-                                  size: 18,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(item, style: AppTextStyles.bodyLarge),
                                 ),
+                              ],
+                            ),
+                          );
+                        }),
+                        const Divider(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Total Pembayaran',
+                              style: AppTextStyles.body.copyWith(
+                                color: AppColors.mediumBrown,
                               ),
-                              const SizedBox(width: 12),
-                              Text(item, style: AppTextStyles.bodyLarge),
-                            ],
-                          ),
-                        );
-                      }).toList(),
+                            ),
+                            Text(
+                              widget.item.priceLabel,
+                              style: AppTextStyles.bodyLarge.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primaryOrange,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -143,19 +259,22 @@ class _UnlockSuccessScreenState extends State<UnlockSuccessScreen> {
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Navigate to shell and switch to collection tab
-                        context.go('/shell');
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          MainShell.shellKey.currentState?.switchTab(
-                            MainShellTab.collection,
-                          );
-                        });
-                      },
-                      child: Text(
-                        AppStrings.btnStartExplore,
-                        style: AppTextStyles.button,
-                      ),
+                      onPressed: _isOpeningCard
+                          ? null
+                          : () => _onExplorePressed(context),
+                      child: _isOpeningCard
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.white,
+                              ),
+                            )
+                          : Text(
+                              AppStrings.btnStartExplore,
+                              style: AppTextStyles.button,
+                            ),
                     ),
                   ),
                 ],

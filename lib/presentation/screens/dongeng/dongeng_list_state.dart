@@ -1,3 +1,4 @@
+import 'package:arunika_app/data/models/response/dongeng_category.dart';
 import 'package:arunika_app/data/models/response/dongeng_response.dart';
 
 abstract class DongengListState {}
@@ -8,7 +9,17 @@ class DongengListLoading extends DongengListState {}
 
 class DongengListLoaded extends DongengListState {
   final List<DongengResponse> dongengList;
-  DongengListLoaded(this.dongengList);
+  final bool ownedOnly;
+  final List<DongengCategory> categories;
+  final String? activeCategoryId;
+  final String? activeSubCategoryId;
+  DongengListLoaded(
+    this.dongengList, {
+    this.ownedOnly = false,
+    this.categories = const [],
+    this.activeCategoryId,
+    this.activeSubCategoryId,
+  });
 }
 
 class DongengListError extends DongengListState {

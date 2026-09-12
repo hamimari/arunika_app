@@ -26,6 +26,17 @@ class ArRepository {
         .toList();
   }
 
+  /// Looks up a card by its linked purchase product id (not the card's own
+  /// [ArCardResponse.id]) — used after a payment succeeds, when all we have
+  /// is the [PurchasableItem] the user just paid for.
+  Future<ArCardResponse?> findByProductId(String productId) async {
+    final cards = await findAll();
+    for (final card in cards) {
+      if (card.productId == productId) return card;
+    }
+    return null;
+  }
+
   Future<List<ArCardCategory>> getCategories() async {
     final json = await api.getCategories();
     final list = json['data'] as List<dynamic>? ?? [];
