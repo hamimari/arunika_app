@@ -313,41 +313,51 @@ class _QRScannerPageState extends State<QRScannerPage>
                               const SizedBox(width: 12),
                               Expanded(
                                 flex: 2,
-                                child: GestureDetector(
-                                  onTap: _confirmScan,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryOrange,
-                                      borderRadius: BorderRadius.circular(14),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: AppColors.primaryOrange
-                                              .withValues(alpha: 0.4),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 4),
+                                child: BlocBuilder<QRScannerBloc, QRScannerState>(
+                                  builder: (context, state) {
+                                    final isLoading = state is ModelLoading;
+                                    return GestureDetector(
+                                      onTap: isLoading ? null : _confirmScan,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
                                         ),
-                                      ],
-                                    ),
-                                    child: Center(
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          // const Text(
-                                          //   '🦌',
-                                          //   style: TextStyle(fontSize: 16),
-                                          // ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'Lihat AR',
-                                            style: AppTextStyles.buttonSmall,
+                                        decoration: BoxDecoration(
+                                          color: isLoading
+                                              ? AppColors.primaryOrange
+                                                    .withValues(alpha: 0.7)
+                                              : AppColors.primaryOrange,
+                                          borderRadius: BorderRadius.circular(
+                                            14,
                                           ),
-                                        ],
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppColors.primaryOrange
+                                                  .withValues(alpha: 0.4),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Center(
+                                          child: isLoading
+                                              ? const SizedBox(
+                                                  width: 18,
+                                                  height: 18,
+                                                  child: CircularProgressIndicator(
+                                                    color: AppColors.white,
+                                                    strokeWidth: 2.5,
+                                                  ),
+                                                )
+                                              : Text(
+                                                  'Lihat AR',
+                                                  style:
+                                                      AppTextStyles.buttonSmall,
+                                                ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
+                                    );
+                                  },
                                 ),
                               ),
                             ],

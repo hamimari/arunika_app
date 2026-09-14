@@ -227,34 +227,56 @@ class SignInScreen extends StatelessWidget {
                                 const SizedBox(height: 24),
 
                                 // Sign in button
-                                GestureDetector(
-                                  onTap: () => context.read<SigninBloc>().add(
-                                    SigninSubmitted(),
-                                  ),
-                                  child: Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryOrange,
-                                      borderRadius: BorderRadius.circular(14),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: AppColors.primaryOrange
-                                              .withValues(alpha: 0.35),
-                                          blurRadius: 12,
-                                          offset: const Offset(0, 4),
+                                BlocBuilder<SigninBloc, SigninState>(
+                                  buildWhen: (prev, curr) =>
+                                      prev.isLoading != curr.isLoading,
+                                  builder: (context, state) {
+                                    return GestureDetector(
+                                      onTap: state.isLoading
+                                          ? null
+                                          : () => context
+                                                .read<SigninBloc>()
+                                                .add(SigninSubmitted()),
+                                      child: Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
                                         ),
-                                      ],
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        'Masuk',
-                                        style: AppTextStyles.button,
+                                        decoration: BoxDecoration(
+                                          color: state.isLoading
+                                              ? AppColors.primaryOrange
+                                                    .withValues(alpha: 0.7)
+                                              : AppColors.primaryOrange,
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppColors.primaryOrange
+                                                  .withValues(alpha: 0.35),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Center(
+                                          child: state.isLoading
+                                              ? const SizedBox(
+                                                  width: 22,
+                                                  height: 22,
+                                                  child: CircularProgressIndicator(
+                                                    color: AppColors.white,
+                                                    strokeWidth: 2.5,
+                                                  ),
+                                                )
+                                              : Text(
+                                                  'Masuk',
+                                                  style: AppTextStyles.button,
+                                                ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),
