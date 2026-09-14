@@ -15,6 +15,8 @@ class ArCardResponse {
   final String emoji;
   final String bgColor;
   final bool isUnlocked;
+  final String? productId;
+  final int? priceIdr;
   final String description;
   final String funFact;
   // Structured category refs (from V12)
@@ -37,6 +39,8 @@ class ArCardResponse {
     this.emoji = '',
     this.bgColor = '#FFF3E0',
     this.isUnlocked = false,
+    this.productId,
+    this.priceIdr,
     this.description = '',
     this.funFact = '',
     this.categoryId,
@@ -72,6 +76,8 @@ class ArCardResponse {
       emoji: json['emoji'] as String? ?? '',
       bgColor: json['bg_color'] as String? ?? '#FFF3E0',
       isUnlocked: json['is_unlocked'] as bool? ?? false,
+      productId: json['product_id'] as String?,
+      priceIdr: (json['price_idr'] as num?)?.toInt(),
       description: json['description'] as String? ?? '',
       funFact: json['fun_fact'] as String? ?? '',
       categoryId: json['category_id'] as String?,

@@ -1,5 +1,6 @@
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/utils/auth_guard.dart';
+import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -49,6 +50,13 @@ void main() {
         GoRoute(
           path: '/signup',
           builder: (_, __) => const Scaffold(body: Text('SignUp')),
+        ),
+        GoRoute(
+          path: '/payment',
+          builder: (context, state) {
+            final item = state.extra as PurchasableItem;
+            return Scaffold(body: Text('Payment: ${item.name}'));
+          },
         ),
         ...extraRoutes,
       ],
@@ -182,4 +190,63 @@ void main() {
 
     expect(find.text('SignUp'), findsOneWidget);
   });
+
+  testWidgets(
+    'goToProductPurchase with a productId navigates straight to /payment',
+    (tester) async {
+      mockAuth.setLoggedIn(true);
+
+      await tester.pumpWidget(
+        _buildApp(
+          home: Builder(
+            builder: (ctx) => ElevatedButton(
+              onPressed: () => goToProductPurchase(
+                ctx,
+                productId: 'prod-1',
+                title: 'Singa',
+                priceIdr: 9000,
+                contentType: PurchasedContentType.arCard,
+              ),
+              child: const Text('Buy'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Buy'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Payment: Singa'), findsOneWidget);
+      expect(find.text('Premium'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'goToProductPurchase without a productId falls back to guardPremium',
+    (tester) async {
+      mockAuth.setLoggedIn(true);
+
+      await tester.pumpWidget(
+        _buildApp(
+          home: Builder(
+            builder: (ctx) => ElevatedButton(
+              onPressed: () => goToProductPurchase(
+                ctx,
+                productId: null,
+                title: 'Singa',
+                priceIdr: null,
+                contentType: PurchasedContentType.arCard,
+              ),
+              child: const Text('Buy'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Buy'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Premium'), findsOneWidget);
+    },
+  );
 }

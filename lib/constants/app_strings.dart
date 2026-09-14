@@ -5,13 +5,13 @@ class AppStrings {
   // Landing / Welcome
   static const String welcomeHeading = 'Bring Animals to Life!';
   static const String welcomeSubtitle = 'Scan, learn, explore, and play!';
-  static const String btnExplore = "Let's Explore!";
-  static const String btnTryDemo = 'Coba Demo AR';
+  static const String btnExplore = "Ayo Daftar";
+  static const String btnTryDemo = 'Coba Demo';
 
   // Bottom Nav
   static const String navHome = 'Beranda';
   static const String navScan = 'Scan';
-  static const String navCollection = 'Koleksi';
+  static const String navCollection = 'Kartu AR';
   static const String navDongeng = 'Dongeng';
   static const String navParent = 'Profil';
 
@@ -25,7 +25,7 @@ class AppStrings {
   static const String printableBannerSub = 'Cetak & gunakan untuk AR!';
 
   // Collection
-  static const String collectionTitle = 'Koleksiku';
+  static const String collectionTitle = 'Kartu AR';
   static const String filterAll = 'Semua';
   static const String filterTernak = 'Hewan Ternak';
   static const String filterHutan = 'Hutan';
@@ -73,12 +73,6 @@ class AppStrings {
   static const String unlockSuccessHeading = 'Yeay! 🎉';
   static const String unlockSuccessSubtitle = 'Konten premium berhasil dibuka!';
   static const String btnStartExplore = 'Mulai Jelajah';
-  static const List<String> unlockItems = [
-    '15+ Hewan Baru',
-    '4 Dongeng Eksklusif',
-    'Kartu Printable',
-    'Akses Offline',
-  ];
 
   // General
   static const String locked = 'Terkunci';

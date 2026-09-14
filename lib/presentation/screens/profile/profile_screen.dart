@@ -1,4 +1,6 @@
+import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/data/models/response/subscription_info.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/screens/profile/child_form.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_bloc.dart';
@@ -152,6 +154,11 @@ class ProfileScreen extends StatelessWidget {
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       children: [
+                        if (user?.isSubscribed == true &&
+                            user?.subscription != null) ...[
+                          _MembershipCard(subscription: user!.subscription!),
+                          const SizedBox(height: 12),
+                        ],
                         _InfoCard(
                           icon: Iconsax.user,
                           label: 'Orang Tua',
@@ -349,6 +356,75 @@ class _EditProfileSheet extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Membership card ───────────────────────────────────────────────────────────
+
+class _MembershipCard extends StatelessWidget {
+  final SubscriptionInfo subscription;
+
+  const _MembershipCard({required this.subscription});
+
+  @override
+  Widget build(BuildContext context) {
+    final daysLeft = subscription.daysLeft;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.primaryOrange, AppColors.primaryOrangeDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.workspace_premium_rounded, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  subscription.planName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            daysLeft != null
+                ? '$daysLeft hari lagi sebelum masa aktif berakhir'
+                : 'Langganan aktif',
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => context.push('/premium', extra: true),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.white),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Perpanjang / Bayar',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

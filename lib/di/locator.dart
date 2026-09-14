@@ -5,6 +5,7 @@ import 'package:arunika_app/data/api/banner_api.dart';
 import 'package:arunika_app/data/api/category_api.dart';
 import 'package:arunika_app/data/api/dongeng_history_api.dart';
 import 'package:arunika_app/data/api/fairy_tales_api.dart';
+import 'package:arunika_app/data/api/order_api.dart';
 import 'package:arunika_app/data/api/premium_pack_api.dart';
 import 'package:arunika_app/data/api/user_api.dart';
 import 'package:arunika_app/data/repositories/animal_repository.dart';
@@ -14,6 +15,7 @@ import 'package:arunika_app/data/repositories/banner_repository.dart';
 import 'package:arunika_app/data/repositories/category_repository.dart';
 import 'package:arunika_app/data/repositories/dongeng_history_repository.dart';
 import 'package:arunika_app/data/repositories/fairy_tales_repository.dart';
+import 'package:arunika_app/data/repositories/order_repository.dart';
 import 'package:arunika_app/data/repositories/premium_pack_repository.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
@@ -40,4 +42,5 @@ void setupLocator() {
     () => DongengHistoryRepository(DongengHistoryApi()),
   );
   locator.registerLazySingleton(() => PremiumPackRepository(PremiumPackApi()));
+  locator.registerLazySingleton(() => OrderRepository(OrderApi()));
 }

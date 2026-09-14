@@ -4,13 +4,19 @@ import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/data/static/premium_packs.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/screens/premium/premium_pack_cubit.dart';
 import 'package:go_router/go_router.dart';
 
 class PremiumUpgradeScreen extends StatefulWidget {
-  const PremiumUpgradeScreen({super.key});
+  // When true (reached from the profile page's "extend membership" CTA),
+  // only the subscription tab is shown — extending a subscription has
+  // nothing to do with one-time content bundles.
+  final bool subscriptionOnly;
+
+  const PremiumUpgradeScreen({super.key, this.subscriptionOnly = false});
 
   @override
   State<PremiumUpgradeScreen> createState() => _PremiumUpgradeScreenState();
@@ -18,22 +24,43 @@ class PremiumUpgradeScreen extends StatefulWidget {
 
 class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
+  TabController? _tabController;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    if (!widget.subscriptionOnly) {
+      _tabController = TabController(length: 2, vsync: this);
+    }
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _tabController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.subscriptionOnly) {
+      return Scaffold(
+        backgroundColor: AppColors.creamBackground,
+        appBar: AppBar(
+          title: Text(
+            AppStrings.premiumTabSubscription,
+            style: AppTextStyles.subheading,
+          ),
+          backgroundColor: AppColors.creamBackground,
+          elevation: 0,
+          leading: const BackButton(color: AppColors.deepBrown),
+        ),
+        body: BlocProvider(
+          create: (_) => PremiumPackCubit('subscription')..loadPacks(),
+          child: const _PackTabView(),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.creamBackground,
       appBar: AppBar(
@@ -198,7 +225,7 @@ class _PackCard extends StatelessWidget {
           return;
         }
         if (context.mounted) {
-          context.push('/payment', extra: pack);
+          context.push('/payment', extra: PurchasableItem.fromPackage(pack));
         }
       },
       child: Container(
@@ -350,7 +377,7 @@ class _PremiumLoginGuardDialog extends StatelessWidget {
                   Navigator.of(context).pop();
                   await context.push('/signin');
                   if (context.mounted && locator<AuthNotifier>().isLoggedIn) {
-                    context.push('/payment', extra: pack);
+                    context.push('/payment', extra: PurchasableItem.fromPackage(pack));
                   }
                 },
                 child: Text('Masuk', style: AppTextStyles.button),
@@ -376,7 +403,7 @@ class _PremiumLoginGuardDialog extends StatelessWidget {
                   Navigator.of(context).pop();
                   await context.push('/signup');
                   if (context.mounted && locator<AuthNotifier>().isLoggedIn) {
-                    context.push('/payment', extra: pack);
+                    context.push('/payment', extra: PurchasableItem.fromPackage(pack));
                   }
                 },
                 child: Text(

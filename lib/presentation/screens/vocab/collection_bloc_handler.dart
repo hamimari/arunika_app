@@ -12,6 +12,7 @@ class CollectionBlocHandler extends Bloc<CollectionEvent, CollectionState> {
     on<FilterByCategory>(_onFilterCategory);
     on<FilterBySubCategory>(_onFilterSubCategory);
     on<SearchArCards>(_onSearch);
+    on<ToggleOwnedOnly>(_onToggleOwnedOnly);
   }
 
   Future<void> _onLoad(LoadArCards event, Emitter<CollectionState> emit) async {
@@ -51,7 +52,13 @@ class CollectionBlocHandler extends Bloc<CollectionEvent, CollectionState> {
         clearCategoryId: event.categoryId == null,
         clearSubCategoryId: true,
         activeCategoryId: event.categoryId,
-        displayed: _apply(s.all, event.categoryId, null, s.searchQuery),
+        displayed: _apply(
+          s.all,
+          event.categoryId,
+          null,
+          s.searchQuery,
+          s.ownedOnly,
+        ),
       ),
     );
   }
@@ -71,6 +78,7 @@ class CollectionBlocHandler extends Bloc<CollectionEvent, CollectionState> {
           s.activeCategoryId,
           event.subCategoryId,
           s.searchQuery,
+          s.ownedOnly,
         ),
       ),
     );
@@ -87,6 +95,27 @@ class CollectionBlocHandler extends Bloc<CollectionEvent, CollectionState> {
           s.activeCategoryId,
           s.activeSubCategoryId,
           event.query,
+          s.ownedOnly,
+        ),
+      ),
+    );
+  }
+
+  void _onToggleOwnedOnly(
+    ToggleOwnedOnly event,
+    Emitter<CollectionState> emit,
+  ) {
+    if (state is! CollectionLoaded) return;
+    final s = state as CollectionLoaded;
+    emit(
+      s.copyWith(
+        ownedOnly: event.ownedOnly,
+        displayed: _apply(
+          s.all,
+          s.activeCategoryId,
+          s.activeSubCategoryId,
+          s.searchQuery,
+          event.ownedOnly,
         ),
       ),
     );
@@ -97,6 +126,7 @@ class CollectionBlocHandler extends Bloc<CollectionEvent, CollectionState> {
     String? categoryId,
     String? subCategoryId,
     String query,
+    bool ownedOnly,
   ) {
     List<ArCardResponse> result = all;
     if (categoryId != null && categoryId.isNotEmpty) {
@@ -110,6 +140,9 @@ class CollectionBlocHandler extends Bloc<CollectionEvent, CollectionState> {
       result = result
           .where((c) => (c.title ?? '').toLowerCase().contains(q))
           .toList();
+    }
+    if (ownedOnly) {
+      result = result.where((c) => c.isUnlocked).toList();
     }
     return result;
   }

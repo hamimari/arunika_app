@@ -1,15 +1,20 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/storage/LocalProfileStorage.dart';
+import 'package:arunika_app/core/utils/auth_guard.dart';
+import 'package:arunika_app/core/storage/SecureStorageToken.dart';
+import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/data/models/response/ar_card_category.dart';
 import 'package:arunika_app/data/models/response/banner_item.dart';
 import 'package:arunika_app/data/models/response/child_response.dart';
 import 'package:arunika_app/data/models/response/dongeng_response.dart';
 import 'package:arunika_app/data/repositories/ar_repository.dart';
 import 'package:arunika_app/data/repositories/fairy_tales_repository.dart';
+import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/navigation/main_shell.dart';
 import 'package:arunika_app/presentation/screens/home/home_banner_cubit.dart';
@@ -34,6 +39,7 @@ class NewHomeScreen extends StatefulWidget {
 class _NewHomeScreenState extends State<NewHomeScreen> {
   late final AuthNotifier _authNotifier;
   ChildResponse? _child;
+  bool _isSubscribed = false;
   int _refreshCounter = 0;
 
   @override
@@ -66,16 +72,30 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
       if (mounted) {
         setState(() {
           _child = null;
+          _isSubscribed = false;
         });
       }
       return;
     }
-    final profile = await LocalProfileStorage.get();
+    // Fetch fresh so the premium banner reflects current subscription state
+    // (e.g. right after a purchase, or once a subscription has expired),
+    // falling back to the cached copy if the network call fails.
+    final userId = await SecureTokenStorage.getUserId();
+    var profile = await LocalProfileStorage.get();
+    if (userId != null) {
+      try {
+        profile = await locator<UserRepository>().findById(userId);
+        await LocalProfileStorage.save(profile);
+      } catch (_) {
+        // keep the cached profile on failure
+      }
+    }
     if (mounted) {
       setState(() {
         _child = profile?.children.isNotEmpty == true
             ? profile!.children.first
             : null;
+        _isSubscribed = profile?.isSubscribed ?? false;
       });
     }
   }
@@ -132,6 +152,10 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
                   SliverToBoxAdapter(
                     child: BlocBuilder<PremiumPackCubit, PremiumPackState>(
                       builder: (context, packState) {
+                        // Already subscribed — no need to upsell.
+                        if (_isSubscribed) {
+                          return const SizedBox.shrink();
+                        }
                         // Hide while still loading (avoids flash when all packs
                         // turn out to be inactive).
                         if (packState is PremiumPackInitial ||
@@ -216,7 +240,11 @@ class _HomeHeader extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        isLoggedIn ? 'Halo, Explorer!' : 'Halo, Teman!',
+                        isLoggedIn
+                            ? (child != null
+                                  ? 'Halo, ${child!.name}\'s Mom And Dad!'
+                                  : 'Halo, Explorer!')
+                            : 'Halo, Teman!',
                         style: AppTextStyles.subheading.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
@@ -655,7 +683,7 @@ class _StoriesSection extends StatelessWidget {
   }
 }
 
-class _StoryCardWidget extends StatelessWidget {
+class _StoryCardWidget extends StatefulWidget {
   final DongengResponse dongeng;
   final double progress;
   final bool isLoggedIn;
@@ -665,34 +693,61 @@ class _StoryCardWidget extends StatelessWidget {
     required this.isLoggedIn,
   });
 
+  @override
+  State<_StoryCardWidget> createState() => _StoryCardWidgetState();
+}
+
+class _StoryCardWidgetState extends State<_StoryCardWidget> {
+  bool _isOpening = false;
+
   Future<void> _openDongeng(BuildContext context) async {
+    setState(() => _isOpening = true);
     try {
-      final full = await locator<FairyTalesRepository>().findById(dongeng.id);
+      final full = await locator<FairyTalesRepository>().findById(
+        widget.dongeng.id,
+      );
       if (context.mounted) {
         context.push('/dongeng-player', extra: full);
       }
     } catch (_) {
       if (context.mounted) {
-        context.push('/dongeng-player', extra: dongeng);
+        context.push('/dongeng-player', extra: widget.dongeng);
       }
+    } finally {
+      if (mounted) setState(() => _isOpening = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLocked = !dongeng.isFree;
+    final dongeng = widget.dongeng;
+    final progress = widget.progress;
+    final isLoggedIn = widget.isLoggedIn;
+    final isLocked = !dongeng.isUnlocked;
     return GestureDetector(
-      onTap: () {
-        if (isLocked) {
-          if (!isLoggedIn) {
-            showLoginRequiredDialog(context, featureLabel: 'dongeng premium');
-          } else {
-            context.push('/premium');
-          }
-        } else {
-          _openDongeng(context);
-        }
-      },
+      onTap: _isOpening
+          ? null
+          : () {
+              if (isLocked) {
+                if (!isLoggedIn) {
+                  showLoginRequiredDialog(
+                    context,
+                    featureLabel: 'dongeng premium',
+                  );
+                } else {
+                  goToProductPurchase(
+                    context,
+                    productId: dongeng.productId,
+                    title: dongeng.title,
+                    priceIdr: dongeng.priceIdr,
+                    contentType: PurchasedContentType.dongeng,
+                    subtitle: 'Akses ke dongeng ${dongeng.title}',
+                  );
+                }
+              } else {
+                _openDongeng(context);
+              }
+            },
       child: Container(
         width: 130,
         margin: const EdgeInsets.only(right: 14),
@@ -762,13 +817,21 @@ class _StoryCardWidget extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: Icon(
-                        isLocked
-                            ? Icons.lock_rounded
-                            : Icons.play_arrow_rounded,
-                        color: AppColors.white,
-                        size: 16,
-                      ),
+                      child: _isOpening
+                          ? const Padding(
+                              padding: EdgeInsets.all(6),
+                              child: CircularProgressIndicator(
+                                color: AppColors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Icon(
+                              isLocked
+                                  ? Icons.lock_rounded
+                                  : Icons.play_arrow_rounded,
+                              color: AppColors.white,
+                              size: 16,
+                            ),
                     ),
                   ),
                 ],
@@ -984,9 +1047,9 @@ class _PremiumBanner extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [
-                AppColors.premiumPurple,
-                AppColors.premiumPurpleDark,
-                Color(0xFF4A35C8),
+                AppColors.primaryOrange,
+                AppColors.primaryOrangeDark,
+                AppColors.deepBrown,
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -994,7 +1057,7 @@ class _PremiumBanner extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: AppColors.premiumPurple.withValues(alpha: 0.4),
+                color: AppColors.primaryOrangeDark.withValues(alpha: 0.4),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -1055,12 +1118,12 @@ class _PremiumBanner extends StatelessWidget {
                             vertical: 10,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryOrange,
+                            color: AppColors.white,
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primaryOrange.withValues(
-                                  alpha: 0.4,
+                                color: AppColors.deepBrown.withValues(
+                                  alpha: 0.2,
                                 ),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
@@ -1069,7 +1132,9 @@ class _PremiumBanner extends StatelessWidget {
                           ),
                           child: Text(
                             'Upgrade Sekarang',
-                            style: AppTextStyles.buttonSmall,
+                            style: AppTextStyles.buttonSmall.copyWith(
+                              color: AppColors.primaryOrangeDark,
+                            ),
                           ),
                         ),
                       ],
@@ -1215,6 +1280,12 @@ class _PrintableSheetContentState extends State<_PrintableSheetContent> {
       await OpenFile.open(file.path);
     } catch (e) {
       if (mounted) {
+        if (e is DioException && e.response?.statusCode == 403) {
+          // No entitlement for any card in this category — send them to
+          // purchase instead of pretending there's nothing to download.
+          guardPremium(context);
+          return;
+        }
         final msg = e.toString().toLowerCase();
         if (msg.contains('not found') ||
             msg.contains('404') ||

@@ -9,6 +9,8 @@ class PremiumPack {
   final bool isBestValue;
   final String? badgeLabel;
   final bool isActive;
+  // 'content' | 'subscription' — drives post-purchase routing.
+  final String type;
 
   const PremiumPack({
     required this.id,
@@ -18,6 +20,7 @@ class PremiumPack {
     this.isBestValue = false,
     this.badgeLabel,
     this.isActive = true,
+    this.type = 'content',
   });
 
   factory PremiumPack.fromJson(Map<String, dynamic> json) {
@@ -29,6 +32,7 @@ class PremiumPack {
       isBestValue: (json['is_best_value'] as bool?) ?? false,
       badgeLabel: json['badge_label'] as String?,
       isActive: (json['is_active'] as bool?) ?? true,
+      type: json['type'] as String? ?? 'content',
     );
   }
 
@@ -87,6 +91,7 @@ class PremiumPacks {
       name: 'Bulanan',
       subtitle: 'Akses penuh selama 1 bulan',
       priceIdr: 39000,
+      type: 'subscription',
     ),
     PremiumPack(
       id: 'sub_annual',
@@ -95,6 +100,7 @@ class PremiumPacks {
       priceIdr: 299000,
       isBestValue: true,
       badgeLabel: 'HEMAT 36%',
+      type: 'subscription',
     ),
   ];
 }

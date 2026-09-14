@@ -224,6 +224,47 @@ void main() {
     );
 
     blocTest<CollectionBlocHandler, CollectionState>(
+      'ToggleOwnedOnly(true) filters to only unlocked cards',
+      build: () {
+        when(() => mockRepo.findAll()).thenAnswer((_) async => _allCards);
+        when(() => mockRepo.getCategories()).thenAnswer((_) async => []);
+        return CollectionBlocHandler(repository: mockRepo);
+      },
+      seed: () => CollectionLoaded(all: _allCards, displayed: _allCards),
+      act: (bloc) => bloc.add(ToggleOwnedOnly(true)),
+      expect: () => [
+        isA<CollectionLoaded>()
+            .having((s) => s.displayed.length, 'unlocked count', 2)
+            .having((s) => s.ownedOnly, 'ownedOnly', true),
+      ],
+    );
+
+    blocTest<CollectionBlocHandler, CollectionState>(
+      'ToggleOwnedOnly combines with an active category filter',
+      build: () {
+        when(() => mockRepo.findAll()).thenAnswer((_) async => _allCards);
+        when(() => mockRepo.getCategories()).thenAnswer((_) async => []);
+        return CollectionBlocHandler(repository: mockRepo);
+      },
+      seed: () => CollectionLoaded(
+        all: _allCards,
+        displayed: _allCards,
+        activeCategoryId: _catId,
+        ownedOnly: true,
+      ),
+      act: (bloc) => bloc.add(FilterBySubCategory(_subLaut)),
+      expect: () => [
+        // _laut is locked and ownedOnly is already true, so the
+        // sub-category match still yields an empty list.
+        isA<CollectionLoaded>().having(
+          (s) => s.displayed,
+          'displayed',
+          isEmpty,
+        ),
+      ],
+    );
+
+    blocTest<CollectionBlocHandler, CollectionState>(
       'SearchArCards with empty query shows all cards',
       build: () {
         when(() => mockRepo.findAll()).thenAnswer((_) async => _allCards);

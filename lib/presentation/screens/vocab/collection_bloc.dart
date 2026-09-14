@@ -35,6 +35,13 @@ class SearchArCards extends CollectionEvent {
   List<Object?> get props => [query];
 }
 
+class ToggleOwnedOnly extends CollectionEvent {
+  final bool ownedOnly;
+  ToggleOwnedOnly(this.ownedOnly);
+  @override
+  List<Object?> get props => [ownedOnly];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 abstract class CollectionState extends Equatable {
@@ -52,6 +59,7 @@ class CollectionLoaded extends CollectionState {
   final String? activeCategoryId;
   final String? activeSubCategoryId;
   final String searchQuery;
+  final bool ownedOnly;
   final List<ArCardCategory>
   categories; // top-level categories with children preloaded
 
@@ -61,6 +69,7 @@ class CollectionLoaded extends CollectionState {
     this.activeCategoryId,
     this.activeSubCategoryId,
     this.searchQuery = '',
+    this.ownedOnly = false,
     this.categories = const [],
   });
 
@@ -71,6 +80,7 @@ class CollectionLoaded extends CollectionState {
     activeCategoryId,
     activeSubCategoryId,
     searchQuery,
+    ownedOnly,
     categories,
   ];
 
@@ -80,6 +90,7 @@ class CollectionLoaded extends CollectionState {
     String? activeCategoryId,
     String? activeSubCategoryId,
     String? searchQuery,
+    bool? ownedOnly,
     List<ArCardCategory>? categories,
     bool clearCategoryId = false,
     bool clearSubCategoryId = false,
@@ -94,6 +105,7 @@ class CollectionLoaded extends CollectionState {
           ? null
           : (activeSubCategoryId ?? this.activeSubCategoryId),
       searchQuery: searchQuery ?? this.searchQuery,
+      ownedOnly: ownedOnly ?? this.ownedOnly,
       categories: categories ?? this.categories,
     );
   }

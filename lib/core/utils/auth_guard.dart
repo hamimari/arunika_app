@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:go_router/go_router.dart';
 
@@ -20,6 +21,36 @@ Future<void> guardPremium(BuildContext context) async {
   await showDialog<void>(
     context: context,
     builder: (ctx) => _PremiumAuthGuardDialog(),
+  );
+}
+
+/// Routes a tap on a specific locked item (AR card / dongeng) straight to
+/// its single-product purchase screen, instead of the general package list —
+/// callers must already know the user is logged in. Falls back to
+/// [guardPremium] (the general package/subscription list) when the item has
+/// no product id/price yet, e.g. stale cached data from before a linked
+/// product existed.
+void goToProductPurchase(
+  BuildContext context, {
+  required String? productId,
+  required String title,
+  required int? priceIdr,
+  required PurchasedContentType contentType,
+  String? subtitle,
+}) {
+  if (productId == null || priceIdr == null) {
+    guardPremium(context);
+    return;
+  }
+  context.push(
+    '/payment',
+    extra: PurchasableItem.fromProduct(
+      productId: productId,
+      title: title,
+      priceIdr: priceIdr,
+      contentType: contentType,
+      subtitle: subtitle,
+    ),
   );
 }
 

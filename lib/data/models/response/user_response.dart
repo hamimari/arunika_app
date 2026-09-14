@@ -1,4 +1,5 @@
 import 'package:arunika_app/data/models/response/child_response.dart';
+import 'package:arunika_app/data/models/response/subscription_info.dart';
 
 class UserResponse {
   final String id;
@@ -9,6 +10,7 @@ class UserResponse {
   final String city;
   final List<ChildResponse> children;
   final bool isSubscribed;
+  final SubscriptionInfo? subscription;
 
   UserResponse({
     required this.id,
@@ -19,6 +21,7 @@ class UserResponse {
     required this.city,
     required this.children,
     this.isSubscribed = false,
+    this.subscription,
   });
 
   factory UserResponse.fromJson(Map<String, dynamic> json) {
@@ -35,6 +38,9 @@ class UserResponse {
               .toList() ??
           [],
       isSubscribed: json['is_subscribed'] as bool? ?? false,
+      subscription: json['subscription'] != null
+          ? SubscriptionInfo.fromJson(json['subscription'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -48,6 +54,7 @@ class UserResponse {
       'city': city,
       'children': children.map((child) => child.toJson()).toList(),
       'is_subscribed': isSubscribed,
+      'subscription': subscription?.toJson(),
     };
   }
 }
