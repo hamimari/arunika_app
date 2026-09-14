@@ -211,8 +211,14 @@ class SignupBloc extends Bloc<SignupEvent, SignupState> {
           );
           // Notify AuthNotifier so isLoggedIn becomes true immediately —
           // without this the shell would still treat the user as a guest
-          // right after registration.
-          await locator<AuthNotifier>().checkAuth();
+          // right after registration. Best-effort: the account is already
+          // created and the token/profile are already saved above, so a
+          // failure here (e.g. a network blip) must not be reported as a
+          // failed signup — AuthNotifier will pick up the saved token the
+          // next time something checks auth state.
+          try {
+            await locator<AuthNotifier>().checkAuth();
+          } catch (_) {}
 
           emit(state.copyWith(isSubmitting: false, isSuccess: true));
         } on DioException catch (e) {
