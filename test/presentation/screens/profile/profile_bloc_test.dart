@@ -72,8 +72,12 @@ void main() {
       ),
       act: (b) => b.add(EditSubmitted()),
       expect: () => [
-        isA<ProfileState>().having((s) => s.isSuccess, 'success', false),
-        isA<ProfileState>().having((s) => s.isSuccess, 'success', true),
+        isA<ProfileState>()
+            .having((s) => s.isSuccess, 'success', false)
+            .having((s) => s.isSubmitting, 'submitting', true),
+        isA<ProfileState>()
+            .having((s) => s.isSuccess, 'success', true)
+            .having((s) => s.isSubmitting, 'submitting', false),
       ],
     );
 
@@ -96,8 +100,12 @@ void main() {
       ),
       act: (b) => b.add(EditSubmitted()),
       expect: () => [
-        isA<ProfileState>().having((s) => s.isSuccess, 'success', false),
-        isA<ProfileState>().having((s) => s.error, 'error', isNotNull),
+        isA<ProfileState>()
+            .having((s) => s.isSuccess, 'success', false)
+            .having((s) => s.isSubmitting, 'submitting', true),
+        isA<ProfileState>()
+            .having((s) => s.error, 'error', isNotNull)
+            .having((s) => s.isSubmitting, 'submitting', false),
       ],
     );
 

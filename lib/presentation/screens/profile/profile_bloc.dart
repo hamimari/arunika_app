@@ -124,7 +124,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           ),
         );
       } else {
-        emit(state.copyWith(isSuccess: false));
+        emit(state.copyWith(isSuccess: false, isSubmitting: true));
         final request = UpdateUserRequest(
           id: state.user!.id,
           name: state.name,
@@ -144,13 +144,20 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         try {
           final UserResponse response = await repository.update(request);
           await LocalProfileStorage.save(response);
-          emit(state.copyWith(isSuccess: true, user: response));
+          emit(
+            state.copyWith(
+              isSuccess: true,
+              isSubmitting: false,
+              user: response,
+            ),
+          );
         } catch (_) {
           emit(
             state.copyWith(
               error:
                   'Sedang terjadi kesalahan, silakan coba beberapa saat lagi',
               isSuccess: false,
+              isSubmitting: false,
             ),
           );
           return;
