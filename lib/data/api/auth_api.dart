@@ -12,6 +12,17 @@ class AuthApi {
     return res.data;
   }
 
+  Future<Map<String, dynamic>> checkAvailability({
+    required String email,
+    required String phone,
+  }) async {
+    final res = await dio.get(
+      ApiPaths.checkAvailability,
+      queryParameters: {'email': email, 'phone': phone},
+    );
+    return res.data;
+  }
+
   Future<Map<String, dynamic>> signin(Map<String, dynamic> body) async {
     final res = await dio.post(ApiPaths.signin, data: body);
     return res.data;

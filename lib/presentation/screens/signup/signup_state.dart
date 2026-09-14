@@ -26,6 +26,7 @@ class SignupState {
   final bool navigateToChild;
   final bool navigateToTrial;
   final bool isSubmitting;
+  final bool isCheckingAvailability;
   final bool isSuccess;
   final bool showErrors;
   final String? error;
@@ -54,6 +55,7 @@ class SignupState {
     this.navigateToChild = false,
     this.navigateToTrial = false,
     this.isSubmitting = false,
+    this.isCheckingAvailability = false,
     this.isSuccess = false,
     this.showErrors = false,
     this.error = '',
@@ -81,6 +83,7 @@ class SignupState {
     String? childGenderError,
     bool? tncAccepted,
     bool? isSubmitting,
+    bool? isCheckingAvailability,
     bool? isSuccess,
     bool? showErrors,
     bool? navigateToChild,
@@ -108,6 +111,8 @@ class SignupState {
       childGenderError: childGenderError,
       tncAccepted: tncAccepted ?? this.tncAccepted,
       isSubmitting: isSubmitting ?? this.isSubmitting,
+      isCheckingAvailability:
+          isCheckingAvailability ?? this.isCheckingAvailability,
       isSuccess: isSuccess ?? this.isSuccess,
       showErrors: showErrors ?? this.showErrors,
       navigateToChild: navigateToChild ?? this.navigateToChild,

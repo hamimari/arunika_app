@@ -92,8 +92,16 @@ void main() {
     );
 
     blocTest<SignupBloc, SignupState>(
-      'NextButtonPressed with valid fields emits navigateToChild=true',
-      build: () => SignupBloc(repository: mockRepo),
+      'NextButtonPressed with valid fields checks availability then emits navigateToChild=true',
+      build: () {
+        when(
+          () => mockRepo.checkAvailability(
+            email: any(named: 'email'),
+            phone: any(named: 'phone'),
+          ),
+        ).thenAnswer((_) async => (false, false));
+        return SignupBloc(repository: mockRepo);
+      },
       seed: () => SignupState(
         name: 'Parent',
         phone: '08123456789',
@@ -105,10 +113,111 @@ void main() {
       act: (b) => b.add(NextButtonPressed()),
       expect: () => [
         isA<SignupState>().having(
-          (s) => s.navigateToChild,
-          'navigateToChild',
+          (s) => s.isCheckingAvailability,
+          'checking',
           true,
         ),
+        isA<SignupState>()
+            .having((s) => s.isCheckingAvailability, 'checking', false)
+            .having((s) => s.navigateToChild, 'navigateToChild', true),
+      ],
+    );
+
+    blocTest<SignupBloc, SignupState>(
+      'NextButtonPressed with a taken email emits emailError and does not navigate',
+      build: () {
+        when(
+          () => mockRepo.checkAvailability(
+            email: any(named: 'email'),
+            phone: any(named: 'phone'),
+          ),
+        ).thenAnswer((_) async => (true, false));
+        return SignupBloc(repository: mockRepo);
+      },
+      seed: () => SignupState(
+        name: 'Parent',
+        phone: '08123456789',
+        email: 'taken@example.com',
+        address: 'Jl. Test',
+        city: 'Jakarta',
+        password: 'Pass1234',
+      ),
+      act: (b) => b.add(NextButtonPressed()),
+      expect: () => [
+        isA<SignupState>().having(
+          (s) => s.isCheckingAvailability,
+          'checking',
+          true,
+        ),
+        isA<SignupState>()
+            .having((s) => s.isCheckingAvailability, 'checking', false)
+            .having((s) => s.emailError, 'emailError', isNotNull)
+            .having((s) => s.navigateToChild, 'navigateToChild', false),
+      ],
+    );
+
+    blocTest<SignupBloc, SignupState>(
+      'NextButtonPressed with a taken phone emits phoneError and does not navigate',
+      build: () {
+        when(
+          () => mockRepo.checkAvailability(
+            email: any(named: 'email'),
+            phone: any(named: 'phone'),
+          ),
+        ).thenAnswer((_) async => (false, true));
+        return SignupBloc(repository: mockRepo);
+      },
+      seed: () => SignupState(
+        name: 'Parent',
+        phone: '08199999999',
+        email: 'parent@example.com',
+        address: 'Jl. Test',
+        city: 'Jakarta',
+        password: 'Pass1234',
+      ),
+      act: (b) => b.add(NextButtonPressed()),
+      expect: () => [
+        isA<SignupState>().having(
+          (s) => s.isCheckingAvailability,
+          'checking',
+          true,
+        ),
+        isA<SignupState>()
+            .having((s) => s.isCheckingAvailability, 'checking', false)
+            .having((s) => s.phoneError, 'phoneError', isNotNull)
+            .having((s) => s.navigateToChild, 'navigateToChild', false),
+      ],
+    );
+
+    blocTest<SignupBloc, SignupState>(
+      'NextButtonPressed still navigates when the availability check itself fails',
+      build: () {
+        when(
+          () => mockRepo.checkAvailability(
+            email: any(named: 'email'),
+            phone: any(named: 'phone'),
+          ),
+        ).thenThrow(Exception('network error'));
+        return SignupBloc(repository: mockRepo);
+      },
+      seed: () => SignupState(
+        name: 'Parent',
+        phone: '08123456789',
+        email: 'parent@example.com',
+        address: 'Jl. Test',
+        city: 'Jakarta',
+        password: 'Pass1234',
+      ),
+      act: (b) => b.add(NextButtonPressed()),
+      expect: () => [
+        isA<SignupState>().having(
+          (s) => s.isCheckingAvailability,
+          'checking',
+          true,
+        ),
+        isA<SignupState>()
+            .having((s) => s.isCheckingAvailability, 'checking', false)
+            .having((s) => s.navigateToChild, 'navigateToChild', true),
       ],
     );
   });

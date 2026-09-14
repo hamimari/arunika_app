@@ -275,34 +275,59 @@ class SignupScreen extends StatelessWidget {
                                 const SizedBox(height: 24),
 
                                 // Next Button
-                                GestureDetector(
-                                  onTap: () => context.read<SignupBloc>().add(
-                                    NextButtonPressed(),
-                                  ),
-                                  child: Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryOrange,
-                                      borderRadius: BorderRadius.circular(14),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: AppColors.primaryOrange
-                                              .withValues(alpha: 0.35),
-                                          blurRadius: 12,
-                                          offset: const Offset(0, 4),
+                                BlocBuilder<SignupBloc, SignupState>(
+                                  buildWhen: (prev, curr) =>
+                                      prev.isCheckingAvailability !=
+                                      curr.isCheckingAvailability,
+                                  builder: (context, state) {
+                                    final isLoading =
+                                        state.isCheckingAvailability;
+                                    return GestureDetector(
+                                      onTap: isLoading
+                                          ? null
+                                          : () => context
+                                                .read<SignupBloc>()
+                                                .add(NextButtonPressed()),
+                                      child: Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
                                         ),
-                                      ],
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        'Selanjutnya',
-                                        style: AppTextStyles.button,
+                                        decoration: BoxDecoration(
+                                          color: isLoading
+                                              ? AppColors.primaryOrange
+                                                    .withValues(alpha: 0.7)
+                                              : AppColors.primaryOrange,
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppColors.primaryOrange
+                                                  .withValues(alpha: 0.35),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Center(
+                                          child: isLoading
+                                              ? const SizedBox(
+                                                  width: 20,
+                                                  height: 20,
+                                                  child: CircularProgressIndicator(
+                                                    color: AppColors.white,
+                                                    strokeWidth: 2.5,
+                                                  ),
+                                                )
+                                              : Text(
+                                                  'Selanjutnya',
+                                                  style: AppTextStyles.button,
+                                                ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),

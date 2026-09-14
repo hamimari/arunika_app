@@ -62,7 +62,7 @@ class SignupBloc extends Bloc<SignupEvent, SignupState> {
       );
     });
 
-    on<NextButtonPressed>((event, emit) {
+    on<NextButtonPressed>((event, emit) async {
       final nameError = state.name.isEmpty ? 'Nama tidak boleh kosong' : null;
       final phoneError = state.phone.isEmpty
           ? 'Nomor telepon tidak boleh kosong'
@@ -100,8 +100,38 @@ class SignupBloc extends Bloc<SignupEvent, SignupState> {
             addressError: addressError,
           ),
         );
-      } else {
-        emit(state.copyWith(navigateToChild: true));
+        return;
+      }
+
+      emit(state.copyWith(isCheckingAvailability: true));
+      try {
+        final (emailTaken, phoneTaken) = await repository.checkAvailability(
+          email: state.email,
+          phone: state.phone,
+        );
+        if (emailTaken || phoneTaken) {
+          emit(
+            state.copyWith(
+              isCheckingAvailability: false,
+              emailError: emailTaken ? 'Email sudah terdaftar' : null,
+              phoneError: phoneTaken
+                  ? 'Nomor telepon sudah terdaftar'
+                  : null,
+            ),
+          );
+          return;
+        }
+        emit(
+          state.copyWith(isCheckingAvailability: false, navigateToChild: true),
+        );
+      } catch (_) {
+        // Best-effort check — if the availability endpoint itself fails
+        // (network blip, server error), don't block the user from
+        // proceeding; the final submit's own uniqueness check is still
+        // there as a backstop.
+        emit(
+          state.copyWith(isCheckingAvailability: false, navigateToChild: true),
+        );
       }
     });
 
