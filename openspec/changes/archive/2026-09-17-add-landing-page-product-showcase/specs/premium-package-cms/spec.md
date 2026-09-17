@@ -1,8 +1,5 @@
-# premium-package-cms Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change add-landing-page-product-showcase. Update Purpose after archive.
-## Requirements
 ### Requirement: premium_packages database table exists
 The system SHALL have a `premium_packages` table with columns: `id` (UUID PK), `name` (VARCHAR 100), `subtitle` (VARCHAR 255), `description` (TEXT, nullable), `image_url` (TEXT, nullable), `price_idr` (INTEGER), `type` (VARCHAR 20, CHECK IN `content`, `subscription`), `badge_label` (VARCHAR 50, nullable), `is_best_value` (BOOLEAN, default FALSE), `is_active` (BOOLEAN, default TRUE), `sort_order` (INTEGER, default 0), `duration_days` (INTEGER, nullable), `created_at` (TIMESTAMPTZ), `updated_at` (TIMESTAMPTZ). Migration `V49__add_description_image_to_premium_packages.sql` SHALL add `description` and `image_url` as nullable columns to the existing table, requiring no backfill.
 
@@ -39,4 +36,3 @@ The system SHALL expose authenticated admin endpoints: `GET /admin/premium/packs
 #### Scenario: Admin updates description and image on an existing package
 - **WHEN** `PUT /admin/premium/packs/:id` is called with new `description`/`image_url` values
 - **THEN** the package's stored values SHALL be updated accordingly
-
