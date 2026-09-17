@@ -5,6 +5,8 @@ import 'package:arunika_app/data/api/banner_api.dart';
 import 'package:arunika_app/data/api/category_api.dart';
 import 'package:arunika_app/data/api/dongeng_history_api.dart';
 import 'package:arunika_app/data/api/fairy_tales_api.dart';
+import 'package:arunika_app/data/api/feature_flag_api.dart';
+import 'package:arunika_app/data/api/notification_api.dart';
 import 'package:arunika_app/data/api/order_api.dart';
 import 'package:arunika_app/data/api/premium_pack_api.dart';
 import 'package:arunika_app/data/api/user_api.dart';
@@ -19,6 +21,9 @@ import 'package:arunika_app/data/repositories/order_repository.dart';
 import 'package:arunika_app/data/repositories/premium_pack_repository.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
+import 'package:arunika_app/services/push_notification_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 
@@ -43,4 +48,12 @@ void setupLocator() {
   );
   locator.registerLazySingleton(() => PremiumPackRepository(PremiumPackApi()));
   locator.registerLazySingleton(() => OrderRepository(OrderApi()));
+  locator.registerLazySingleton(() => FeatureFlagsNotifier(FeatureFlagApi()));
+  locator.registerLazySingleton(
+    () => PushNotificationService(
+      FirebaseMessaging.instance,
+      NotificationApi(),
+      locator<AuthNotifier>(),
+    ),
+  );
 }

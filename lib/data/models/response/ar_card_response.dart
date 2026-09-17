@@ -55,9 +55,8 @@ class ArCardResponse {
   /// Resolved sub-category name: prefers structured ref, falls back to legacy string
   String get resolvedSubCategoryName => subCategoryRef?.name ?? subCategory;
 
-  /// Resolved emoji: prefers category ref emoji, falls back to card emoji
-  String get resolvedEmoji =>
-      emoji.isNotEmpty ? emoji : (categoryRef?.emoji ?? '🃏');
+  /// Card emoji, or a generic card when none is set.
+  String get resolvedEmoji => emoji.isNotEmpty ? emoji : '🃏';
 
   factory ArCardResponse.fromJson(Map<String, dynamic> json) {
     final catJson = json['category_ref'] as Map<String, dynamic>?;

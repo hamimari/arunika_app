@@ -16,11 +16,12 @@ import 'package:arunika_app/presentation/screens/widgets/login_required_dialog.d
 import 'package:arunika_app/presentation/screens/widgets/ownership_filter_sheet.dart';
 import 'package:arunika_app/presentation/screens/vocab/collection_bloc_handler.dart';
 import 'package:arunika_app/constants/app_strings.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 CategoryOption _fromArCardCategory(ArCardCategory c) => CategoryOption(
   id: c.id,
   name: c.name,
-  emoji: c.emoji,
+  imageUrl: c.imageUrl,
   children: c.children.map(_fromArCardCategory).toList(),
 );
 
@@ -415,8 +416,8 @@ class _ArCardItem extends StatelessWidget {
                       child: Container(
                         color: _parseBgColor(card.bgColor),
                         child: card.imageUrl.isNotEmpty
-                            ? Image.network(
-                                card.imageUrl,
+                            ? Image(
+                                image: MediaCache.image(card.imageUrl),
                                 width: double.infinity,
                                 height: double.infinity,
                                 fit: BoxFit.cover,

@@ -4,6 +4,7 @@ import 'package:arunika_app/presentation/screens/landing/landing_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
@@ -24,7 +25,6 @@ class LandingScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               child: Column(
                 children: [
-
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Column(
@@ -42,8 +42,10 @@ class LandingScreen extends StatelessWidget {
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(28),
-                            child: Image.network(
-                              'https://raw.githubusercontent.com/hamimari/arunika_assets/main/landing_icon_transparent.png',
+                            child: Image(
+                              image: MediaCache.image(
+                                'https://raw.githubusercontent.com/hamimari/arunika_assets/main/landing_icon_transparent.png',
+                              ),
                               width: double.infinity,
                               height: 280,
                               fit: BoxFit.contain,
@@ -70,7 +72,7 @@ class LandingScreen extends StatelessWidget {
 
                   const Text(
                     'Aplikasi belajar berbasis bermain untuk anak usia 1–10 tahun.\n'
-                        'Dilengkapi karakter favorit, AR flashcard, dan dongeng interaktif.',
+                    'Dilengkapi karakter favorit, AR flashcard, dan dongeng interaktif.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14.5,
@@ -111,9 +113,7 @@ class LandingScreen extends StatelessWidget {
 
                   Row(
                     children: [
-                      Expanded(
-                        child: Divider(color: Colors.grey.shade300),
-                      ),
+                      Expanded(child: Divider(color: Colors.grey.shade300)),
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 12),
                         child: Text(
@@ -121,9 +121,7 @@ class LandingScreen extends StatelessWidget {
                           style: TextStyle(color: Colors.grey),
                         ),
                       ),
-                      Expanded(
-                        child: Divider(color: Colors.grey.shade300),
-                      ),
+                      Expanded(child: Divider(color: Colors.grey.shade300)),
                     ],
                   ),
 
@@ -134,7 +132,10 @@ class LandingScreen extends StatelessWidget {
                     height: 52,
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.orange, width: 1.4),
+                        side: const BorderSide(
+                          color: Colors.orange,
+                          width: 1.4,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),

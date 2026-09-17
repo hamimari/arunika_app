@@ -4,9 +4,13 @@ import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/di/locator.dart';
+import 'package:arunika_app/services/push_notification_service.dart';
 
-// Tab index constants — used by other screens to switch tabs programmatically.
+// Tab ids — used by other screens to switch tabs programmatically. These are
+// stable identifiers, not positions: tabs can be hidden (logged out, or a
+// feature switched off from the backoffice), which shifts positions.
 class MainShellTab {
   static const int home = 0;
   static const int scan = 1;
@@ -38,22 +42,56 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => MainShellState();
 }
 
-class MainShellState extends State<MainShell> {
-  int _currentIndex = 0;
+class MainShellState extends State<MainShell> with WidgetsBindingObserver {
+  int _currentIndex = MainShellTab.home;
   late final AuthNotifier _authNotifier;
+  late final FeatureFlagsNotifier _featureFlags;
 
   @override
   void initState() {
     super.initState();
     _authNotifier = locator<AuthNotifier>();
     _authNotifier.addListener(_onAuthChanged);
+    _featureFlags = locator<FeatureFlagsNotifier>();
+    _featureFlags.addListener(_onFeatureFlagsChanged);
+    WidgetsBinding.instance.addObserver(this);
+    // Open whatever a launch-time push notification linked to.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => locator<PushNotificationService>().consumePendingLink(),
+    );
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _featureFlags.removeListener(_onFeatureFlagsChanged);
     _authNotifier.removeListener(_onAuthChanged);
     super.dispose();
   }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Pick up features toggled from the backoffice while the app was in the
+    // background.
+    if (state == AppLifecycleState.resumed) _featureFlags.refresh();
+  }
+
+  void _onFeatureFlagsChanged() {
+    // If the tab being viewed was just hidden, fall back to home.
+    if (!_visibleTabs().contains(_currentIndex)) {
+      _currentIndex = MainShellTab.home;
+    }
+    setState(() {});
+  }
+
+  /// Tab ids currently shown, in display order.
+  List<int> _visibleTabs() => [
+    MainShellTab.home,
+    if (_featureFlags.qrScanEnabled) MainShellTab.scan,
+    MainShellTab.collection,
+    MainShellTab.dongeng,
+    if (_authNotifier.isLoggedIn) MainShellTab.parent,
+  ];
 
   void _onAuthChanged() {
     // Whenever the user is no longer logged in, unconditionally return to the
@@ -66,31 +104,43 @@ class MainShellState extends State<MainShell> {
     setState(() {});
   }
 
-  void switchTab(int index) {
-    setState(() => _currentIndex = index);
+  /// Switches to the tab with id [tab]; ignored if that tab is hidden.
+  void switchTab(int tab) {
+    if (!_visibleTabs().contains(tab)) return;
+    setState(() => _currentIndex = tab);
   }
+
+  Widget _screenFor(int tab) => switch (tab) {
+    MainShellTab.scan => widget.scanScreen,
+    MainShellTab.collection => widget.collectionScreen,
+    MainShellTab.dongeng => widget.dongengScreen,
+    MainShellTab.parent => widget.parentScreen,
+    _ => widget.homeScreen,
+  };
 
   @override
   Widget build(BuildContext context) {
-    final isLoggedIn = _authNotifier.isLoggedIn;
-    final children = [
-      widget.homeScreen,
-      widget.scanScreen,
-      widget.collectionScreen,
-      widget.dongengScreen,
-      if (isLoggedIn) widget.parentScreen,
-    ];
-    // Clamp index when parent tab disappears on logout.
-    final safeIndex = _currentIndex.clamp(0, children.length - 1);
+    final tabs = _visibleTabs();
+    final activeTab = tabs.contains(_currentIndex)
+        ? _currentIndex
+        : MainShellTab.home;
 
     return Scaffold(
-      body: IndexedStack(index: safeIndex, children: children),
-      bottomNavigationBar: _buildBottomNav(isLoggedIn, safeIndex),
+      body: IndexedStack(
+        index: tabs.indexOf(activeTab),
+        // Keyed by tab id so hiding a tab doesn't hand its state to the
+        // screen that slides into its position.
+        children: [
+          for (final tab in tabs)
+            KeyedSubtree(key: ValueKey(tab), child: _screenFor(tab)),
+        ],
+      ),
+      bottomNavigationBar: _buildBottomNav(tabs, activeTab),
     );
   }
 
-  Widget _buildBottomNav(bool isLoggedIn, int safeIndex) {
-    final items = <_NavTabItem>[
+  Widget _buildBottomNav(List<int> visibleTabs, int activeTab) {
+    final allItems = <_NavTabItem>[
       _NavTabItem(
         label: AppStrings.navHome,
         icon: Iconsax.sun_fog,
@@ -116,14 +166,14 @@ class MainShellState extends State<MainShell> {
         activeIcon: Iconsax.magicpen,
         index: MainShellTab.dongeng,
       ),
-      if (isLoggedIn)
-        _NavTabItem(
-          label: AppStrings.navParent,
-          icon: Iconsax.profile_circle,
-          activeIcon: Iconsax.profile_circle5,
-          index: MainShellTab.parent,
-        ),
+      _NavTabItem(
+        label: AppStrings.navParent,
+        icon: Iconsax.profile_circle,
+        activeIcon: Iconsax.profile_circle5,
+        index: MainShellTab.parent,
+      ),
     ];
+    final items = allItems.where((i) => visibleTabs.contains(i.index));
 
     return SafeArea(
       top: false,
@@ -144,7 +194,7 @@ class MainShellState extends State<MainShell> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: items
-              .map((item) => _buildNavTab(item, safeIndex == item.index))
+              .map((item) => _buildNavTab(item, activeTab == item.index))
               .toList(),
         ),
       ),

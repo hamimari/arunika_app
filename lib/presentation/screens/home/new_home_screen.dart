@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/core/storage/LocalProfileStorage.dart';
 import 'package:arunika_app/core/utils/auth_guard.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
@@ -26,6 +27,7 @@ import 'package:go_router/go_router.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
@@ -129,6 +131,7 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
                 setState(() => _refreshCounter++);
                 await Future.wait([
                   _loadProfile(),
+                  locator<FeatureFlagsNotifier>().refresh(),
                   ctx.read<HomeBannerCubit>().reload(),
                   ctx.read<HomeDongengSectionBloc>().reload(),
                   ctx.read<PremiumPackCubit>().loadPacks(fresh: true),
@@ -176,7 +179,15 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
                       },
                     ),
                   ),
-                  SliverToBoxAdapter(child: _PrintableSection()),
+                  SliverToBoxAdapter(
+                    child: ListenableBuilder(
+                      listenable: locator<FeatureFlagsNotifier>(),
+                      builder: (_, __) =>
+                          locator<FeatureFlagsNotifier>().printableCardsEnabled
+                          ? const _PrintableSection()
+                          : const SizedBox.shrink(),
+                    ),
+                  ),
                   const SliverToBoxAdapter(child: SizedBox(height: 32)),
                 ],
               ),
@@ -219,7 +230,7 @@ class _HomeHeader extends StatelessWidget {
                 radius: 24,
                 backgroundColor: const Color(0xFFFFE0B2),
                 backgroundImage: avatarUrl != null
-                    ? NetworkImage(avatarUrl)
+                    ? MediaCache.image(avatarUrl)
                     : null,
                 child: avatarUrl == null
                     ? const Icon(
@@ -332,10 +343,17 @@ class _BannerCarouselSectionState extends State<_BannerCarouselSection> {
     return BlocBuilder<HomeBannerCubit, HomeBannerState>(
       builder: (context, state) {
         if (state is HomeBannerEmpty) {
-          // Fallback to static hero banner when no banners
-          return _HeroBanner(
-            onScanTap: () =>
-                MainShell.shellKey.currentState?.switchTab(MainShellTab.scan),
+          // Fallback to static hero banner when no banners. It links to the
+          // scan tab only while QR scanning is enabled.
+          return ListenableBuilder(
+            listenable: locator<FeatureFlagsNotifier>(),
+            builder: (_, __) => _HeroBanner(
+              onScanTap: locator<FeatureFlagsNotifier>().qrScanEnabled
+                  ? () => MainShell.shellKey.currentState?.switchTab(
+                      MainShellTab.scan,
+                    )
+                  : null,
+            ),
           );
         }
         if (state is! HomeBannerLoaded) {
@@ -420,8 +438,8 @@ class _PromoBannerCard extends StatelessWidget {
           if (banner.imageUrl.isNotEmpty)
             ClipRRect(
               borderRadius: BorderRadius.circular(24),
-              child: Image.network(
-                banner.imageUrl,
+              child: Image(
+                image: MediaCache.image(banner.imageUrl),
                 fit: BoxFit.cover,
                 width: double.infinity,
                 height: double.infinity,
@@ -578,8 +596,8 @@ class _DailyAnimalBannerCard extends StatelessWidget {
 // ─── Hero AR Banner (fallback) ────────────────────────────────────────────────
 
 class _HeroBanner extends StatelessWidget {
-  final VoidCallback onScanTap;
-  const _HeroBanner({required this.onScanTap});
+  final VoidCallback? onScanTap;
+  const _HeroBanner({this.onScanTap});
 
   @override
   Widget build(BuildContext context) {
@@ -589,8 +607,10 @@ class _HeroBanner extends StatelessWidget {
         onTap: onScanTap,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
-          child: Image.network(
-            'https://raw.githubusercontent.com/hamimari/arunika_assets/main/banner.png',
+          child: Image(
+            image: MediaCache.image(
+              'https://raw.githubusercontent.com/hamimari/arunika_assets/main/banner.png',
+            ),
             height: 190,
             width: double.infinity,
             fit: BoxFit.cover,
@@ -774,8 +794,8 @@ class _StoryCardWidgetState extends State<_StoryCardWidget> {
                             borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(20),
                             ),
-                            child: Image.network(
-                              dongeng.imageUrl,
+                            child: Image(
+                              image: MediaCache.image(dongeng.imageUrl),
                               fit: BoxFit.cover,
                               width: double.infinity,
                               height: double.infinity,
@@ -948,7 +968,6 @@ class _CategoriesSectionState extends State<_CategoriesSection> {
                   (cat) => _CategoryTile(
                     id: cat.id,
                     name: cat.name,
-                    emoji: cat.emoji,
                     imageUrl: cat.imageUrl,
                   ),
                 )
@@ -963,12 +982,10 @@ class _CategoriesSectionState extends State<_CategoriesSection> {
 class _CategoryTile extends StatelessWidget {
   final String id;
   final String name;
-  final String emoji;
   final String imageUrl;
   const _CategoryTile({
     required this.id,
     required this.name,
-    required this.emoji,
     required this.imageUrl,
   });
 
@@ -998,19 +1015,13 @@ class _CategoryTile extends StatelessWidget {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(18),
               child: imageUrl.isNotEmpty
-                  ? Image.network(
-                      imageUrl,
+                  ? Image(
+                      image: MediaCache.image(imageUrl),
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Center(
-                        child: Text(
-                          emoji,
-                          style: const TextStyle(fontSize: 28),
-                        ),
-                      ),
+                      errorBuilder: (_, __, ___) =>
+                          const _CategoryImageFallback(size: 26),
                     )
-                  : Center(
-                      child: Text(emoji, style: const TextStyle(fontSize: 28)),
-                    ),
+                  : const _CategoryImageFallback(size: 26),
             ),
           ),
           const SizedBox(height: 8),
@@ -1026,6 +1037,26 @@ class _CategoryTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Shown in place of an AR card category image that is missing or fails to load.
+class _CategoryImageFallback extends StatelessWidget {
+  final double size;
+  const _CategoryImageFallback({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppColors.categoryGreenBg,
+      child: Center(
+        child: Icon(
+          Icons.image_outlined,
+          size: size,
+          color: AppColors.categoryGreen,
+        ),
       ),
     );
   }
@@ -1503,24 +1534,21 @@ class _PrintableSheetContentState extends State<_PrintableSheetContent> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  leading: cat.imageUrl.isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            cat.imageUrl,
-                            width: 36,
-                            height: 36,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Text(
-                              cat.emoji.isNotEmpty ? cat.emoji : '📄',
-                              style: const TextStyle(fontSize: 26),
-                            ),
-                          ),
-                        )
-                      : Text(
-                          cat.emoji.isNotEmpty ? cat.emoji : '📄',
-                          style: const TextStyle(fontSize: 26),
-                        ),
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 36,
+                      height: 36,
+                      child: cat.imageUrl.isNotEmpty
+                          ? Image(
+                              image: MediaCache.image(cat.imageUrl),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  const _CategoryImageFallback(size: 20),
+                            )
+                          : const _CategoryImageFallback(size: 20),
+                    ),
+                  ),
                   title: Text(cat.name, style: AppTextStyles.bodyLarge),
                   trailing: _downloadingIds.contains(cat.id)
                       ? const SizedBox(

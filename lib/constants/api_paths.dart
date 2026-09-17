@@ -22,5 +22,8 @@ class ApiPaths {
   static const String dongengPopular = "/fairy-tales/popular";
   static String dongengPlay(String id) => "/fairy-tales/$id/play";
   static const String premiumPacks = "/premium/packs";
+  static const String orders = "/orders";
   static String orderById(String id) => "/orders/$id";
+  static const String featureFlags = "/app/feature-flags";
+  static const String notificationToken = "/notifications/token";
 }

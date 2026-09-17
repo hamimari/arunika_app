@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 /// Minimal, model-agnostic shape the shared dropdown row needs — callers map
 /// their own category type (e.g. `ArCardCategory`, `DongengCategory`) into
@@ -9,14 +10,52 @@ class CategoryOption {
   final String id;
   final String name;
   final String emoji;
+
+  /// Shown as a small thumbnail before the name; takes precedence over [emoji].
+  final String imageUrl;
   final List<CategoryOption> children;
 
   const CategoryOption({
     required this.id,
     required this.name,
     this.emoji = '',
+    this.imageUrl = '',
     this.children = const [],
   });
+}
+
+class _CategoryOptionLabel extends StatelessWidget {
+  final CategoryOption option;
+
+  const _CategoryOptionLabel(this.option);
+
+  @override
+  Widget build(BuildContext context) {
+    final name = Text(
+      option.imageUrl.isEmpty
+          ? '${option.emoji} ${option.name}'.trim()
+          : option.name,
+      overflow: TextOverflow.ellipsis,
+    );
+    if (option.imageUrl.isEmpty) return name;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: Image(
+            image: MediaCache.image(option.imageUrl),
+            width: 20,
+            height: 20,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const SizedBox(width: 20, height: 20),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Flexible(child: name),
+      ],
+    );
+  }
 }
 
 /// Two-level category filter row: a "Semua Kategori" dropdown, plus a second
@@ -60,7 +99,7 @@ class CategoryDropdowns extends StatelessWidget {
               ...categories.map(
                 (cat) => DropdownMenuItem(
                   value: cat.id,
-                  child: Text('${cat.emoji} ${cat.name}'.trim()),
+                  child: _CategoryOptionLabel(cat),
                 ),
               ),
             ],
@@ -78,7 +117,7 @@ class CategoryDropdowns extends StatelessWidget {
                 ...activeCat.children.map(
                   (sub) => DropdownMenuItem(
                     value: sub.id,
-                    child: Text('${sub.emoji} ${sub.name}'.trim()),
+                    child: _CategoryOptionLabel(sub),
                   ),
                 ),
               ],

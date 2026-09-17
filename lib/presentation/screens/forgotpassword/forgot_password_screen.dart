@@ -21,6 +21,7 @@ class ForgotPasswordScreen extends StatelessWidget {
         if (state.error != null) {
           showModalBottomSheet(
             context: context,
+            isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (_) => AppErrorSheet(
               title: "Gagal Mengirim",
@@ -35,6 +36,7 @@ class ForgotPasswordScreen extends StatelessWidget {
         if (state.isSubmitted) {
           showModalBottomSheet(
             context: context,
+            isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (_) => AppErrorSheet(
               title: "Cek Email",

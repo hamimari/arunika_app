@@ -5,6 +5,7 @@ import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/data/models/response/ar_card_response.dart';
 import 'package:arunika_app/presentation/screens/arscanner/ar_core_screen.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 class ArCardDetailScreen extends StatefulWidget {
   final ArCardResponse card;
@@ -58,7 +59,7 @@ class _ArCardDetailScreenState extends State<ArCardDetailScreen> {
       if (_isPlaying) {
         await _audioPlayer.stop();
       } else {
-        await _audioPlayer.setUrl(audioUrl);
+        await MediaCache.setAudioUrl(_audioPlayer, audioUrl);
         await _audioPlayer.play();
       }
     } catch (e) {
@@ -103,8 +104,8 @@ class _ArCardDetailScreenState extends State<ArCardDetailScreen> {
                 height: 350,
                 color: _parseBgColor(card.bgColor),
                 child: card.imageUrl.isNotEmpty
-                    ? Image.network(
-                        card.imageUrl,
+                    ? Image(
+                        image: MediaCache.image(card.imageUrl),
                         width: double.infinity,
                         height: 350,
                         fit: BoxFit.fitWidth,

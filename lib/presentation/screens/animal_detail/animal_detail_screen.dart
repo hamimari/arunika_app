@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
+import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
+import 'package:arunika_app/di/locator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 @immutable
 class AnimalData {
@@ -170,8 +173,8 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
                 color: animal.bgColor,
                 child: Center(
                   child: animal.imageUrl.isNotEmpty
-                      ? Image.network(
-                          animal.imageUrl,
+                      ? Image(
+                          image: MediaCache.image(animal.imageUrl),
                           height: 180,
                           fit: BoxFit.contain,
                           errorBuilder: (_, __, ___) => Text(
@@ -259,20 +262,22 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Scan AR button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton.icon(
-                      onPressed: () => context.push('/ar-scan'),
-                      icon: const Icon(Icons.qr_code_scanner, size: 22),
-                      label: Text(
-                        AppStrings.btnScanAR,
-                        style: AppTextStyles.button,
+                  // Scan AR button — hidden when QR scanning is switched off
+                  if (locator<FeatureFlagsNotifier>().qrScanEnabled) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: () => context.push('/ar-scan'),
+                        icon: const Icon(Icons.qr_code_scanner, size: 22),
+                        label: Text(
+                          AppStrings.btnScanAR,
+                          style: AppTextStyles.button,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 12),
+                  ],
 
                   // Sound + Share buttons
                   Row(
@@ -325,7 +330,9 @@ class _ActionButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.primaryOrange.withValues(alpha: 0.4)),
+          border: Border.all(
+            color: AppColors.primaryOrange.withValues(alpha: 0.4),
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

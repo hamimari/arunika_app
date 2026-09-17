@@ -373,8 +373,8 @@ void main() {
         );
         when(() => mockRepo.getCategories()).thenAnswer(
           (_) async => [
-            const DongengCategory(id: 'cat-1', name: 'Fairy Tales', emoji: '🧚'),
-            const DongengCategory(id: 'cat-2', name: 'Islamic', emoji: '🕌'),
+            const DongengCategory(id: 'cat-1', name: 'Fairy Tales'),
+            const DongengCategory(id: 'cat-2', name: 'Islamic'),
           ],
         );
         return DongengListBloc(repository: mockRepo);

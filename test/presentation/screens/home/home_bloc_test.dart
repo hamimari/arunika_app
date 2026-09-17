@@ -176,7 +176,6 @@ void main() {
     final category = const ArCardCategory(
       id: 'c1',
       name: 'Ternak',
-      emoji: '🐄',
       imageUrl: imageUrl,
     );
     // Verify the condition that selects Image.network over emoji fallback
@@ -187,19 +186,29 @@ void main() {
     );
   });
 
-  test('AR category item uses emoji fallback when imageUrl is empty', () {
-    const category = ArCardCategory(
-      id: 'c1',
-      name: 'Ternak',
-      emoji: '🐄',
-      imageUrl: '',
-    );
-    // Verify the condition that selects emoji fallback
+  test('AR category item uses the icon fallback when imageUrl is empty', () {
+    const category = ArCardCategory(id: 'c1', name: 'Ternak', imageUrl: '');
     expect(
       category.imageUrl.isEmpty,
       isTrue,
-      reason: 'imageUrl is empty → emoji fallback should be used',
+      reason: 'imageUrl is empty → icon fallback should be used',
     );
-    expect(category.emoji, '🐄');
+  });
+
+  test('ArCardCategory parses image_url for parents and children', () {
+    final category = ArCardCategory.fromJson({
+      'id': 'c1',
+      'name': 'Binatang',
+      'image_url': 'https://example.com/binatang.png',
+      'children': [
+        {
+          'id': 'c2',
+          'name': 'Ternak',
+          'image_url': 'https://example.com/ternak.png',
+        },
+      ],
+    });
+    expect(category.imageUrl, 'https://example.com/binatang.png');
+    expect(category.children.single.imageUrl, 'https://example.com/ternak.png');
   });
 }

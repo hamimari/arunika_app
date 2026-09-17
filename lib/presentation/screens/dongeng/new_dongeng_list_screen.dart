@@ -16,11 +16,12 @@ import 'package:arunika_app/presentation/screens/widgets/ownership_filter_sheet.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 CategoryOption _fromDongengCategory(DongengCategory c) => CategoryOption(
   id: c.id,
   name: c.name,
-  emoji: c.emoji,
+  imageUrl: c.imageUrl,
   children: c.children.map(_fromDongengCategory).toList(),
 );
 
@@ -468,8 +469,8 @@ class _FeaturedCard extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               height: 200,
-              child: Image.network(
-                dongeng.imageUrl,
+              child: Image(
+                image: MediaCache.image(dongeng.imageUrl),
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
                   color: AppColors.creamCard,
@@ -601,8 +602,8 @@ class _StoryRow extends StatelessWidget {
             // Thumbnail
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                dongeng.imageUrl,
+              child: Image(
+                image: MediaCache.image(dongeng.imageUrl),
                 width: 64,
                 height: 64,
                 fit: BoxFit.cover,

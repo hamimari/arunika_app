@@ -9,11 +9,11 @@ class OrderResponse {
   factory OrderResponse.fromJson(Map<String, dynamic> json) {
     return OrderResponse(
       id: json['id'] as String,
-      status: _parseStatus(json['status'] as String?),
+      status: parseStatus(json['status'] as String?),
     );
   }
 
-  static OrderStatus _parseStatus(String? raw) {
+  static OrderStatus parseStatus(String? raw) {
     switch (raw) {
       case 'PAID':
         return OrderStatus.paid;

@@ -12,4 +12,16 @@ class OrderApi {
     final res = await dio.get(ApiPaths.orderById(orderId));
     return res.data['data'] as Map<String, dynamic>;
   }
+
+  /// Fetches one page of the user's own orders from GET /orders.
+  Future<Map<String, dynamic>> fetchOrders({
+    required int page,
+    required int perPage,
+  }) async {
+    final res = await dio.get(
+      ApiPaths.orders,
+      queryParameters: {'page': page, 'per_page': perPage},
+    );
+    return res.data as Map<String, dynamic>;
+  }
 }

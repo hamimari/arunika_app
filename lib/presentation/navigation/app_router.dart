@@ -1,4 +1,5 @@
 import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
 import 'package:arunika_app/core/utils/dongeng_tab_controller.dart';
 import 'package:arunika_app/data/models/purchasable_item.dart';
@@ -23,6 +24,7 @@ import 'package:arunika_app/presentation/screens/landing/new_landing_screen.dart
 import 'package:arunika_app/presentation/screens/otp/otp_bloc.dart';
 import 'package:arunika_app/presentation/screens/otp/otp_screen.dart';
 import 'package:arunika_app/presentation/screens/payment/payment_screen.dart';
+import 'package:arunika_app/presentation/screens/payment_history/payment_history_screen.dart';
 import 'package:arunika_app/presentation/screens/premium/premium_upgrade_screen.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_bloc.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_event.dart';
@@ -169,7 +171,12 @@ class AppRouter {
       ),
 
       // ── AR scan shell ──────────────────────────────────────────────────────
-      GoRoute(path: '/ar-scan', builder: (_, __) => const ArScanShell()),
+      GoRoute(
+        path: '/ar-scan',
+        redirect: (_, __) =>
+            locator<FeatureFlagsNotifier>().qrScanEnabled ? null : '/shell',
+        builder: (_, __) => const ArScanShell(),
+      ),
 
       // ── Reward screen ──────────────────────────────────────────────────────
       GoRoute(
@@ -208,6 +215,12 @@ class AppRouter {
           final item = state.extra as PurchasableItem;
           return PaymentScreen(item: item);
         },
+      ),
+
+      // ── Payment history ────────────────────────────────────────────────────
+      GoRoute(
+        path: '/payment-history',
+        builder: (_, __) => const PaymentHistoryScreen(),
       ),
 
       // ── Unlock success ─────────────────────────────────────────────────────

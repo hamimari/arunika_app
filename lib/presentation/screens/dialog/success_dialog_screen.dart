@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 class SuccessDialog extends StatelessWidget {
   final int lesson;
@@ -43,17 +44,16 @@ class SuccessDialog extends StatelessWidget {
                 const SizedBox(height: 24),
                 const Text(
                   'Reward',
-                  style: TextStyle(
-                    color: Colors.orange,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(color: Colors.orange, fontSize: 16),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Image.network(
-                      'https://media-hosting.imagekit.io/79108ca295a14cf3/29Y_6di5usrkc5p2qc1k-removebg-preview.png?Expires=1840113759&Key-Pair-Id=K2ZIVPTIP2VGHC&Signature=dHiHlO6ajyTm3lnK6n0cOuYhYITSVeGLOY36bGVoDdMFctrCyd5wjeyqoe3vwd85-BcMyKEMOj9-MWnEmD2Kxt2zmOkN2QO28BLTUsK~h7y0uqJ0s3uHzeG-gALnrpH0u4JMvpVj0yW027RgjIrMwL-8scYjKr3A50FCfJDoY4PpBMK6EKHJIf2dY0QEMg8tBGqqfYXt6B5J2NR1BD5CFxn~g2DLySrAC-oX4jJUkQ2R3vJTq0TR3v6mI0nKmzoHVt2ZlVMlTeioUmS9qoCN5pE0kUkiF2K3hYuTlXa2jjx6TpCm00Qorr2Th-Y4u7gC-tBUUa~NUhfVpmsBPJ08pQ__', // candy placeholder
+                    Image(
+                      image: MediaCache.image(
+                        'https://media-hosting.imagekit.io/79108ca295a14cf3/29Y_6di5usrkc5p2qc1k-removebg-preview.png?Expires=1840113759&Key-Pair-Id=K2ZIVPTIP2VGHC&Signature=dHiHlO6ajyTm3lnK6n0cOuYhYITSVeGLOY36bGVoDdMFctrCyd5wjeyqoe3vwd85-BcMyKEMOj9-MWnEmD2Kxt2zmOkN2QO28BLTUsK~h7y0uqJ0s3uHzeG-gALnrpH0u4JMvpVj0yW027RgjIrMwL-8scYjKr3A50FCfJDoY4PpBMK6EKHJIf2dY0QEMg8tBGqqfYXt6B5J2NR1BD5CFxn~g2DLySrAC-oX4jJUkQ2R3vJTq0TR3v6mI0nKmzoHVt2ZlVMlTeioUmS9qoCN5pE0kUkiF2K3hYuTlXa2jjx6TpCm00Qorr2Th-Y4u7gC-tBUUa~NUhfVpmsBPJ08pQ__',
+                      ), // candy placeholder
                       height: 40,
                     ),
                     const SizedBox(width: 8),
@@ -79,7 +79,10 @@ class SuccessDialog extends StatelessWidget {
                       shadowColor: Colors.transparent,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
-                        side: const BorderSide(color: Color(0xFFFFE071), width: 3),
+                        side: const BorderSide(
+                          color: Color(0xFFFFE071),
+                          width: 3,
+                        ),
                       ),
                     ),
                     child: const Text(
@@ -106,7 +109,7 @@ class SuccessDialog extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(
                     3,
-                        (_) => const Padding(
+                    (_) => const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 6),
                       child: Icon(Icons.star, color: Colors.amber, size: 40),
                     ),
@@ -114,8 +117,10 @@ class SuccessDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xffFF9E32), Color(0xffFF7F2B)],

@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -85,7 +86,7 @@ class ProfileScreen extends StatelessWidget {
                         radius: 32,
                         backgroundColor: Colors.orange.shade200,
                         backgroundImage: child != null
-                            ? NetworkImage(
+                            ? MediaCache.image(
                                 'https://api.dicebear.com/7.x/bottts/png?seed=${child.name}',
                               )
                             : null,
@@ -187,6 +188,13 @@ class ProfileScreen extends StatelessWidget {
                           icon: Iconsax.home,
                           label: 'Alamat',
                           value: user?.address ?? '-',
+                        ),
+                        const SizedBox(height: 12),
+                        _InfoCard(
+                          icon: Iconsax.receipt_2,
+                          label: 'Transaksi',
+                          value: 'Riwayat Pembayaran',
+                          onTap: () => context.push('/payment-history'),
                         ),
                         const SizedBox(height: 28),
 
@@ -420,7 +428,10 @@ class _MembershipCard extends StatelessWidget {
               ),
               child: const Text(
                 'Perpanjang / Bayar',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -437,15 +448,19 @@ class _InfoCard extends StatelessWidget {
   final String label;
   final String value;
 
+  /// When set, the card is tappable and shows a chevron.
+  final VoidCallback? onTap;
+
   const _InfoCard({
     required this.icon,
     required this.label,
     required this.value,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -492,8 +507,20 @@ class _InfoCard extends StatelessWidget {
               ],
             ),
           ),
+          if (onTap != null)
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: Color(0xFF8D6E63),
+            ),
         ],
       ),
+    );
+    if (onTap == null) return card;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: card,
     );
   }
 }

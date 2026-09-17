@@ -2,6 +2,7 @@
 
 import 'package:arunika_app/data/api/order_api.dart';
 import 'package:arunika_app/data/models/response/order_response.dart';
+import 'package:arunika_app/data/models/response/payment_history_item.dart';
 import 'package:arunika_app/data/repositories/order_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -66,6 +67,57 @@ void main() {
       ).thenThrow(Exception('network error'));
 
       expect(() => repo.fetchOrderStatus('bad-id'), throwsException);
+    });
+  });
+
+  group('OrderRepository.fetchPaymentHistory', () {
+    test('maps GET /orders rows into history items', () async {
+      when(() => mockApi.fetchOrders(page: 1, perPage: 20)).thenAnswer(
+        (_) async => {
+          'data': [
+            {
+              'id': 'order-1',
+              'item_type': 'PACKAGE',
+              'item_name': 'Paket Langganan Bulanan',
+              'package_type': 'subscription',
+              'amount_idr': 29900,
+              'status': 'PAID',
+              'payment_type': 'bank_transfer',
+              'payment_method': 'BCA Virtual Account',
+              'created_at': '2026-09-01T10:00:00Z',
+              'updated_at': '2026-09-01T10:05:00Z',
+            },
+            {
+              'id': 'order-2',
+              'item_type': 'DONGENG',
+              'item_name': 'Kancil',
+              'amount_idr': 10000,
+              'status': 'EXPIRED',
+              'payment_type': '',
+              'payment_method': '',
+              'created_at': '2026-08-01T10:00:00Z',
+              'updated_at': '2026-08-02T10:00:00Z',
+            },
+          ],
+          'total': 7,
+        },
+      );
+
+      final page = await repo.fetchPaymentHistory();
+
+      expect(page.total, 7);
+      expect(page.items, hasLength(2));
+      final first = page.items.first;
+      expect(first.orderId, 'order-1');
+      expect(first.itemType, PaymentItemType.package);
+      expect(first.packageType, 'subscription');
+      expect(first.amountIdr, 29900);
+      expect(first.status, OrderStatus.paid);
+      expect(first.paymentMethod, 'BCA Virtual Account');
+      expect(first.createdAt.isUtc, isFalse);
+      expect(page.items[1].itemType, PaymentItemType.dongeng);
+      expect(page.items[1].status, OrderStatus.expired);
+      expect(page.items[1].paymentMethod, isEmpty);
     });
   });
 }

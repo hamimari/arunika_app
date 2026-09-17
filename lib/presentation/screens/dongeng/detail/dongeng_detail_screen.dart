@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 class DongengDetailScreen extends StatefulWidget {
   final DongengResponse dongeng;
@@ -111,7 +112,7 @@ class _PageReaderViewState extends State<_PageReaderView> {
     } else {
       setState(() => _isPlaying = true);
       try {
-        await _audioPlayer.setUrl(audioUrl);
+        await MediaCache.setAudioUrl(_audioPlayer, audioUrl);
         await _audioPlayer.play();
       } catch (_) {
         if (mounted) setState(() => _isPlaying = false);
@@ -140,8 +141,8 @@ class _PageReaderViewState extends State<_PageReaderView> {
             duration: const Duration(milliseconds: 350),
             transitionBuilder: (child, animation) =>
                 FadeTransition(opacity: animation, child: child),
-            child: Image.network(
-              page.imageUrl,
+            child: Image(
+              image: MediaCache.image(page.imageUrl),
               key: ValueKey(page.id),
               width: double.infinity,
               height: double.infinity,
@@ -445,8 +446,8 @@ class _NoContentView extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const BackButton(color: Colors.white),
-          Image.network(
-            dongeng.imageUrl,
+          Image(
+            image: MediaCache.image(dongeng.imageUrl),
             height: 140,
             fit: BoxFit.contain,
             errorBuilder: (_, __, ___) =>

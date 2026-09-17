@@ -3,6 +3,7 @@ import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:go_router/go_router.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 class NewLandingScreen extends StatelessWidget {
   const NewLandingScreen({super.key});
@@ -134,8 +135,10 @@ class NewLandingScreen extends StatelessWidget {
                         // ),
                         Column(
                           children: [
-                            Image.network(
-                              'https://raw.githubusercontent.com/hamimari/arunika_assets/main/landing_transparent.png', // candy placeholder
+                            Image(
+                              image: MediaCache.image(
+                                'https://raw.githubusercontent.com/hamimari/arunika_assets/main/landing_transparent.png',
+                              ), // candy placeholder
                               height: 250,
                             ),
                             // const Text('🦌', style: TextStyle(fontSize: 100)),

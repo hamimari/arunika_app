@@ -17,18 +17,18 @@ final _fullCard = ArCardResponse(
   id: 'test-1',
   title: 'Sapi',
   imageUrl: '',
-  funFact: 'Sapi menghasilkan susu setiap hari.',
-  audioUrl: '',
+  description: 'Sapi menghasilkan susu setiap hari.',
+  audioUrl: 'https://example.com/sapi.mp3',
   fileUrl: 'https://example.com/sapi.glb',
   isUnlocked: true,
   emoji: '🐄',
 );
 
-final _noFunFactCard = ArCardResponse(
+final _noDescriptionCard = ArCardResponse(
   id: 'test-2',
   title: 'Harimau',
   imageUrl: '',
-  funFact: '',
+  description: '',
   audioUrl: '',
   fileUrl: 'https://example.com/harimau.glb',
   isUnlocked: true,
@@ -37,23 +37,25 @@ final _noFunFactCard = ArCardResponse(
 
 void main() {
   testWidgets(
-    'renders card title, Tahukah Kamu, fun fact, Putar Suara and Lihat AR buttons',
+    'renders card title, Fun Fact, description, Putar Suara and Lihat AR buttons',
     (tester) async {
       await tester.pumpWidget(_buildScreen(_fullCard));
 
       expect(find.text('Sapi'), findsOneWidget);
-      expect(find.text('Tahukah Kamu?'), findsOneWidget);
+      expect(find.text('Fun Fact'), findsOneWidget);
       expect(find.text('Sapi menghasilkan susu setiap hari.'), findsOneWidget);
       expect(find.text('Putar Suara'), findsOneWidget);
       expect(find.text('Lihat AR'), findsOneWidget);
     },
   );
 
-  testWidgets('shows placeholder text when funFact is empty', (tester) async {
-    await tester.pumpWidget(_buildScreen(_noFunFactCard));
+  testWidgets('shows placeholder text when description is empty', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_buildScreen(_noDescriptionCard));
 
     expect(
-      find.text('Fun fact belum tersedia untuk kartu ini.'),
+      find.text('Deskripsi belum tersedia untuk kartu ini.'),
       findsOneWidget,
     );
   });

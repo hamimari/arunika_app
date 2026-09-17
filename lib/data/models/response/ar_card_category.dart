@@ -1,7 +1,6 @@
 class ArCardCategory {
   final String id;
   final String name;
-  final String emoji;
   final String imageUrl;
   final String? parentId;
   final int sortOrder;
@@ -10,7 +9,6 @@ class ArCardCategory {
   const ArCardCategory({
     required this.id,
     required this.name,
-    required this.emoji,
     this.imageUrl = '',
     this.parentId,
     this.sortOrder = 0,
@@ -22,7 +20,6 @@ class ArCardCategory {
     return ArCardCategory(
       id: json['id'] as String,
       name: json['name'] as String? ?? '',
-      emoji: json['emoji'] as String? ?? '',
       imageUrl: json['image_url'] as String? ?? '',
       parentId: json['parent_id'] as String?,
       sortOrder: json['sort_order'] as int? ?? 0,

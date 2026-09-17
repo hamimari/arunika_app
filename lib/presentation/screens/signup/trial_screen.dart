@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 class TrialScreen extends StatefulWidget {
   const TrialScreen({super.key});
@@ -81,8 +82,10 @@ class _TrialScreenState extends State<TrialScreen> {
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
-                                    child: Image.network(
-                                      imageAssets[index],
+                                    child: Image(
+                                      image: MediaCache.image(
+                                        imageAssets[index],
+                                      ),
                                       fit: BoxFit.cover,
                                       width: double.infinity,
                                     ),

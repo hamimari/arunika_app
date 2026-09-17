@@ -102,8 +102,12 @@ class AuthInterceptor extends InterceptorsWrapper {
         options: Options(extra: {'isRefresh': true}),
       );
 
-      final newToken = res.data['token'];
-      final newRefreshToken = res.data['refresh_token'];
+      // Matches auth_handler.go's RefreshToken response — 'access_token',
+      // not 'token' (the mismatch here used to save a null token on every
+      // refresh, silently breaking the session until the next hard logout).
+      final newToken = res.data['access_token'] as String?;
+      final newRefreshToken = res.data['refresh_token'] as String?;
+      if (newToken == null || newRefreshToken == null) return false;
 
       await SecureTokenStorage.saveToken(newToken);
       await SecureTokenStorage.saveRefreshToken(newRefreshToken);

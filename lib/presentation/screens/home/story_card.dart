@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 class StoryCard extends StatelessWidget {
   final String title;
@@ -39,8 +40,8 @@ class StoryCard extends StatelessWidget {
             borderRadius: const BorderRadius.horizontal(
               left: Radius.circular(20),
             ),
-            child: Image.network(
-              imageUrl,
+            child: Image(
+              image: MediaCache.image(imageUrl),
               width: 110,
               height: 110,
               fit: BoxFit.cover,

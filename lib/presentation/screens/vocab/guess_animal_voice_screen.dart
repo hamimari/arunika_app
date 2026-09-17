@@ -1,6 +1,7 @@
 import 'package:arunika_app/presentation/screens/dialog/success_dialog_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 class GuessAnimalVoiceScreen extends StatefulWidget {
   const GuessAnimalVoiceScreen({super.key});
@@ -31,7 +32,7 @@ class _GuessAnimalVoiceScreenState extends State<GuessAnimalVoiceScreen> {
       return;
     }
     try {
-      await _player.setUrl(_soundUrl);
+      await MediaCache.setAudioUrl(_player, _soundUrl);
       setState(() => _isPlaying = true);
       await _player.play();
     } catch (_) {
@@ -93,7 +94,10 @@ class _GuessAnimalVoiceScreenState extends State<GuessAnimalVoiceScreen> {
                           borderRadius: BorderRadius.circular(12),
                           child: InkWell(
                             onTap: () => _onImageTap(context, url),
-                            child: Image.network(url, fit: BoxFit.cover),
+                            child: Image(
+                              image: MediaCache.image(url),
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                       )

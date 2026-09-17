@@ -1,16 +1,19 @@
 import 'dart:async';
 
 import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/core/logger/app_logger.dart';
 import 'package:arunika_app/core/theme/app_theme.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/firebase_options.dart';
 import 'package:arunika_app/presentation/navigation/app_router.dart';
+import 'package:arunika_app/services/push_notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
   // Wrap everything — including binding initialisation — in the same zone so
@@ -61,10 +64,22 @@ void main() {
 
       await locator<AuthNotifier>().checkAuth();
 
+      // Apply the last-known feature switches before the first frame so a
+      // feature hidden from the backoffice never flashes on screen, then
+      // fetch the current ones in the background.
+      final featureFlags = locator<FeatureFlagsNotifier>();
+      await featureFlags.loadCached();
+      unawaited(featureFlags.refresh());
+
+      await initializeDateFormatting('id_ID');
+
       // Remove the splash screen now that the app is ready.
       FlutterNativeSplash.remove();
 
       runApp(const MyApp());
+
+      // Asks for notification permission, so start it once the UI is up.
+      unawaited(locator<PushNotificationService>().init());
     },
     (error, stackTrace) {
       AppLogger.error(
