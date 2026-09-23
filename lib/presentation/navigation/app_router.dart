@@ -21,8 +21,6 @@ import 'package:arunika_app/presentation/screens/forgotpassword/forgot_password_
 import 'package:arunika_app/presentation/screens/forgotpassword/forgot_password_screen.dart';
 import 'package:arunika_app/presentation/screens/home/new_home_screen.dart';
 import 'package:arunika_app/presentation/screens/landing/new_landing_screen.dart';
-import 'package:arunika_app/presentation/screens/otp/otp_bloc.dart';
-import 'package:arunika_app/presentation/screens/otp/otp_screen.dart';
 import 'package:arunika_app/presentation/screens/payment/payment_screen.dart';
 import 'package:arunika_app/presentation/screens/payment_history/payment_history_screen.dart';
 import 'package:arunika_app/presentation/screens/premium/premium_upgrade_screen.dart';
@@ -113,11 +111,6 @@ class AppRouter {
           ),
           child: const SignInScreen(),
         ),
-      ),
-      GoRoute(
-        path: '/otp',
-        builder: (context, state) =>
-            BlocProvider(create: (_) => OtpBloc(), child: const OtpScreen()),
       ),
       GoRoute(
         path: '/parent-signup-success',

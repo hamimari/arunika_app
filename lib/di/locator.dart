@@ -1,4 +1,3 @@
-import 'package:arunika_app/data/api/animal_api.dart';
 import 'package:arunika_app/data/api/ar_api.dart';
 import 'package:arunika_app/data/api/auth_api.dart';
 import 'package:arunika_app/data/api/banner_api.dart';
@@ -11,7 +10,6 @@ import 'package:arunika_app/data/api/order_api.dart';
 import 'package:arunika_app/data/api/play_billing_api.dart';
 import 'package:arunika_app/data/api/premium_pack_api.dart';
 import 'package:arunika_app/data/api/user_api.dart';
-import 'package:arunika_app/data/repositories/animal_repository.dart';
 import 'package:arunika_app/data/repositories/ar_repository.dart';
 import 'package:arunika_app/data/repositories/auth_repository.dart';
 import 'package:arunika_app/data/repositories/banner_repository.dart';
@@ -42,7 +40,6 @@ void setupLocator() {
 
   locator.registerLazySingleton(() => AuthNotifier());
   locator.registerLazySingleton(() => ArRepository(ArApi()));
-  locator.registerLazySingleton(() => AnimalRepository(AnimalApi()));
   locator.registerLazySingleton(() => BannerRepository(BannerApi()));
   locator.registerLazySingleton(() => CategoryRepository(CategoryApi()));
   locator.registerLazySingleton(

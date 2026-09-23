@@ -49,3 +49,7 @@ android/key.properties
 
 # Personal Claude Code settings (permission allow-list, machine-specific)
 .claude/
+
+# Test output (coverage-baseline.json IS committed — it is the ratchet baseline)
+coverage/
+reports/

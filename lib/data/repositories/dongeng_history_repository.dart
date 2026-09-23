@@ -26,12 +26,4 @@ class DongengHistoryRepository {
       return [];
     }
   }
-
-  Future<List<dynamic>> getPopular({String? category}) async {
-    try {
-      return await api.getPopular(category: category);
-    } catch (_) {
-      return [];
-    }
-  }
 }

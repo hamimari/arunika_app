@@ -11,6 +11,9 @@ class UserResponse {
   final List<ChildResponse> children;
   final bool isSubscribed;
   final SubscriptionInfo? subscription;
+  /// Whether the account holder has proven control of [emailAddress].
+  /// Gates password recovery only — never content or purchases.
+  final bool emailVerified;
 
   UserResponse({
     required this.id,
@@ -22,6 +25,7 @@ class UserResponse {
     required this.children,
     this.isSubscribed = false,
     this.subscription,
+    this.emailVerified = true,
   });
 
   factory UserResponse.fromJson(Map<String, dynamic> json) {
@@ -41,6 +45,9 @@ class UserResponse {
       subscription: json['subscription'] != null
           ? SubscriptionInfo.fromJson(json['subscription'] as Map<String, dynamic>)
           : null,
+      // Defaults to true so a profile from a backend that predates the field
+      // never shows the verification prompt to an existing user.
+      emailVerified: json['email_verified'] as bool? ?? true,
     );
   }
 
@@ -55,6 +62,7 @@ class UserResponse {
       'children': children.map((child) => child.toJson()).toList(),
       'is_subscribed': isSubscribed,
       'subscription': subscription?.toJson(),
+      'email_verified': emailVerified,
     };
   }
 }

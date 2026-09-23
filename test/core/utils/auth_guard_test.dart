@@ -4,7 +4,6 @@ import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:go_router/go_router.dart';
 
@@ -69,12 +68,10 @@ void main() {
     (tester) async {
       mockAuth.setLoggedIn(true);
 
-      late BuildContext capturedContext;
       await tester.pumpWidget(
         _buildApp(
           home: Builder(
             builder: (ctx) {
-              capturedContext = ctx;
               return ElevatedButton(
                 onPressed: () => guardPremium(ctx),
                 child: const Text('Go Premium'),

@@ -16,6 +16,11 @@ class AuthRepository {
     return SignUpResponse.fromJson(json);
   }
 
+  /// Asks the backend to send a fresh verification email.
+  /// Throws the underlying [DioException] so the caller can distinguish a
+  /// rate-limited response from a genuine failure.
+  Future<void> resendVerification() => api.resendVerification();
+
   Future<SignInResponse> signin(SignInRequest request) async {
     final json = await api.signin(request.toJson());
     return SignInResponse.fromJson(json);

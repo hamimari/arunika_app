@@ -32,4 +32,13 @@ class AuthApi {
     final res = await dio.post(ApiPaths.forgotPassword, data: body);
     return res.data;
   }
+
+  /// Requests a fresh verification email for the signed-in user.
+  /// The backend rate-limits this; a 429 surfaces as a DioException the
+  /// caller distinguishes so the user is told to wait rather than shown a
+  /// generic failure.
+  Future<Map<String, dynamic>> resendVerification() async {
+    final res = await dio.post(ApiPaths.resendVerification);
+    return res.data as Map<String, dynamic>;
+  }
 }

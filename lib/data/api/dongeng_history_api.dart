@@ -23,15 +23,4 @@ class DongengHistoryApi {
     final data = res.data as Map<String, dynamic>;
     return data['data'] as List<dynamic>;
   }
-
-  Future<List<dynamic>> getPopular({String? category}) async {
-    final res = await dio.get(
-      ApiPaths.dongengPopular,
-      queryParameters: {
-        if (category != null && category.isNotEmpty) 'category': category,
-      },
-    );
-    final data = res.data as Map<String, dynamic>;
-    return data['data'] as List<dynamic>;
-  }
 }

@@ -11,6 +11,10 @@ class UserResponseConverter {
        address: signUpResponse.address,
        city: signUpResponse.city,
        children: signUpResponse.children,
+       // A just-registered account has not verified its address yet. The
+       // field defaults to true elsewhere (so a profile from a backend
+       // predating it never nags an existing user), but here we know better.
+       emailVerified: false,
      );
    }
  }

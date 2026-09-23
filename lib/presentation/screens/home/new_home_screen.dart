@@ -6,6 +6,7 @@ import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/core/storage/LocalProfileStorage.dart';
+import 'package:arunika_app/presentation/screens/widgets/email_verification_banner.dart';
 import 'package:arunika_app/core/utils/auth_guard.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
 import 'package:arunika_app/data/models/purchasable_item.dart';
@@ -42,6 +43,7 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
   late final AuthNotifier _authNotifier;
   ChildResponse? _child;
   bool _isSubscribed = false;
+  bool _emailVerified = true;
   int _refreshCounter = 0;
 
   @override
@@ -75,6 +77,7 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
         setState(() {
           _child = null;
           _isSubscribed = false;
+          _emailVerified = true;
         });
       }
       return;
@@ -98,6 +101,7 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
             ? profile!.children.first
             : null;
         _isSubscribed = profile?.isSubscribed ?? false;
+        _emailVerified = profile?.emailVerified ?? true;
       });
     }
   }
@@ -145,6 +149,14 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
                   SliverToBoxAdapter(
                     child: _HomeHeader(isLoggedIn: isLoggedIn, child: _child),
                   ),
+                  // Informational only — it gates nothing. Sits under the
+                  // header so it is noticed without displacing content.
+                  if (isLoggedIn)
+                    SliverToBoxAdapter(
+                      child: EmailVerificationBanner(
+                        isVerified: _emailVerified,
+                      ),
+                    ),
                   SliverToBoxAdapter(child: _BannerCarouselSection()),
                   SliverToBoxAdapter(
                     child: _StoriesSection(isLoggedIn: isLoggedIn),
