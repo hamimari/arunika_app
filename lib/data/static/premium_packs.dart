@@ -11,6 +11,10 @@ class PremiumPack {
   final bool isActive;
   // 'content' | 'subscription' — drives post-purchase routing.
   final String type;
+  // Google Play Console in-app product/subscription SKU. Null means this
+  // package isn't purchasable via Google Play Billing yet — the purchase
+  // flow falls back to the existing Midtrans checkout for it.
+  final String? playProductId;
 
   const PremiumPack({
     required this.id,
@@ -21,6 +25,7 @@ class PremiumPack {
     this.badgeLabel,
     this.isActive = true,
     this.type = 'content',
+    this.playProductId,
   });
 
   factory PremiumPack.fromJson(Map<String, dynamic> json) {
@@ -33,6 +38,7 @@ class PremiumPack {
       badgeLabel: json['badge_label'] as String?,
       isActive: (json['is_active'] as bool?) ?? true,
       type: json['type'] as String? ?? 'content',
+      playProductId: json['play_product_id'] as String?,
     );
   }
 

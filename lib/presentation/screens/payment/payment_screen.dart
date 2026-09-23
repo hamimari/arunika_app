@@ -1,16 +1,27 @@
+import 'dart:io' show Platform;
+
 import 'package:arunika_app/constants/api_paths.dart';
 import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
+import 'package:arunika_app/data/api/play_billing_api.dart';
 import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/data/repositories/order_repository.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/network/dio_client.dart';
 import 'package:arunika_app/presentation/screens/payment/payment_polling_cubit.dart';
+import 'package:arunika_app/services/google_play_billing_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+
+/// Whether this item's purchase should route through Google Play Billing
+/// (Android only, and only for packages the backoffice has mapped to a Play
+/// product) instead of the Midtrans webview.
+bool _usesPlayBilling(PurchasableItem item) =>
+    !kIsWeb && Platform.isAndroid && item.isPlayBillingEligible;
 
 class PaymentScreen extends StatefulWidget {
   final PurchasableItem item;
@@ -27,6 +38,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool _hasError = false;
   String? _snapToken;
   String? _orderId;
+  bool _isProcessingPlayPurchase = false;
+  // Set when the user picked the alternative (Midtrans) billing option in
+  // Google Play's User Choice Billing selection screen — once the Midtrans
+  // order below settles, this must be reported to Google before continuing.
+  String? _pendingExternalTransactionToken;
 
   @override
   void initState() {
@@ -38,6 +54,68 @@ class _PaymentScreenState extends State<PaymentScreen> {
   void dispose() {
     _pollingCubit.close();
     super.dispose();
+  }
+
+  Future<void> _onPayPressed() {
+    if (_usesPlayBilling(widget.item)) {
+      return _startPlayBillingPurchase();
+    }
+    return _startPayment();
+  }
+
+  Future<void> _startPlayBillingPurchase() async {
+    setState(() {
+      _isProcessingPlayPurchase = true;
+      _hasError = false;
+    });
+
+    PlayPurchaseResult result;
+    try {
+      if (widget.item.kind == PurchaseKind.package) {
+        result = await locator<GooglePlayBillingService>().purchase(
+          packageId: widget.item.id,
+          playProductId: widget.item.playProductId!,
+        );
+      } else {
+        result = await locator<GooglePlayBillingService>().purchaseProduct(
+          productId: widget.item.id,
+          playProductId: widget.item.playProductId!,
+        );
+      }
+    } catch (_) {
+      // Backstop: GooglePlayBillingService.purchase()/purchaseProduct() are
+      // meant to never throw, but a stuck loading button with no way to
+      // retry is worse than an over-cautious catch here.
+      if (!mounted) return;
+      setState(() {
+        _isProcessingPlayPurchase = false;
+        _hasError = true;
+      });
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _isProcessingPlayPurchase = false);
+
+    switch (result.outcome) {
+      case PlayPurchaseOutcome.success:
+        context.go('/unlock-success', extra: widget.item);
+        break;
+      case PlayPurchaseOutcome.canceled:
+        break;
+      case PlayPurchaseOutcome.userChoseAlternativeBilling:
+        // User picked Midtrans in Google Play's selection screen — fall
+        // back to the existing Midtrans checkout below; the pending token
+        // is reported to Google once that payment settles (see the
+        // PaymentPollingPaid listener).
+        _pendingExternalTransactionToken = result.externalTransactionToken;
+        await _startPayment();
+        break;
+      case PlayPurchaseOutcome.error:
+      case PlayPurchaseOutcome.verificationFailed:
+        setState(() => _hasError = true);
+        break;
+    }
   }
 
   Future<void> _startPayment() async {
@@ -95,9 +173,25 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return BlocProvider.value(
       value: _pollingCubit,
       child: BlocConsumer<PaymentPollingCubit, PaymentPollingState>(
-        listener: (context, state) {
+        listener: (context, state) async {
           if (state is PaymentPollingPaid) {
-            context.go('/unlock-success', extra: widget.item);
+            final token = _pendingExternalTransactionToken;
+            final orderId = _orderId;
+            if (token != null && orderId != null) {
+              _pendingExternalTransactionToken = null;
+              try {
+                await locator<PlayBillingApi>().reportExternalTransaction(
+                  orderId: orderId,
+                  externalTransactionToken: token,
+                );
+              } catch (_) {
+                // Best-effort: the purchase and entitlement are already
+                // final via the Midtrans settlement above — a failed report
+                // here is a Play Console fee-accounting gap, not a failed
+                // purchase for the user, so it must not block them.
+              }
+            }
+            if (context.mounted) context.go('/unlock-success', extra: widget.item);
           }
         },
         builder: (context, state) {
@@ -211,7 +305,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Pembayaran diproses melalui Midtrans yang aman dan terpercaya. Anda akan diarahkan ke halaman pembayaran.',
+                      _usesPlayBilling(widget.item)
+                          ? 'Anda dapat memilih membayar melalui Google Play atau metode pembayaran lain (Midtrans) pada layar berikutnya.'
+                          : 'Pembayaran diproses melalui Midtrans yang aman dan terpercaya. Anda akan diarahkan ke halaman pembayaran.',
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.primaryOrange,
                       ),
@@ -282,7 +378,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isLoadingToken ? null : _startPayment,
+                onPressed: (_isLoadingToken || _isProcessingPlayPurchase) ? null : _onPayPressed,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryOrange,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -291,7 +387,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   ),
                   elevation: 0,
                 ),
-                child: _isLoadingToken
+                child: (_isLoadingToken || _isProcessingPlayPurchase)
                     ? const SizedBox(
                         width: 22,
                         height: 22,

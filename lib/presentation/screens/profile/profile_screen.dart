@@ -1,7 +1,9 @@
 import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/data/models/response/subscription_info.dart';
+import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/di/locator.dart';
+import 'package:arunika_app/presentation/screens/widgets/delete_account_dialog.dart';
 import 'package:arunika_app/presentation/screens/profile/child_form.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_bloc.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_event.dart';
@@ -230,6 +232,37 @@ class ProfileScreen extends StatelessWidget {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 12),
+
+                        // ── Delete account ──────────────────────────────
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _confirmDeleteAccount(context),
+                            icon: const Icon(
+                              Iconsax.trash,
+                              color: Colors.red,
+                            ),
+                            label: const Text(
+                              'Hapus Akun',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: const BorderSide(
+                                color: Colors.red,
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 24),
                       ],
                     ),
@@ -242,7 +275,30 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => const DeleteAccountDialog(),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await locator<UserRepository>().deleteAccount();
+      await locator<AuthNotifier>().logout();
+      if (context.mounted) context.go('/landing');
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal menghapus akun. Silakan coba lagi.'),
+          ),
+        );
+      }
+    }
+  }
 }
+
 
 // ── Edit profile bottom sheet ──────────────────────────────────────────────────
 

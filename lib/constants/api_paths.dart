@@ -5,6 +5,7 @@ class ApiPaths {
   static const String signin = "/auth/login";
   static const String findUserById = "/user/";
   static const String updateUser = "/user";
+  static const String deleteAccount = "/user/me";
   static const String fairyTales = "/fairy-tales";
   static const String fairyTaleById = "/fairy-tales/";
   static const String dongengCategories = "/dongeng-categories";
@@ -16,6 +17,10 @@ class ApiPaths {
   static const String animals = "/animals";
   static const String paymentCreate = "/payment/create";
   static const String paymentCreateProduct = "/payment/create-product";
+  static const String paymentPlayCreate = "/payment/play/create";
+  static const String paymentPlayCreateProduct = "/payment/play/create-product";
+  static const String paymentPlayVerify = "/payment/play/verify";
+  static const String paymentPlayReportExternal = "/payment/play/report-external";
   static const String banners = "/banners";
   static const String categories = "/categories";
   static const String dongengHistory = "/fairy-tales/history";

@@ -39,6 +39,7 @@ import 'package:arunika_app/presentation/screens/signup/parent_signup_success_sc
 import 'package:arunika_app/presentation/screens/signup/privacy_policy_screen.dart';
 import 'package:arunika_app/presentation/screens/unlock_success/unlock_success_screen.dart';
 import 'package:arunika_app/presentation/screens/vocab/collection_screen.dart';
+import 'package:arunika_app/presentation/screens/widgets/parental_gate_guard.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -200,11 +201,15 @@ class AppRouter {
       ),
 
       // ── Premium upgrade ────────────────────────────────────────────────────
+      // Gated by ParentalGateGuard — Families Policy requires a parental
+      // gate in front of purchase entry points in a children's app.
       GoRoute(
         path: '/premium',
         builder: (_, state) {
           final subscriptionOnly = state.extra as bool? ?? false;
-          return PremiumUpgradeScreen(subscriptionOnly: subscriptionOnly);
+          return ParentalGateGuard(
+            child: PremiumUpgradeScreen(subscriptionOnly: subscriptionOnly),
+          );
         },
       ),
 
@@ -213,7 +218,7 @@ class AppRouter {
         path: '/payment',
         builder: (context, state) {
           final item = state.extra as PurchasableItem;
-          return PaymentScreen(item: item);
+          return ParentalGateGuard(child: PaymentScreen(item: item));
         },
       ),
 

@@ -17,4 +17,10 @@ class UserApi {
     final res = await dio.put(ApiPaths.updateUser, data: payload);
     return res.data;
   }
+
+  /// DELETE /user/me — deletes/anonymizes the authenticated user's account
+  /// and data (see AccountDeletionService on the backend).
+  Future<void> deleteAccount() async {
+    await dio.delete(ApiPaths.deleteAccount);
+  }
 }

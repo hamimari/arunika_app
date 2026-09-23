@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
@@ -7,6 +8,7 @@ import 'package:arunika_app/core/theme/app_theme.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/firebase_options.dart';
 import 'package:arunika_app/presentation/navigation/app_router.dart';
+import 'package:arunika_app/services/google_play_billing_service.dart';
 import 'package:arunika_app/services/push_notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -63,6 +65,15 @@ void main() {
       setupLocator();
 
       await locator<AuthNotifier>().checkAuth();
+
+      // Reconcile any Google Play purchase the app never got to confirm
+      // with the backend (killed/crashed/offline between the purchase
+      // completing and calling verify) — Google auto-refunds an
+      // unacknowledged purchase after 3 days, so this must run on every
+      // app start, not only within the purchase flow that began it.
+      if (!kIsWeb && Platform.isAndroid && locator<AuthNotifier>().isLoggedIn) {
+        unawaited(locator<GooglePlayBillingService>().syncPendingPurchases());
+      }
 
       // Apply the last-known feature switches before the first frame so a
       // feature hidden from the backoffice never flashes on screen, then

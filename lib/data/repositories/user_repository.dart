@@ -16,4 +16,6 @@ class UserRepository {
     final json = await api.update(payload.toJson());
     return UserResponse.fromJson(json["data"]);
   }
+
+  Future<void> deleteAccount() => api.deleteAccount();
 }
