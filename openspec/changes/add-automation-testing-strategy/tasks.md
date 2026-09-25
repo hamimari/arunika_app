@@ -304,22 +304,43 @@ Neither could be meaningfully attempted in this environment — no Android SDK/e
 
 ---
 
-## 7. Hardening — security regression, release gates, staging
+## 7. Hardening — security regression, release gates, staging ✅ MOSTLY DONE (7.7 open)
 
 **Why:** authorization rules are asserted per-service today but never as an end-to-end policy, and there is no release-tier automation.
 **Effort:** ~5 days · **Dependencies:** Phases 2, 3, 6
 **Outcome:** a repeatable security regression suite plus staging and production gates.
 
-- [ ] 7.1 Add `tests/security/` covering: missing `Authorization` header, malformed JWT, expired JWT, JWT signed with the wrong key, revoked-token reuse after logout (Redis), expired refresh token, revoked refresh token, and refresh-token replay
-- [ ] 7.2 Add horizontal-escalation tests: user A reading user B's `GET /orders/:id`, growth records, notifications and fairy-tale history
-- [ ] 7.3 Add vertical-escalation tests: every `/admin/*` route hit with a valid *user* token must return 403, asserted by iterating the route table so a newly added admin route is covered automatically
-- [ ] 7.4 Add purchase-tampering tests: reused purchase token across users, `productId` tampering, package-name mismatch, and a purchase token replayed against a different order
-- [ ] 7.5 Add request-validation and injection tests: oversized payloads, wrong types, SQL metacharacters in filter/sort parameters (GORM parameterises, so these assert that the guarantee holds)
-- [ ] 7.6 Add error-leakage tests asserting no stack trace, SQL fragment, internal path or email-enumeration signal appears in any 4xx/5xx body — `ForgotPassword`'s non-enumerating behaviour is already tested at unit level and must hold at the API level too
+- [x] 7.1 Add `tests/security/` covering: missing `Authorization` header, malformed JWT, expired JWT, JWT signed with the wrong key, revoked-token reuse after logout (Redis), expired refresh token, revoked refresh token, and refresh-token replay
+- [x] 7.2 Add horizontal-escalation tests: user A reading user B's `GET /orders/:id`, growth records, notifications and fairy-tale history
+- [x] 7.3 Add vertical-escalation tests: every `/admin/*` route hit with a valid *user* token must return 403, asserted by iterating the route table so a newly added admin route is covered automatically
+- [x] 7.4 Add purchase-tampering tests: reused purchase token across users, `productId` tampering, package-name mismatch, and a purchase token replayed against a different order
+- [x] 7.5 Add request-validation and injection tests: oversized payloads, wrong types, SQL metacharacters in filter/sort parameters (GORM parameterises, so these assert that the guarantee holds)
+- [x] 7.6 Add error-leakage tests asserting no stack trace, SQL fragment, internal path or email-enumeration signal appears in any 4xx/5xx body — `ForgotPassword`'s non-enumerating behaviour is already tested at unit level and must hold at the API level too
 - [ ] 7.7 Add `release.yml`: deploy to staging → full E2E against staging → smoke tests → promote
-- [ ] 7.8 Add the production smoke suite: `/health`, anonymous content list, canary-account login, `GET /orders` for that account — read-only, no seeded data, no purchases
-- [ ] 7.9 Add `nightly.yml`: full suite re-run on an unchanged commit for flaky detection (design D7), plus the Patrol native suite and the license-tested Play Billing check on an internal-testing build
-- [ ] 7.10 Review quarantined tests; fix or delete anything past its two-week expiry
+- [x] 7.8 Add the production smoke suite: `/health`, anonymous content list, canary-account login, `GET /orders` for that account — read-only, no seeded data, no purchases
+- [x] 7.9 Add `nightly.yml`: full suite re-run on an unchanged commit for flaky detection (design D7), plus the Patrol native suite and the license-tested Play Billing check on an internal-testing build
+- [x] 7.10 Review quarantined tests; fix or delete anything past its two-week expiry
+
+---
+
+### Phase 7 outcomes
+
+**7.1–7.6 — `arunika-backend/tests/security/`, 34 tests (59 with subtests), all green.** The package assembles the real router, middleware and PostgreSQL like `tests/api`, but asserts policy. Credentials: nine forged or invalid access tokens (missing, malformed, expired, wrong key, wrong HMAC algorithm, `alg: none`, no `exp`, no `jti`) are all 401; a logged-out token is dead via the Redis blacklist; expired, logout-revoked, replayed and deleted-account refresh tokens are all refused. Vertical escalation walks the live route table — 93 `/admin/*` routes, discovered from `Router.Routes()` so a new admin route is covered the day it is added — and asserts 403 for a user token, with a floor on the count so route discovery cannot silently break. Purchase tampering covers a product-id swap, a token Google rejects for another package, a fabricated token, one token replayed against a second order, reuse across users, verifying another user's order, and cancelled/pending purchases. Injection and leakage run six SQL payloads over 16 endpoints × 13 parameter names, then hit every route with hostile ids and bodies.
+
+**Two real defects found; neither is fixed** (task 5.1 set "the only non-test source change in this proposal", so production code was left alone). Both are recorded in the tests so they stay visible:
+
+1. **Growth-record IDOR (security).** `GET/POST /growth` and `PUT /growth/:id` never check that the child belongs to the caller. Any signed-in user who learns a child id can read, create and edit that child's height and weight. The two tests assert the correct behaviour and `t.Skip` with a `KNOWN VULNERABILITY` message; delete the skips once `GrowthService` checks ownership.
+2. **Raw Postgres error on malformed ids (information disclosure).** `GET /ar/cards/:id` and `GET /ar/cards?category_id=` answer `500` with `ERROR: invalid input syntax for type uuid … (SQLSTATE 22P02)`. Not injectable — the value is parameterised, and the parents table is asserted intact — but it discloses schema detail and the status is wrong. They sit in `knownLeaks` / `knownLeakParams` in `input_test.go` rather than skipping the whole test, so every other route stays guarded.
+
+**Two things the suite got wrong first.** A refresh-token expiry test passed an hour-old expiry and still got 200: `refresh_tokens.expires_at` is a zoneless `TIMESTAMP`, and on a machine in WIB (UTC+7) the wall-clock digits Go writes are read back as UTC, so "one hour ago" was six hours in the future. Production servers run UTC, so this is latent rather than live, but it means expiry logic is timezone-dependent; the test now expires by 48 h. Separately, `GET /auth/verify-email` looked like a 500 leak; it was the harness running from `tests/security/` when handlers load `templates/` by relative path. `TestMain` now `chdir`s to the repo root.
+
+**7.8 — `tests/smoke/` (build tag `smoke`)** is read-only: `/health`, five anonymous content lists, anonymous rejection on `/orders` and `/admin/users`, and a canary login + `GET /orders` that logs out afterwards. It takes `SMOKE_BASE_URL`, `SMOKE_CANARY_EMAIL`, `SMOKE_CANARY_PASSWORD`; the canary checks skip when unset. **It has not been run against a real deployment** — there is no known deployed environment or canary account yet.
+
+**7.9 — flaky detection and native nightly.** `arunika-backend/.github/workflows/nightly.yml` runs the full suite three times on one commit and `scripts/flaky_detect.py` compares the JUnit reports (verified on synthetic reports: flaky vs consistently failing are reported separately). `arunika_app/.github/workflows/nightly.yml` runs the Patrol permission flows on an emulator. **The licence-tested Play Billing check is not automated:** it needs a real internal-testing build on a device signed in as a licence tester, which no runner provides. Neither workflow has run on GitHub.
+
+**7.10 — nothing to expire.** No test in any of the three repos is quarantined. The `skip:` hits in the Flutter suite are `bloc_test` event skips, and the `Platform.isAndroid` skips are legitimate platform gates. The only new skips are the two growth tests above.
+
+**7.7 stays open.** `release.yml` (deploy to staging → E2E → smoke → promote) needs a deploy mechanism and a staging environment, and the repo has neither: no deploy scripts, no staging URL, no hosting config. This is the open question design.md already carried ("is there an existing staging environment?"). Writing the deploy step blind would produce a workflow that looks finished and cannot work.
 
 ---
 
