@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:arunika_app/constants/api_paths.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yaml/yaml.dart';
 

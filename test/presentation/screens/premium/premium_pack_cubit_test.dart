@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:arunika_app/data/repositories/premium_pack_repository.dart';
 import 'package:arunika_app/data/static/premium_packs.dart';
 import 'package:arunika_app/di/locator.dart';
@@ -41,6 +43,23 @@ void main() {
   });
 
   group('PremiumPackCubit', () {
+    test(
+      'does not emit (or throw) when closed before the fetch completes',
+      () async {
+        final completer = Completer<List<PremiumPack>>();
+        when(
+          () => mockRepo.fetchPacks(type: any(named: 'type')),
+        ).thenAnswer((_) => completer.future);
+
+        final cubit = PremiumPackCubit('content');
+        final load = cubit.loadPacks();
+        await cubit.close();
+        completer.complete([_pack('1')]);
+
+        await expectLater(load, completes);
+      },
+    );
+
     blocTest<PremiumPackCubit, PremiumPackState>(
       'emits [PremiumPackLoading, PremiumPackLoaded] when fetchPacks succeeds',
       build: () {

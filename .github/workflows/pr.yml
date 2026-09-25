@@ -57,8 +57,13 @@ jobs:
           set -o pipefail
           flutter test --machine --coverage | tojunit --output reports/junit.xml
 
-      - name: Coverage ratchet (report-only)
+      # Enforcing: a pull request may not reduce coverage for any package.
+      # This is "no regression", not an absolute floor — several areas are
+      # still below the strategy's targets.
+      - name: Coverage ratchet
         if: always()
+        env:
+          RATCHET_ENFORCE: "1"
         run: python3 scripts/coverage_ratchet.py
 
       - name: Report results

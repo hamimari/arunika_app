@@ -21,6 +21,7 @@ import 'package:arunika_app/data/repositories/premium_pack_repository.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
+import 'package:arunika_app/services/billing_service.dart';
 import 'package:arunika_app/services/google_play_billing_service.dart';
 import 'package:arunika_app/services/push_notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -48,7 +49,7 @@ void setupLocator() {
   locator.registerLazySingleton(() => PremiumPackRepository(PremiumPackApi()));
   locator.registerLazySingleton(() => OrderRepository(OrderApi()));
   locator.registerLazySingleton(() => PlayBillingApi());
-  locator.registerLazySingleton(
+  locator.registerLazySingleton<BillingService>(
     () => GooglePlayBillingService(locator<PlayBillingApi>()),
   );
   locator.registerLazySingleton(() => FeatureFlagsNotifier(FeatureFlagApi()));

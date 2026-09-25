@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:arunika_app/data/api/play_billing_api.dart';
+import 'package:arunika_app/services/billing_service.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
@@ -34,7 +35,7 @@ class PlayPurchaseResult {
 /// user picks the alternative, this resolves with
 /// [PlayPurchaseOutcome.userChoseAlternativeBilling] so the caller can fall
 /// back to the existing Midtrans checkout.
-class GooglePlayBillingService {
+class GooglePlayBillingService implements BillingService {
   final InAppPurchase _iap;
   final PlayBillingApi _api;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
@@ -75,6 +76,7 @@ class GooglePlayBillingService {
   /// Buys [playProductId] (mapped to backend package [packageId]) and
   /// resolves once the purchase is verified, the user picked the
   /// alternative billing option, was canceled, or failed.
+  @override
   Future<PlayPurchaseResult> purchase({
     required String packageId,
     required String playProductId,
@@ -100,6 +102,7 @@ class GooglePlayBillingService {
 
   /// Buys [playProductId] (mapped to backend product [productId]) and
   /// resolves once the purchase is verified or failed.
+  @override
   Future<PlayPurchaseResult> purchaseProduct({
     required String productId,
     required String playProductId,
@@ -231,6 +234,7 @@ class GooglePlayBillingService {
     }
   }
 
+  @override
   void dispose() {
     _purchaseSubscription?.cancel();
     _purchaseSubscription = null;
@@ -243,6 +247,7 @@ class GooglePlayBillingService {
   /// for 3 days, so per Play Billing's own guidance this must run on every
   /// app start (not only within the [purchase] call that began it) — call
   /// this once, early, regardless of whether a purchase is in progress.
+  @override
   Future<void> syncPendingPurchases() async {
     if (!await _iap.isAvailable()) return;
 

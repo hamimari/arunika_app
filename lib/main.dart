@@ -8,7 +8,7 @@ import 'package:arunika_app/core/theme/app_theme.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/firebase_options.dart';
 import 'package:arunika_app/presentation/navigation/app_router.dart';
-import 'package:arunika_app/services/google_play_billing_service.dart';
+import 'package:arunika_app/services/billing_service.dart';
 import 'package:arunika_app/services/push_notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -72,7 +72,7 @@ void main() {
       // unacknowledged purchase after 3 days, so this must run on every
       // app start, not only within the purchase flow that began it.
       if (!kIsWeb && Platform.isAndroid && locator<AuthNotifier>().isLoggedIn) {
-        unawaited(locator<GooglePlayBillingService>().syncPendingPurchases());
+        unawaited(locator<BillingService>().syncPendingPurchases());
       }
 
       // Apply the last-known feature switches before the first frame so a

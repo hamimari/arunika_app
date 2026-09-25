@@ -10,6 +10,7 @@ import 'package:arunika_app/data/repositories/order_repository.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/network/dio_client.dart';
 import 'package:arunika_app/presentation/screens/payment/payment_polling_cubit.dart';
+import 'package:arunika_app/services/billing_service.dart';
 import 'package:arunika_app/services/google_play_billing_service.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -72,12 +73,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
     PlayPurchaseResult result;
     try {
       if (widget.item.kind == PurchaseKind.package) {
-        result = await locator<GooglePlayBillingService>().purchase(
+        result = await locator<BillingService>().purchase(
           packageId: widget.item.id,
           playProductId: widget.item.playProductId!,
         );
       } else {
-        result = await locator<GooglePlayBillingService>().purchaseProduct(
+        result = await locator<BillingService>().purchaseProduct(
           productId: widget.item.id,
           playProductId: widget.item.playProductId!,
         );

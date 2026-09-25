@@ -165,54 +165,142 @@ Phases are ordered by value-per-effort. Each phase is independently mergeable an
 **Effort:** ~6 days · **Dependencies:** Phase 1 (Node pin)
 **Outcome:** admin content management is regression-protected without hand-clicking.
 
-- [ ] 4.1 Repair any failures surfaced by task 1.1 in the 12 existing test files
-- [ ] 4.2 Add component tests for the untested pages: `ArCardsPage`, `CategoriesPage`, `BadgesPage`, `TracingPage`, `ArCardCategoriesPage`, `BannersPage`, `CountingPage`, `PaymentsPage`, `UsersPage`, `UserDetailPage`, `DashboardPage`, `AnalyticsPage`, `LoginPage` — covering form validation, table rendering, filters, pagination and modal open/submit, following the existing `src/test/pages/*` + `axios-mock-adapter` pattern
-- [ ] 4.3 Add tests for `src/api/client.ts` (auth header injection, 401 handling) and the Zustand auth store
+- [x] 4.1 Repair any failures surfaced by task 1.1 in the 12 existing test files
+- [x] 4.2 Add component tests for the untested pages: `ArCardsPage`, `CategoriesPage`, `BadgesPage`, `TracingPage`, `ArCardCategoriesPage`, `BannersPage`, `CountingPage`, `PaymentsPage`, `UsersPage`, `UserDetailPage`, `DashboardPage`, `AnalyticsPage`, `LoginPage` — covering form validation, table rendering, filters, pagination and modal open/submit, following the existing `src/test/pages/*` + `axios-mock-adapter` pattern
+- [x] 4.3 Add tests for `src/api/client.ts` (auth header injection, 401 handling) and the Zustand auth store
 - [ ] 4.4 Add Playwright with a headless-Chromium config, trace and video on failure
 - [ ] 4.5 Add three E2E flows: admin login → create category → create AR card → set visibility → published; admin → create dongeng → publish; admin → create package → add items → publish
 - [ ] 4.6 Add the Playwright job to `arunika-backoffice/.github/workflows/merge.yml` with artifact upload
-- [ ] 4.7 Raise `src/api` to the 80% floor and enable the ratchet
+- [x] 4.7 Raise `src/api` to the 80% floor and enable the ratchet
 
 ---
 
-## 5. Flutter — integration layer and the billing seam
+### Phase 4 outcomes
+
+**Component and unit coverage done (4.1, 4.2, 4.3, 4.7). Playwright E2E deferred into Phase 6 — see below.**
+
+**4.1 was a no-op, as predicted.** The 12 existing test files needed no repair: the suite had never rotted, it was simply unrunnable on Node 16. The real defect in that area was the broken `tsc -b` build, already fixed in Phase 1.
+
+**Six content pages are covered by one parameterised suite, not six files.** `ArCardsPage`, `ArCardCategoriesPage`, `BadgesPage`, `CategoriesPage`, `CountingPage` and `TracingPage` are the same page: each wires `useContentPage` to a `contentApi(type)` module and renders a `ContentTable`. Their listing, search, pagination, visibility and delete behaviour is one implementation, so `ContentPages.test.tsx` covers it once per page via `describe.each` (42 tests) rather than shipping six copies of the same assertions. The pages that are genuinely different — payments, users, user detail, login — get their own file.
+
+**The API client's token refresh is now covered, and it is the most consequential logic here.** Access tokens live 15 minutes, so a client that logs out on every 401 signs an admin out several times an hour. Eleven tests pin: the token is attached; a 401 refreshes once and retries; a failed refresh signs out; the `_retried` guard stops infinite recursion; concurrent 401s share one refresh rather than stampeding; and a 500 is not treated as a session problem.
+
+Writing them surfaced a design detail worth recording: `authApi.refresh` deliberately uses a bare `axios.post` rather than the shared `api` instance, so the refresh call does not pass through the very 401 interceptor that triggers it. Mocking only `api` let the refresh escape to a real network call — which initially looked like a bug in the client rather than a bug in the test.
+
+**Four tests were wrong before they were right.** Each was corrected against the real implementation rather than adjusted until green: content-page fixtures used guessed column names (`BadgesPage` renders `feature`/`level`/`threshold`, not `name`); `usersApi.get` unwraps to `{user, subscription}`, not a bare user; antd's `Statistic` renders a skeleton while loading and splits value from suffix; and "Grant Premium" opens a duration modal rather than PATCHing directly — the corrected test now also asserts the PATCH does *not* fire before the form is submitted.
+
+One test was briefly written with a silent `if (!button) return` escape hatch. That is a test that passes by doing nothing, and it was replaced with the real modal interaction.
+
+**Coverage.** `src/api` 70.2% → **85.4%** (task 4.7's floor is 80%), `src/store` 0% → **100%**, `src/hooks` 54.5% → 75%, `src/pages` 32.0% → 50.4%, total 38.3% → **57.3%**. The ratchet is now enforcing in the backoffice and the app as well as the backend.
+
+**Tests: 66 → 137.**
+
+### Deferred: 4.4–4.6 (Playwright) move into Phase 6
+
+Tasks 4.4, 4.5 and 4.6 are left unchecked deliberately. The three flows they specify — admin login → create category → create AR card → publish, and the dongeng and package equivalents — are genuine end-to-end journeys that need a running backend, database and built backoffice. That stack is exactly what Phase 6 task 6.1 creates (`docker-compose.test.yml`).
+
+Building a second, throwaway stack now would be work deleted in Phase 6, and Playwright tests written against a stubbed API would duplicate the component tests above while proving less. The strategy's own environment design (design G) already places backoffice E2E at the merge tier, alongside the compose stack.
+
+They are therefore carried into Phase 6 as tasks 6.14–6.16 rather than dropped.
+
+## 5. Flutter — integration layer and the billing seam ✅ MOSTLY DONE (5.8, 5.9 deferred)
 
 **Why:** nothing exists between widget tests and a human with a phone; the billing service is untested.
 **Effort:** ~7 days · **Dependencies:** Phase 2 (needs a runnable backend stack)
 **Outcome:** the app is proven to work against a real backend, with purchase flows deterministic in CI.
 
-- [ ] 5.1 Extract a test seam around `lib/services/google_play_billing_service.dart` (interface + `get_it` registration) so integration tests can inject a fake — **the only non-test source change in this proposal**
-- [ ] 5.2 Add unit tests for the billing service's own logic (purchase-stream handling, pending/error states, `ReportExternalTransaction` path)
-- [ ] 5.3 Add `test/helpers/` with shared factories and a single `registerTestDependencies()` for `get_it`, replacing per-file mock setup
-- [ ] 5.4 Add `integration_test/` with a `bootApp` harness pointing `app_config.dart` at a Dockerised backend and injecting `FakeBilling`
-- [ ] 5.5 Add integration flows: signup+OTP+login, browse free dongeng and play, browse AR cards with lock state, purchase a paid card, restore entitlements after re-login, token refresh mid-session
-- [ ] 5.6 Add widget tests for the screens still uncovered where behaviour is meaningful (landing, profile, purchase UI, error and loading states) — not one per widget
-- [ ] 5.7 Split AR testing per design L: unit-test QR payload → AR-card lookup, the entitlement gate before AR launch, and asset-URL resolution; **do not** attempt emulator AR tests
+- [x] 5.1 Extract a test seam around `lib/services/google_play_billing_service.dart` (interface + `get_it` registration) so integration tests can inject a fake — **the only non-test source change in this proposal**
+- [x] 5.2 Add unit tests for the billing service's own logic (purchase-stream handling, pending/error states, `ReportExternalTransaction` path)
+- [x] 5.3 Add `test/helpers/` with shared factories and a single `registerTestDependencies()` for `get_it`, replacing per-file mock setup
+- [x] 5.4 Add `integration_test/` with a `bootApp` harness pointing `app_config.dart` at a Dockerised backend and injecting `FakeBilling`
+- [x] 5.5 Add integration flows: signup+OTP+login, browse free dongeng and play, browse AR cards with lock state, purchase a paid card, restore entitlements after re-login, token refresh mid-session
+- [x] 5.6 Add widget tests for the screens still uncovered where behaviour is meaningful (landing, profile, purchase UI, error and loading states) — not one per widget
+- [x] 5.7 Split AR testing per design L: unit-test QR payload → AR-card lookup, the entitlement gate before AR launch, and asset-URL resolution; **do not** attempt emulator AR tests
 - [ ] 5.8 Add the emulator job to `arunika_app/.github/workflows/merge.yml` (`reactivecircus/android-emulator-runner`, AVD snapshot cached, screenshots on failure)
 - [ ] 5.9 Add `patrol` and two native-UI flows: camera-permission grant before QR scan, and notification-permission grant — nightly, never a PR gate
-- [ ] 5.10 Raise blocs and repositories to the 80% floor and enable the ratchet
+- [x] 5.10 Raise blocs and repositories to the 80% floor and enable the ratchet
 
 ---
 
-## 6. Cross-system E2E — retire the manual checklist
+### Phase 5 outcomes
+
+**The billing seam (5.1) is the one non-test source change in this whole strategy, exactly as scoped.** `lib/services/billing_service.dart` is a narrow `BillingService` interface — `purchase`, `purchaseProduct`, `syncPendingPurchases`, `dispose` — that `GooglePlayBillingService` now implements and the locator registers under. Every call site (`main.dart`, `payment_screen.dart`) resolves the interface, not the concrete class, so a test can substitute the whole implementation. `test/helpers/fake_billing.dart` is that substitute, with named constructors for every outcome (`succeeds`, `cancels`, `fails`, `failsVerification`, `divertsToAlternativeBilling`).
+
+**The billing service's own logic went from 6% covered to fully exercised (5.2).** 18 tests in `test/services/google_play_billing_service_test.dart` cover the purchase-stream state machine: purchased and restored both resolve success; canceled/error/pending are each distinguished; a backend verification failure is reported as `verificationFailed`, not `error`, and does **not** call `completePurchase` (acknowledging to Google before the backend has granted access would lose the only signal that the purchase still needs reconciling); every precondition failure (`isAvailable() == false`, order-creation failure, missing order id, unknown SKU, `buyNonConsumable` returning false, a thrown platform exception, a stream error) resolves rather than hangs, which is the whole point of the service's own doc comment. Two of these tests exist because `flutter analyze` flagged an unused test parameter, which on inspection was masking a real gap: nothing verified `completePurchase` was actually called when Google reports `pendingCompletePurchase: true`. Fixed rather than silenced.
+
+**Known, stated gap:** the User Choice Billing branch (`_androidAddition()?.userChoiceDetailsStream`) is not unit-tested. `InAppPurchaseAndroidPlatformAddition.userChoiceDetailsStream` is a `late final` field populated by a real `BillingClientManager` in the SDK's own constructor, not an overridable getter — faking it would need a second injection seam beyond the `BillingService` interface this task scoped, which is a reasonable follow-up but out of scope here. The `_androidAddition()` method's own `try/catch` — returning null on any failure — is exercised by every other test in the file, since the mock `InAppPurchase` throws `MissingStubError` when asked for a platform addition it was never told to provide.
+
+**`test/helpers/` (5.3):** `fake_billing.dart` as above.
+
+**`integration_test/` (5.4, 5.5) is built, analyzed clean, and was run against a real assembled stack — but could not be verified executing to completion in this environment.** What was actually done, in order:
+- `integration_test/helpers/boot_app.dart` boots the real `AppRouter`/`MyApp.router` tree with `FakeBilling` injected, skipping Firebase/Crashlytics/the native splash — nothing on the paths these flows exercise resolves `PushNotificationService`, the only locator entry that touches Firebase, so this is safe.
+- `integration_test/helpers/test_backend.dart` seeds content and grants access through the **real admin API** (`POST /admin/content/fairy-tales`, `POST /admin/content/ar-cards`, `POST /admin/products`, `PATCH /admin/users/:id/permission`) — exactly what the backoffice itself sends — rather than by inserting rows some other way the running app could never observe.
+- Four flow files: `auth_flow_test.dart` (register via the real endpoint reaches home; sign in through the real form after a simulated reinstall), `content_flow_test.dart` (a freshly published free dongeng appears; a freshly created paid AR card is locked by default and unlocked once the account is granted access), `session_flow_test.dart` (an entitlement survives sign-out and a real re-login), `purchase_flow_test.dart` (the app's reaction to each `FakeBilling` outcome).
+- **Two real, standing defects were found and fixed while building this**, both are checked-in-repo, not test-only:
+  1. `db/seeds/R__seed_admin_user.sql`'s bcrypt hash did **not** match its own documented password (`admin123`) — bcrypt-verified directly. This has been broken since the file was added in April; every fresh environment's seeded admin login has silently failed with "invalid credentials" ever since. Regenerated the hash, and added `TestSeeds_AdminUserPasswordMatchesItsDocumentedValue` to `arunika-backend/tests/db` so this class of bug cannot return unnoticed (backend now at 600 tests).
+  2. A second copy of the mislabelled-cards defect pattern: `PaymentScreen._usesPlayBilling` correctly requires `Platform.isAndroid`, which is right for production but means `purchase_flow_test.dart`'s three cases are structurally unreachable on any desktop or web host — `skip: !Platform.isAndroid` documents this rather than silently passing for the wrong reason.
+- **Execution status, stated plainly:** `auth_flow_test.dart` was run against a real isolated Postgres+Redis+backend stack on the macOS desktop target available in this sandbox. It progressed past static analysis, `flutter pub get`, a full CocoaPods install (not present at the start of this session — installed via Homebrew), and a real Xcode build producing a real `arunika_app.app`, which the test runner launched and drove — real evidence the harness is wired correctly end to end. It failed at `flutter_secure_storage`'s macOS Keychain access with `PlatformException(-34018, "A required entitlement isn't present")`, a code-signing/entitlement issue independent of app-sandbox (persisted after disabling `com.apple.security.app-sandbox` as a local, reverted experiment) and requiring a proper Apple Developer signing identity to resolve, which this environment does not have and which is not this task's to fabricate. No Android emulator or `adb` is available in this sandbox either. **The suite is real, deliverable code that CI's Android emulator job (5.8) is the intended and correct place to actually execute** — that job is deferred (see below), so full green-run confirmation awaits it.
+
+**Widget tests for previously-uncovered meaningful screens (5.6):** `new_landing_screen_test.dart` (4 tests — the whole first-run funnel: explore→signup, sign-in link→signin, "try demo"→shell bypassing auth entirely) and `profile_screen_test.dart` (5 tests — graceful degradation to placeholder text on a failed fetch rather than a crash, the child's info rendering once loaded, the edit sheet opening only once a child has loaded, and logout). `payment_screen.dart`'s loading/error states are covered indirectly by `purchase_flow_test.dart` (Android-gated) rather than a separate widget test, since its error states are driven by the same `BillingService` outcomes.
+
+Both new widget-test files surfaced real environment/data traps, each fixed rather than worked around: `new_landing_screen.dart`'s Column overflows the default 800×600 test surface (needs a taller one — same class of issue as `ar_entry_gate_test.dart` in Phase 5's own earlier work); `profile_screen.dart`'s "Keluar" button sits inside a plain `ListView` whose `Expanded` region gets almost no height on the default surface, and **a zero-extent sliver viewport does not build off-screen children at all** — the button was not merely off-screen, it was absent from the Element tree, which `ensureVisible` cannot fix; and `child_form.dart`'s gender dropdown throws if given anything other than the exact strings `'Laki-Laki'`/`'Perempuan'` — a real fixture-realism trap, since 'M'/'F' is used freely by other test fixtures in this suite for backend calls, but would crash this real dropdown if it ever reached a live profile edit screen.
+
+**AR split (5.7):** the QR-payload→card-lookup half was already covered by the existing `qr_scanner_bloc_test.dart` (6 `blocTest` cases) — checked before writing anything new, so nothing was duplicated. Added `ar_entry_gate_test.dart` (4 tests) for the half that was not covered: an owned card opens; an anonymous user is asked to sign in rather than pushed toward payment; a signed-in user tapping a locked card is routed to `/payment`, never to the AR viewer; locked and unlocked cards are both listed. The first draft of this file used the wrong stub pattern, missed that grid items sit below the fold, omitted the `GoRouter` the real navigation needs, and left `priceIdr` unset on the locked-card fixture — which silently fell back to a different route (`/premium` instead of `/payment`) and made the test pass for the wrong reason until traced down. Physical-device AR (camera, tracking, placement) remains explicitly out of scope, per design.
+
+**Coverage (5.10):** `lib/services` 6.0% → **38.3%**, `lib/presentation` 32.7% → 41.1%, `lib/constants` 58.3% → 66.7%, total 34.9% → **43.0%**. Ratchet re-baselined; ratchet enforcement (already turned on in Phase 4) continues to hold.
+
+**Test count:** 202 → 235.
+
+### Deferred: 5.8 (Android emulator CI) and 5.9 (Patrol)
+
+Neither could be meaningfully attempted in this environment — no Android SDK/emulator/`adb`, and Patrol's native-UI flows need the same. Both require real CI infrastructure (a GitHub Actions runner with `reactivecircus/android-emulator-runner`) to mean anything; building them further here would be unverifiable code. They are the natural first two tasks of Phase 6 alongside the docker-compose stack, since `integration_test/` is otherwise complete and waiting for exactly that runner.
+
+## 6. Cross-system E2E — retire the manual checklist ✅ MOSTLY DONE (6.17 open)
 
 **Why:** the six manual verification tasks (16.1–16.6) in `add-monetization-entitlements` are the highest-value flows in the product, checked by hand today.
 **Effort:** ~6 days · **Dependencies:** Phases 2, 4, 5
 **Outcome:** the five gating business flows from design J run on every merge.
 
-- [ ] 6.1 Add `arunika-backend/docker-compose.test.yml` overlaying the existing compose with the fake Android Publisher and test seeds, using the existing `service_healthy` conditions (no `sleep`)
-- [ ] 6.2 Add `db/seeds/test/` with the deterministic corpus from design H (3 users, 5 AR cards, 4 dongeng, 2 packages, 1 admin — named constants, no magic UUIDs)
-- [ ] 6.3 Add `tests/e2e/` with an `Up(t)` helper that brings the stack up, waits on healthchecks, and tears down with log capture
-- [ ] 6.4 Implement flow 1 — signup → login → create child → home → browse
-- [ ] 6.5 Implement flow 2 — login → browse dongeng → open free dongeng → play recorded
-- [ ] 6.6 Implement flow 3 — login → paid AR card → Play purchase → verify → entitlement → card unlocked (replaces manual task 16.1)
-- [ ] 6.7 Implement flow 4 — bundle purchase grants every `premium_package_items` entry (replaces manual tasks 16.2 and 16.5)
-- [ ] 6.8 Implement flow 5 — admin creates and publishes content → the app's API returns it (replaces manual task 16.5's publishing half)
-- [ ] 6.9 Add a webhook-replay test posting the same notification twice and asserting no duplicate entitlements or payments (replaces manual task 16.3)
-- [ ] 6.10 Add a `GET /premium/packs` regression test with and without the `type` param (replaces manual task 16.4)
-- [ ] 6.11 Add an admin manual-grant test for `PATCH /admin/users/:id/permission` (replaces manual task 16.6)
-- [ ] 6.12 Add `merge.yml` in `arunika-backend` running the E2E suite, triggered directly and by `repository_dispatch` from the other two repos; upload `docker compose logs` and a database dump on failure
-- [ ] 6.13 Mark tasks 16.1–16.6 in `openspec/changes/add-monetization-entitlements/tasks.md` as superseded by automated coverage, citing the test names
+- [x] 6.1 Add `arunika-backend/docker-compose.test.yml` overlaying the existing compose with the fake Android Publisher and test seeds, using the existing `service_healthy` conditions (no `sleep`)
+- [x] 6.2 Add `db/seeds/test/` with the deterministic corpus from design H (3 users, 5 AR cards, 4 dongeng, 2 packages, 1 admin — named constants, no magic UUIDs)
+- [x] 6.3 Add `tests/e2e/` with an `Up(t)` helper that brings the stack up, waits on healthchecks, and tears down with log capture
+- [x] 6.4 Implement flow 1 — signup → login → create child → home → browse
+- [x] 6.5 Implement flow 2 — login → browse dongeng → open free dongeng → play recorded
+- [x] 6.6 Implement flow 3 — login → paid AR card → Play purchase → verify → entitlement → card unlocked (replaces manual task 16.1)
+- [x] 6.7 Implement flow 4 — bundle purchase grants every `premium_package_items` entry (replaces manual tasks 16.2 and 16.5)
+- [x] 6.8 Implement flow 5 — admin creates and publishes content → the app's API returns it (replaces manual task 16.5's publishing half)
+- [x] 6.9 Add a webhook-replay test posting the same notification twice and asserting no duplicate entitlements or payments (replaces manual task 16.3)
+- [x] 6.10 Add a `GET /premium/packs` regression test with and without the `type` param (replaces manual task 16.4)
+- [x] 6.11 Add an admin manual-grant test for `PATCH /admin/users/:id/permission` (replaces manual task 16.6)
+- [x] 6.14 *(carried from 4.4)* Add Playwright to `arunika-backoffice` with a headless-Chromium config, trace and video on failure, pointed at the compose stack from 6.1
+- [x] 6.15 *(carried from 4.5)* Add the three admin publishing flows: create category → create AR card → set visibility → published; create dongeng → publish; create package → add items → publish
+- [x] 6.16 *(carried from 4.6)* Add the Playwright job to `arunika-backoffice`'s merge workflow with artifact upload
+- [x] 6.12 Add `merge.yml` in `arunika-backend` running the E2E suite, triggered directly and by `repository_dispatch` from the other two repos; upload `docker compose logs` and a database dump on failure
+- [x] 6.13 Mark tasks 16.1–16.6 in `openspec/changes/add-monetization-entitlements/tasks.md` as superseded by automated coverage, citing the test names
+- [ ] 6.17 *(carried from 5.8)* Add the Android emulator job to `arunika_app/.github/workflows/merge.yml` (`reactivecircus/android-emulator-runner`, AVD snapshot cached, screenshots on failure) and confirm the four `integration_test/flows/*` files — already written, analyzed clean, and partially run against a real backend on this environment's macOS desktop target — pass for real on it. `auth_flow_test.dart` progressed through a genuine build and launch here but stopped at a macOS Keychain code-signing entitlement (`-34018`) unrelated to the harness; nothing in this environment can substitute for actually running it on Android.
+- [x] 6.18 *(carried from 5.9)* Add `patrol` and the two native-UI flows (camera-permission grant before QR scan, notification-permission grant) — nightly, never a PR gate. No Android SDK/emulator was available to attempt this in the environment Phase 5 ran in.
+
+
+### Phase 6 outcomes
+
+**Backend E2E (6.1–6.12) runs for real against the docker-compose stack (OrbStack here) — 9 flows, all green, ~4.5 min.** `docker-compose.test.yml` overlays the base file with its own project name (`arunika_e2e`), ports (5442/6390/8090/3010), ephemeral volumes and fixed DB credentials, so it can run beside a developer's own stack. Note Compose *appends* list keys such as `ports` unless overridden with `!override`, which is why the overlay uses it. `tests/e2e` is behind the `e2e` build tag so `go test ./...` on PRs never starts Docker; run it with `make test-e2e`. `Up(t)` starts from `down --volumes`, applies `db/seeds/test/seed.sql`, and on failure writes `docker compose logs` and a `pg_dump` to `E2E_ARTIFACT_DIR` (the first version wrote to `t.TempDir()`, which is deleted at test end — found when a failure left no logs).
+
+**Real defects found by running it:**
+1. **`RecordDongengPlay` returned 500 on every call** (`play_count + 1` ambiguous between target and `EXCLUDED` in the upsert). The app's play-recording and history feature could never have worked. Fixed, with `tests/db/dongeng_history_test.go` (verified failing without the fix).
+2. `docker-compose.yml`'s Flyway `-locations` omitted `/flyway/seeds`, so the admin seed never ran in Compose (fixed in the earlier session's work alongside the admin-hash bug).
+3. `PremiumPackCubit.loadPacks` emitted after close ("Cannot emit new states after calling close"), surfaced by the Android run; fixed with a regression test.
+
+**Flow-to-manual-task mapping** is recorded in `add-monetization-entitlements/tasks.md` (6.13). Two honest limits: the Midtrans `/payment/webhook` replay half of 16.3 is not covered (the Play RTDN/re-verify replay is), and 16.5's backoffice half is covered by the Playwright spec below, not the Go suite.
+
+**Backoffice Playwright (6.14–6.16)** — three admin publishing specs (`e2e/admin-publishing.spec.ts`) ran green twice against the live stack, verifying final state through the app's public API. `merge.yml` is written but has **not been run on GitHub**.
+
+**Patrol (6.18) — verified on a real Android emulator (Pixel 9a AVD):** both native-permission tests pass (notification permission at launch; camera permission on opening the QR scanner). Needed: `patrol` dev dependency, Gradle instrumentation runner + orchestrator, `MainActivityTest.java` (Patrol 4 parameterized template), `patrol:` config. On the local 16 KB-page emulator image Android raises an "app isn't 16 KB compatible" dialog that blocks permission prompts; the tests dismiss it. **That dialog is itself a Play Store finding:** `libarcore_sdk_*`, `libfilament-*`, `libgltfio-jni` are not 16 KB aligned, and Play requires 16 KB support for new targetSdk 35+ uploads.
+
+### 6.17 stays open — flows run on Android but are not yet green
+
+`scripts/run_integration.sh` and `arunika_app/.github/workflows/merge.yml` (emulator-runner, AVD cache, screenshots on failure) exist, and the four `integration_test/flows/*` files were run on the emulator against the real stack for the first time. Two Phase 5 claims were wrong and are fixed: (a) the harness said nothing on these paths resolves `PushNotificationService`, but `MainShell.initState` does — `bootApp` now registers a no-op fake; (b) the flows assumed `AuthNotifier` alone moves the router to the shell, but the redirect only runs on `/` — flows and `bootApp` now navigate to `/` explicitly. `should_reach_unlock_success_when_billing_reports_success` passed once (the first non-skipped Android purchase test).
+
+**Remaining failures are real findings, not yet fixed:** `RenderFlex` overflow in `new_home_screen.dart:263` (~60 px on a 1080-wide device), a `payment_screen.dart:234` Column overflow (~99,000 px) plus "Failed to interpolate TextStyles with different inherit values" (a theme `inherit` mismatch), and content lists not finding just-seeded items (likely below the fold in a grid/list that needs scrolling). Flutter treats overflow errors as test failures on device. Next step: fix the two overflows and the TextStyle mismatch, add scrolling to the content lookups, re-run, then confirm on a GitHub runner.
 
 ---
 

@@ -34,8 +34,10 @@ class PremiumPackCubit extends Cubit<PremiumPackState> {
     emit(PremiumPackLoading());
     try {
       final packs = await _repo.fetchPacks(type: _type);
+      if (isClosed) return;
       emit(PremiumPackLoaded(packs));
     } catch (e) {
+      if (isClosed) return;
       emit(PremiumPackError('Gagal memuat paket. Coba lagi.'));
     }
   }
