@@ -159,7 +159,7 @@ Phases are ordered by value-per-effort. Each phase is independently mergeable an
 
 **Totals:** backend 593 → 599 tests, app 202, backoffice 63 → 66. All three suites green, `golangci-lint` 0 issues, all ratchets clean.
 
-## 4. Backoffice — component and admin E2E
+## 4. Backoffice — component and admin E2E ✅ DONE (4.4–4.6 delivered in Phase 6)
 
 **Why:** 13 of 20 pages have no test, and the three admin publishing flows are what content editors use daily.
 **Effort:** ~6 days · **Dependencies:** Phase 1 (Node pin)
@@ -168,9 +168,9 @@ Phases are ordered by value-per-effort. Each phase is independently mergeable an
 - [x] 4.1 Repair any failures surfaced by task 1.1 in the 12 existing test files
 - [x] 4.2 Add component tests for the untested pages: `ArCardsPage`, `CategoriesPage`, `BadgesPage`, `TracingPage`, `ArCardCategoriesPage`, `BannersPage`, `CountingPage`, `PaymentsPage`, `UsersPage`, `UserDetailPage`, `DashboardPage`, `AnalyticsPage`, `LoginPage` — covering form validation, table rendering, filters, pagination and modal open/submit, following the existing `src/test/pages/*` + `axios-mock-adapter` pattern
 - [x] 4.3 Add tests for `src/api/client.ts` (auth header injection, 401 handling) and the Zustand auth store
-- [ ] 4.4 Add Playwright with a headless-Chromium config, trace and video on failure
-- [ ] 4.5 Add three E2E flows: admin login → create category → create AR card → set visibility → published; admin → create dongeng → publish; admin → create package → add items → publish
-- [ ] 4.6 Add the Playwright job to `arunika-backoffice/.github/workflows/merge.yml` with artifact upload
+- [x] 4.4 *(delivered as 6.14)* Add Playwright with a headless-Chromium config, trace and video on failure
+- [x] 4.5 *(delivered as 6.15)* Add three E2E flows: admin login → create category → create AR card → set visibility → published; admin → create dongeng → publish; admin → create package → add items → publish
+- [x] 4.6 *(delivered as 6.16)* Add the Playwright job to `arunika-backoffice/.github/workflows/merge.yml` with artifact upload
 - [x] 4.7 Raise `src/api` to the 80% floor and enable the ratchet
 
 ---
