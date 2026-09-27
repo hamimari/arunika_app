@@ -41,7 +41,7 @@ Ordered so that each stage is independently shippable and leaves every suite gre
 - [x] 5.1 Include `email_verified` in the authenticated profile response from `UserService.GetUserByID`
 - [x] 5.2 Test the field is present and correct for both verified and unverified accounts
 - [x] 5.3 Add `email_verified` to the app's user response model and its `fromJson`
-- [ ] 5.4 **Consider** surfacing verification state read-only on the backoffice user detail page — it is the first thing support will ask when a reset is refused (design open question)
+- [ ] 5.4 *(deferred at archive — optional follow-up, not a bug)* **Consider** surfacing verification state read-only on the backoffice user detail page — it is the first thing support will ask when a reset is refused (design open question)
 
 ## 6. App prompt
 
@@ -64,7 +64,7 @@ Ordered so that each stage is independently shippable and leaves every suite gre
 
 - [x] 8.1 In `AuthService.ForgotPassword`, return without sending when the account is unverified — creating no reset token
 - [x] 8.2 **Preserve non-enumeration.** The unverified path must be indistinguishable from the unknown-email path and the verified path in status and body. `TestForgotPassword_UnknownEmail_ReturnsNilWithoutEnumeration` must still pass, and a new test must assert the unverified response matches the unknown-email response exactly. This is the easiest thing in the change to get wrong (design D3)
-- [ ] 8.3 **Consider** putting the gate behind `app_feature_flags` so it can be switched off without a deploy — it is the only user-blocking behaviour here (design open question)
+- [ ] 8.3 *(deferred at archive — optional follow-up, not a bug)* **Consider** putting the gate behind `app_feature_flags` so it can be switched off without a deploy — it is the only user-blocking behaviour here (design open question)
 - [x] 8.4 Test: verified account still receives a reset link; unverified account receives none and gets no reset token row
 
 ## 9. Validation
@@ -72,8 +72,8 @@ Ordered so that each stage is independently shippable and leaves every suite gre
 - [x] 9.1 `go test ./...` green; `golangci-lint run` reports 0 issues
 - [x] 9.2 `flutter test` and `flutter analyze --no-fatal-infos` green
 - [x] 9.3 Coverage ratchets re-recorded in both repos and no unintended regression
-- [ ] 9.4 Manual: register → receive email → click link → confirmation page → banner disappears on next profile fetch
-- [ ] 9.5 Manual: click the same link twice; let one expire and use the resend path from the expired page
+- [ ] 9.4 *(not performed at archive — needs a real mail provider; do before release)* Manual: register → receive email → click link → confirmation page → banner disappears on next profile fetch
+- [ ] 9.5 *(not performed at archive — needs a real mail provider; do before release)* Manual: click the same link twice; let one expire and use the resend path from the expired page
 
 ---
 

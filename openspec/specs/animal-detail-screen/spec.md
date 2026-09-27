@@ -1,4 +1,9 @@
-## ADDED Requirements
+# animal-detail-screen Specification
+
+## Purpose
+Defines the required behaviour for animal detail screen in the Arunika system.
+
+## Requirements
 
 ### Requirement: Animal detail page layout
 The animal detail screen SHALL display a large animal image on a coloured background, the animal's name, a "Fakta Seru" (fun fact) section, and action buttons.

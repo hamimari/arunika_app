@@ -1,4 +1,9 @@
-## MODIFIED Requirements
+# home-screen Specification
+
+## Purpose
+Defines the required behaviour for home screen in the Arunika system.
+
+## Requirements
 
 ### Requirement: Dongeng populer lock state for authenticated users
 The home screen SHALL display a semi-transparent grey overlay and a lock icon badge on paid dongeng cards in the "Dongeng Populer" section when the user is logged in. When the user is not logged in, no overlay or lock badge is shown (guest users see all content without lock indication).
@@ -14,8 +19,6 @@ The home screen SHALL display a semi-transparent grey overlay and a lock icon ba
 #### Scenario: Free dongeng has no lock overlay regardless of auth state
 - **WHEN** a dongeng card's `isFree` is true
 - **THEN** no grey overlay or lock badge is displayed
-
-## MODIFIED Requirements
 
 ### Requirement: AR card category images on home
 The home screen AR category section SHALL display each category using its `imageUrl` image (via `Image.network`) instead of an emoji. If `imageUrl` is empty or fails to load, the category emoji text SHALL be shown as a fallback.

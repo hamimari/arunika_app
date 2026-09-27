@@ -1,4 +1,9 @@
-## ADDED Requirements
+# ar-scan-flow Specification
+
+## Purpose
+Defines the required behaviour for ar scan flow in the Arunika system.
+
+## Requirements
 
 ### Requirement: Scan screen camera viewfinder
 The scan screen SHALL display a full-screen camera viewfinder with an animated card-shaped scan guide overlay and a help (?) and flashlight icon.

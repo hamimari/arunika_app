@@ -1,4 +1,9 @@
-## ADDED Requirements
+# animal-categories-dynamic Specification
+
+## Purpose
+Defines the required behaviour for animal categories dynamic in the Arunika system.
+
+## Requirements
 
 ### Requirement: Animal categories fetched from backend
 The system SHALL fetch animal categories from `GET /categories` and use the same data on both the home screen "Kategori Binatang" section and the Koleksi filter. A `CategoryRepository` with in-memory session cache SHALL be used to avoid redundant API calls.

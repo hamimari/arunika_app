@@ -1,3 +1,8 @@
+# ar-display Specification
+
+## Purpose
+Defines the required behaviour for ar display in the Arunika system.
+
 ## Requirements
 
 ### Requirement: AR model displays automatically after QR scan

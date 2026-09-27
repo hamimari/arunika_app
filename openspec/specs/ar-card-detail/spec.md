@@ -1,4 +1,9 @@
-## ADDED Requirements
+# ar-card-detail Specification
+
+## Purpose
+Defines the required behaviour for ar card detail in the Arunika system.
+
+## Requirements
 
 ### Requirement: AR card detail screen before AR launch
 The app SHALL display an `ArCardDetailScreen` when the user taps an unlocked AR card in Koleksiku. This screen SHALL show the card image (full-width, rounded corners), a fun fact section (title "Tahukah Kamu?" and body text from `card.funFact`), a "Putar Suara" button that plays the card's audio, and a "Lihat AR" button that pushes `ArCoreSurfacePlaceScreen`.

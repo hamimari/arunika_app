@@ -1,4 +1,9 @@
-## ADDED Requirements
+# backend-prod-hardening Specification
+
+## Purpose
+Defines the required behaviour for backend prod hardening in the Arunika system.
+
+## Requirements
 
 ### Requirement: Environment-based backend configuration
 The backend SHALL load all environment-specific configuration (database URL, API keys, ports, secrets) from environment variables or a `.env` file, with no hard-coded values in source code.

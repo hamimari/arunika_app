@@ -1,7 +1,10 @@
-## ADDED Requirements
+# backend-unit-tests Specification
 
+## Purpose
+Defines the required behaviour for backend unit tests in the Arunika system.
+## Requirements
 ### Requirement: Service layer unit test coverage
-Every backend service class SHALL have unit tests that mock repository/database dependencies and cover at minimum one happy-path and one failure scenario per public method. This requirement explicitly includes `AnimalService`, `PaymentService`, and `PremiumPackService`, which previously lacked test files. Each of these SHALL have a dedicated `*_test.go` file in the `services/` package.
+Every backend service class SHALL have unit tests that mock repository/database dependencies and cover at minimum one happy-path and one failure scenario per public method. This requirement explicitly includes `AnimalService`, `PaymentService` (including `CreateSnapTransaction` and `HandleWebhook`, which previously had zero coverage despite being the core payment-settlement logic), `PremiumPackService`, and the new `ProductService`, `OrderService`, and `EntitlementService` introduced for the monetization data model. Each of these SHALL have a dedicated `*_test.go` file in the `services/` package.
 
 #### Scenario: Service method returns result on success
 - **WHEN** the mocked repository returns a valid entity
@@ -27,6 +30,18 @@ Every backend service class SHALL have unit tests that mock repository/database 
 - **WHEN** `CreatePayment` is called and the DB mock returns an error
 - **THEN** the service returns a non-nil error
 
+#### Scenario: PaymentService.CreateSnapTransaction creates an order before calling Midtrans
+- **WHEN** `CreateSnapTransaction` is called with a valid user and package
+- **THEN** an `orders` row SHALL be created with status `PENDING` before the Midtrans HTTP call is made, and the returned Midtrans order id SHALL be derived from the created order's id
+
+#### Scenario: PaymentService.HandleWebhook grants entitlements exactly once
+- **WHEN** `HandleWebhook` is called twice with the same settled notification for a `content`-type package order
+- **THEN** the order SHALL transition to `PAID` on the first call, remain `PAID` on the second call, and exactly one set of `user_entitlements` rows SHALL exist (no duplicates)
+
+#### Scenario: PaymentService.HandleWebhook rejects invalid signature
+- **WHEN** `HandleWebhook` is called with a notification whose signature does not match
+- **THEN** the service SHALL return an error and SHALL NOT modify order, payment, or entitlement state
+
 #### Scenario: PremiumPackService returns all packs on success
 - **WHEN** `GetAllPacks` is called and the DB mock returns pack rows
 - **THEN** the service returns the full list with no error
@@ -35,8 +50,16 @@ Every backend service class SHALL have unit tests that mock repository/database 
 - **WHEN** `GetAllPacks` is called and the DB mock returns an error
 - **THEN** the service returns a non-nil error
 
+#### Scenario: PremiumPackService returns packs of all types when no type filter given
+- **WHEN** `GetActivePacks` is called with an empty `packType` argument
+- **THEN** the service returns active packages of every type, not an empty list
+
+#### Scenario: EntitlementService resolves access from entitlements and subscriptions
+- **WHEN** `HasAccess` is called for a user with an active `user_entitlements` row for the product
+- **THEN** the service returns `true`; when called for a user with no entitlement and no active subscription, it returns `false`
+
 ### Requirement: Controller layer unit test coverage
-Every backend controller/route handler SHALL have unit tests that mock the service layer and verify correct HTTP responses for valid and invalid inputs. This requirement explicitly includes `AnimalHandler`, `AuthHandler`, `BannerHandler`, `CategoryHandler`, `DongengHandler`, `PaymentHandler`, and `UserHandler`, each of which SHALL have at least one happy-path and one error-path test covering each public route.
+Every backend controller/route handler SHALL have unit tests that mock the service layer and verify correct HTTP responses for valid and invalid inputs. This requirement explicitly includes `AnimalHandler`, `AuthHandler`, `BannerHandler`, `CategoryHandler`, `DongengHandler`, `PaymentHandler`, `UserHandler`, and the new `OrderHandler`, each of which SHALL have at least one happy-path and one error-path test covering each public route.
 
 #### Scenario: Controller returns 200 for valid request
 - **WHEN** the mocked service returns a valid result
@@ -62,6 +85,10 @@ Every backend controller/route handler SHALL have unit tests that mock the servi
 - **WHEN** a POST request is made with wrong credentials
 - **THEN** the response status is 401
 
+#### Scenario: OrderHandler GET /orders/:id returns 404 for another user's order
+- **WHEN** a GET request is made for an order id owned by a different user
+- **THEN** the response status is 404
+
 ### Requirement: Repository / data-access unit test coverage
 Every backend repository class SHALL have unit tests that mock the database client and verify both successful data operations and error propagation.
 
@@ -83,3 +110,4 @@ Every test suite SHALL include tests for edge cases and boundary conditions (e.g
 #### Scenario: Edge case — invalid data types
 - **WHEN** a request or data source provides a field with the wrong data type
 - **THEN** validation or mapping logic rejects the data and an appropriate error is returned
+

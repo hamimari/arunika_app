@@ -1,4 +1,9 @@
-## ADDED Requirements
+# firebase-crashlytics Specification
+
+## Purpose
+Defines the required behaviour for firebase crashlytics in the Arunika system.
+
+## Requirements
 
 ### Requirement: Firebase Crashlytics SDK integration
 The Flutter app SHALL declare `firebase_core` and `firebase_crashlytics` as runtime dependencies in `pubspec.yaml`, and the Android project SHALL include the `google-services` Gradle plugin applied to `android/app/build.gradle.kts`, with the `google-services.json` configuration file placed at `android/app/google-services.json`.

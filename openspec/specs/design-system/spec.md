@@ -1,4 +1,9 @@
-## ADDED Requirements
+# design-system Specification
+
+## Purpose
+Defines the required behaviour for design system in the Arunika system.
+
+## Requirements
 
 ### Requirement: Color palette constants
 The app SHALL define a shared color palette in `lib/constants/app_colors.dart` with: primary orange (#FF6B35 or similar), cream/warm white background, deep brown for headings, accent gold, muted blue, and semantic colors (success green, lock grey).

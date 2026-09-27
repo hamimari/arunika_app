@@ -1,4 +1,9 @@
-## ADDED Requirements
+# home-banner Specification
+
+## Purpose
+Defines the required behaviour for home banner in the Arunika system.
+
+## Requirements
 
 ### Requirement: Home banner carousel is data-driven
 The system SHALL fetch active banners from `GET /banners` and render them as a horizontally swipeable carousel on the home screen. Each banner SHALL support a `type` field (`promo`, `daily_animal`, `feature`) that controls its visual rendering. When no banners are returned or an error occurs, the home screen SHALL hide the carousel section gracefully without showing an error state to the user.

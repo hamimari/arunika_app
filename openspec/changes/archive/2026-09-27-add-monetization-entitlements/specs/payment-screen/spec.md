@@ -7,6 +7,8 @@ The payment screen SHALL have a "Bayar Sekarang 🔒" button at the bottom that 
 - **WHEN** the user selects a payment method and taps "Bayar Sekarang"
 - **THEN** `POST /payment/create` is called and, on success, the Midtrans Snap webview opens with the returned token
 
+## ADDED Requirements
+
 ### Requirement: Payment outcome is confirmed by the backend, not the client
 After the Midtrans webview reports `onSuccess` or `onPending`, the payment screen SHALL show a waiting state and poll `GET /orders/:id` (using the `order_id` returned by `POST /payment/create`) at a fixed interval until the order status is `PAID`, `FAILED`, or `EXPIRED`, or a timeout elapses. The screen SHALL navigate to `/unlock-success` only when the polled status is `PAID`.
 

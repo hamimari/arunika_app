@@ -1,4 +1,9 @@
-## ADDED Requirements
+# bottom-navigation Specification
+
+## Purpose
+Defines the required behaviour for bottom navigation in the Arunika system.
+
+## Requirements
 
 ### Requirement: 5-tab bottom navigation bar
 The app SHALL display a persistent bottom navigation bar with 5 tabs: Beranda, Scan, Koleksi, Dongeng, Orang Tua — each with an icon and label.

@@ -1,4 +1,9 @@
-## MODIFIED Requirements
+# splash-screen Specification
+
+## Purpose
+Defines the required behaviour for splash screen in the Arunika system.
+
+## Requirements
 
 ### Requirement: Branded native splash screen
 The app SHALL display a native splash screen (rendered before Flutter engine initialises) using `assets/splash.png` centred on a background colour that has low contrast with the app's main background (`#F7F8FC`), avoiding a harsh colour transition. The background colour SHALL be `#F7F8FC` (same as the app background) or a very close neutral tone.

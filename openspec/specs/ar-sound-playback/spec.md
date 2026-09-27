@@ -1,3 +1,10 @@
+# ar-sound-playback Specification
+
+## Purpose
+Defines the required behaviour for ar sound playback in the Arunika system.
+
+## Requirements
+
 ### Requirement: Sound URL parameter
 `ArCoreSurfacePlaceScreen` SHALL accept an optional `soundUrl` parameter of type `String?`. When `soundUrl` is null or empty, all sound-related UI SHALL be hidden and no `AudioPlayer` SHALL be initialised. The `QRScannerBloc` SHALL normalise `soundUrl` before emission: if `response.audioUrl` is null or empty string, it SHALL emit `soundUrl: null`.
 

@@ -1,4 +1,9 @@
-## ADDED Requirements
+# premium-upgrade-screen Specification
+
+## Purpose
+Defines the required behaviour for premium upgrade screen in the Arunika system.
+
+## Requirements
 
 ### Requirement: Auth guard before premium upsell
 When an unauthenticated user taps any premium-locked feature, the app SHALL show a dialog prompting the user to log in or register before proceeding. After successful authentication, the app SHALL navigate to the Paket Konten tab of the premium upgrade screen.

@@ -1,4 +1,9 @@
-## ADDED Requirements
+# dongeng-navigation-fix Specification
+
+## Purpose
+Defines the required behaviour for dongeng navigation fix in the Arunika system.
+
+## Requirements
 
 ### Requirement: Navigation buttons respect safe-area insets
 The Previous and Next navigation buttons on the dongeng detail screen SHALL be fully visible and tappable on all supported device sizes, including devices with notches, rounded corners, or narrow aspect ratios.

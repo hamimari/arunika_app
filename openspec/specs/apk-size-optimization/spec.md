@@ -1,3 +1,8 @@
+# apk-size-optimization Specification
+
+## Purpose
+Defines the required behaviour for apk size optimization in the Arunika system.
+
 ## Requirements
 
 ### Requirement: Release build uses Android App Bundle (AAB) format

@@ -1,4 +1,9 @@
-## ADDED Requirements
+# premium-package-flutter Specification
+
+## Purpose
+Defines the required behaviour for premium package flutter in the Arunika system.
+
+## Requirements
 
 ### Requirement: PremiumUpgradeScreen fetches packages from API
 The system SHALL replace all usage of the static `PremiumPacks` class with a `PremiumPackRepository` that calls `GET /premium/packs?type=content` and `GET /premium/packs?type=subscription`. A `PremiumPackCubit` SHALL manage the loading, loaded, and error states for each tab.

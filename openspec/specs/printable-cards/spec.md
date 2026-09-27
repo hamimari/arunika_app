@@ -1,4 +1,9 @@
-## ADDED Requirements
+# printable-cards Specification
+
+## Purpose
+Defines the required behaviour for printable cards in the Arunika system.
+
+## Requirements
 
 ### Requirement: Backend printable card PDF generation
 The backend SHALL expose `GET /ar/printable-pdf?category_id=<uuid>` that returns an A4 PDF file containing AR card images for all cards in the given category. Each card cell SHALL be 75×110 mm. The layout SHALL pack as many cards as possible per page (2 columns × 2 rows = 4 cards per page with 2 mm gutters). Each cell SHALL include the card image centred within the cell and the card title below the image. The response SHALL set `Content-Type: application/pdf` and `Content-Disposition: attachment; filename="kartu-ar.pdf"`.

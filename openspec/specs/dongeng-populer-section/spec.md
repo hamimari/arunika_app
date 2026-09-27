@@ -1,4 +1,9 @@
-## ADDED Requirements
+# dongeng-populer-section Specification
+
+## Purpose
+Defines the required behaviour for dongeng populer section in the Arunika system.
+
+## Requirements
 
 ### Requirement: Dongeng section shows popular for new users
 The system SHALL display the section "Dongeng Populer" on the home screen for guest users and logged-in users with no watch history. The section SHALL fetch data from `GET /dongeng/popular` and display the top-ranked dongeng by play count.
