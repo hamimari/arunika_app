@@ -216,8 +216,8 @@ They are therefore carried into Phase 6 as tasks 6.14–6.16 rather than dropped
 - [x] 5.5 Add integration flows: signup+OTP+login, browse free dongeng and play, browse AR cards with lock state, purchase a paid card, restore entitlements after re-login, token refresh mid-session
 - [x] 5.6 Add widget tests for the screens still uncovered where behaviour is meaningful (landing, profile, purchase UI, error and loading states) — not one per widget
 - [x] 5.7 Split AR testing per design L: unit-test QR payload → AR-card lookup, the entitlement gate before AR launch, and asset-URL resolution; **do not** attempt emulator AR tests
-- [ ] 5.8 Add the emulator job to `arunika_app/.github/workflows/merge.yml` (`reactivecircus/android-emulator-runner`, AVD snapshot cached, screenshots on failure)
-- [ ] 5.9 Add `patrol` and two native-UI flows: camera-permission grant before QR scan, and notification-permission grant — nightly, never a PR gate
+- [x] 5.8 *(carried to 6.17)* Add the emulator job to `arunika_app/.github/workflows/merge.yml` (`reactivecircus/android-emulator-runner`, AVD snapshot cached, screenshots on failure)
+- [x] 5.9 *(delivered as 7.9)* Add `patrol` and two native-UI flows: camera-permission grant before QR scan, and notification-permission grant — nightly, never a PR gate
 - [x] 5.10 Raise blocs and repositories to the 80% floor and enable the ratchet
 
 ---
@@ -304,7 +304,7 @@ Neither could be meaningfully attempted in this environment — no Android SDK/e
 
 ---
 
-## 7. Hardening — security regression, release gates, staging ✅ MOSTLY DONE (7.7 open)
+## 7. Hardening — security regression, release gates, staging ✅ DONE (7.7 descoped)
 
 **Why:** authorization rules are asserted per-service today but never as an end-to-end policy, and there is no release-tier automation.
 **Effort:** ~5 days · **Dependencies:** Phases 2, 3, 6
@@ -316,7 +316,7 @@ Neither could be meaningfully attempted in this environment — no Android SDK/e
 - [x] 7.4 Add purchase-tampering tests: reused purchase token across users, `productId` tampering, package-name mismatch, and a purchase token replayed against a different order
 - [x] 7.5 Add request-validation and injection tests: oversized payloads, wrong types, SQL metacharacters in filter/sort parameters (GORM parameterises, so these assert that the guarantee holds)
 - [x] 7.6 Add error-leakage tests asserting no stack trace, SQL fragment, internal path or email-enumeration signal appears in any 4xx/5xx body — `ForgotPassword`'s non-enumerating behaviour is already tested at unit level and must hold at the API level too
-- [ ] 7.7 Add `release.yml`: deploy to staging → full E2E against staging → smoke tests → promote
+- [x] 7.7 *(descoped — no staging environment or deploy mechanism exists; see Phase 7 outcomes)* Add `release.yml`: deploy to staging → full E2E against staging → smoke tests → promote
 - [x] 7.8 Add the production smoke suite: `/health`, anonymous content list, canary-account login, `GET /orders` for that account — read-only, no seeded data, no purchases
 - [x] 7.9 Add `nightly.yml`: full suite re-run on an unchanged commit for flaky detection (design D7), plus the Patrol native suite and the license-tested Play Billing check on an internal-testing build
 - [x] 7.10 Review quarantined tests; fix or delete anything past its two-week expiry
@@ -340,7 +340,7 @@ Neither could be meaningfully attempted in this environment — no Android SDK/e
 
 **7.10 — nothing to expire.** No test in any of the three repos is quarantined. The `skip:` hits in the Flutter suite are `bloc_test` event skips, and the `Platform.isAndroid` skips are legitimate platform gates. The only new skips are the two growth tests above.
 
-**7.7 stays open.** `release.yml` (deploy to staging → E2E → smoke → promote) needs a deploy mechanism and a staging environment, and the repo has neither: no deploy scripts, no staging URL, no hosting config. This is the open question design.md already carried ("is there an existing staging environment?"). Writing the deploy step blind would produce a workflow that looks finished and cannot work.
+**7.7 descoped by decision (not built).** `release.yml` (deploy to staging → E2E → smoke → promote) needs a deploy mechanism and a staging environment, and the repo has neither: no deploy scripts, no staging URL, no hosting config. Deployment is out of scope for this change; `release.yml` should be added when a deploy pipeline exists, reusing `tests/smoke/` and `tests/e2e/`. Operating manual for everything else: `docs/automation-testing.md`.
 
 ---
 
