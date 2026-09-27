@@ -54,7 +54,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-api-34-x86_64-v1
+          key: avd-api-34-x86_64-6g-v2
 
       - name: Create AVD snapshot
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -64,6 +64,9 @@ jobs:
           arch: x86_64
           target: google_apis
           force-avd-creation: false
+          # The debug APK is ~175 MB and Patrol/integration installs stack up;
+          # the default data partition filled during local runs.
+          disk-size: 6000M
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: false
           script: echo "Generated AVD snapshot for caching."
@@ -75,6 +78,9 @@ jobs:
           arch: x86_64
           target: google_apis
           force-avd-creation: false
+          # The debug APK is ~175 MB and Patrol/integration installs stack up;
+          # the default data partition filled during local runs.
+          disk-size: 6000M
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           script: |

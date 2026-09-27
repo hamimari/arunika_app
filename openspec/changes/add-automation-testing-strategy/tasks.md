@@ -255,7 +255,7 @@ Both new widget-test files surfaced real environment/data traps, each fixed rath
 
 Neither could be meaningfully attempted in this environment — no Android SDK/emulator/`adb`, and Patrol's native-UI flows need the same. Both require real CI infrastructure (a GitHub Actions runner with `reactivecircus/android-emulator-runner`) to mean anything; building them further here would be unverifiable code. They are the natural first two tasks of Phase 6 alongside the docker-compose stack, since `integration_test/` is otherwise complete and waiting for exactly that runner.
 
-## 6. Cross-system E2E — retire the manual checklist ✅ MOSTLY DONE (6.17 open)
+## 6. Cross-system E2E — retire the manual checklist ✅ DONE
 
 **Why:** the six manual verification tasks (16.1–16.6) in `add-monetization-entitlements` are the highest-value flows in the product, checked by hand today.
 **Effort:** ~6 days · **Dependencies:** Phases 2, 4, 5
@@ -277,7 +277,7 @@ Neither could be meaningfully attempted in this environment — no Android SDK/e
 - [x] 6.16 *(carried from 4.6)* Add the Playwright job to `arunika-backoffice`'s merge workflow with artifact upload
 - [x] 6.12 Add `merge.yml` in `arunika-backend` running the E2E suite, triggered directly and by `repository_dispatch` from the other two repos; upload `docker compose logs` and a database dump on failure
 - [x] 6.13 Mark tasks 16.1–16.6 in `openspec/changes/add-monetization-entitlements/tasks.md` as superseded by automated coverage, citing the test names
-- [ ] 6.17 *(carried from 5.8)* Add the Android emulator job to `arunika_app/.github/workflows/merge.yml` (`reactivecircus/android-emulator-runner`, AVD snapshot cached, screenshots on failure) and confirm the four `integration_test/flows/*` files — already written, analyzed clean, and partially run against a real backend on this environment's macOS desktop target — pass for real on it. `auth_flow_test.dart` progressed through a genuine build and launch here but stopped at a macOS Keychain code-signing entitlement (`-34018`) unrelated to the harness; nothing in this environment can substitute for actually running it on Android.
+- [x] 6.17 *(carried from 5.8)* Add the Android emulator job to `arunika_app/.github/workflows/merge.yml` (`reactivecircus/android-emulator-runner`, AVD snapshot cached, screenshots on failure) and confirm the four `integration_test/flows/*` files — already written, analyzed clean, and partially run against a real backend on this environment's macOS desktop target — pass for real on it. `auth_flow_test.dart` progressed through a genuine build and launch here but stopped at a macOS Keychain code-signing entitlement (`-34018`) unrelated to the harness; nothing in this environment can substitute for actually running it on Android.
 - [x] 6.18 *(carried from 5.9)* Add `patrol` and the two native-UI flows (camera-permission grant before QR scan, notification-permission grant) — nightly, never a PR gate. No Android SDK/emulator was available to attempt this in the environment Phase 5 ran in.
 
 
@@ -296,11 +296,17 @@ Neither could be meaningfully attempted in this environment — no Android SDK/e
 
 **Patrol (6.18) — verified on a real Android emulator (Pixel 9a AVD):** both native-permission tests pass (notification permission at launch; camera permission on opening the QR scanner). Needed: `patrol` dev dependency, Gradle instrumentation runner + orchestrator, `MainActivityTest.java` (Patrol 4 parameterized template), `patrol:` config. On the local 16 KB-page emulator image Android raises an "app isn't 16 KB compatible" dialog that blocks permission prompts; the tests dismiss it. **That dialog is itself a Play Store finding:** `libarcore_sdk_*`, `libfilament-*`, `libgltfio-jni` are not 16 KB aligned, and Play requires 16 KB support for new targetSdk 35+ uploads.
 
-### 6.17 stays open — flows run on Android but are not yet green
+### 6.17 closed — flows green on Android
 
-`scripts/run_integration.sh` and `arunika_app/.github/workflows/merge.yml` (emulator-runner, AVD cache, screenshots on failure) exist, and the four `integration_test/flows/*` files were run on the emulator against the real stack for the first time. Two Phase 5 claims were wrong and are fixed: (a) the harness said nothing on these paths resolves `PushNotificationService`, but `MainShell.initState` does — `bootApp` now registers a no-op fake; (b) the flows assumed `AuthNotifier` alone moves the router to the shell, but the redirect only runs on `/` — flows and `bootApp` now navigate to `/` explicitly. `should_reach_unlock_success_when_billing_reports_success` passed once (the first non-skipped Android purchase test).
+The four `integration_test/flows/*` files (9 tests) pass on an Android emulator (Pixel_9a, API 37) against the real docker-compose stack, on two consecutive full runs; the two Patrol permission tests pass too. **Not yet run on a GitHub runner** — `merge.yml` and `nightly.yml` target API 34 x86_64 and should be triggered once with *Run workflow*.
 
-**Remaining failures are real findings, not yet fixed:** `RenderFlex` overflow in `new_home_screen.dart:263` (~60 px on a 1080-wide device), a `payment_screen.dart:234` Column overflow (~99,000 px) plus "Failed to interpolate TextStyles with different inherit values" (a theme `inherit` mismatch), and content lists not finding just-seeded items (likely below the fold in a grid/list that needs scrolling). Flutter treats overflow errors as test failures on device. Next step: fix the two overflows and the TextStyle mismatch, add scrolling to the content lookups, re-run, then confirm on a GitHub runner.
+The three "real findings" earlier recorded here were diagnosed, and only one was an app defect:
+
+1. **`new_home_screen.dart` overflow (~60 px) — real app bug, fixed.** The greeting `Text` ("Halo, <child's name>'s Mom And Dad!") sat in a `Row` with no `Flexible`, so a long user-entered name overflowed. It now ellipsizes on one line. This is what had been failing the auth flow.
+2. **`payment_screen.dart` Column overflow (~99,000 px) and "Failed to interpolate TextStyles with different inherit values" — one test-harness bug, not two app bugs.** `pumpPaymentScreen` mounted a second `MaterialApp.router` with no `AppTheme` on top of the one `bootApp` had mounted. The pay button's text style then animated from the themed style to Material's default and threw, and the error widget laid out ~99,000 px tall, which surfaced as the "overflow". An attempted `PaymentScreen` layout refactor was reverted: it was not the cause. The harness now tears the old app down and mounts the new one with `AppTheme.lightTheme`.
+3. **Content lookups not finding just-seeded items — test bug.** The collection tab is a lazy `GridView.builder` and the shared backend accumulates cards, so the seeded card is past the last built row. The lookups now go through `scrollToText` (`integration_test/helpers/scroll.dart`).
+
+A fourth problem was environmental: the AVD's default 6 GB data partition filled with the 175 MB debug APK and installs failed with `Requested internal only, but not enough space`. Local fix: `-partition-size 8192 -wipe-data`; CI: `disk-size: 6000M` on the emulator-runner steps (AVD cache key bumped so the old snapshot is not reused).
 
 ---
 

@@ -260,21 +260,19 @@ class _HomeHeader extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        isLoggedIn
-                            ? (child != null
-                                  ? 'Halo, ${child!.name}\'s Mom And Dad!'
-                                  : 'Halo, Explorer!')
-                            : 'Halo, Teman!',
-                        style: AppTextStyles.subheading.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      // const Text('👋', style: TextStyle(fontSize: 16)),
-                    ],
+                  // A child's name is user-entered and can be arbitrarily long,
+                  // so the greeting must ellipsize instead of overflowing.
+                  Text(
+                    isLoggedIn
+                        ? (child != null
+                              ? 'Halo, ${child!.name}\'s Mom And Dad!'
+                              : 'Halo, Explorer!')
+                        : 'Halo, Teman!',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.subheading.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   Text(
                     'Yuk, belajar sambil bermain!',

@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:arunika_app/core/theme/app_theme.dart';
 import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/presentation/screens/payment/payment_screen.dart';
 import 'package:arunika_app/presentation/screens/unlock_success/unlock_success_screen.dart';
@@ -53,7 +54,15 @@ void main() {
         ),
       ],
     );
-    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    // Tear down the app bootApp mounted first, then mount this one with the
+    // real theme. Without both, the button's text style animates from the app
+    // theme to Material's default ("Failed to interpolate TextStyles with
+    // different inherit values"), and the resulting ErrorWidget lays out at
+    // ~99,000 px — which reads like a PaymentScreen overflow but is not one.
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(
+      MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+    );
     await tester.pumpAndSettle();
   }
 

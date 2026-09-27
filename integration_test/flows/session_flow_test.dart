@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import '../helpers/boot_app.dart';
+import '../helpers/scroll.dart';
 import '../helpers/signed_in_session.dart';
 import '../helpers/test_backend.dart';
 
@@ -68,7 +69,7 @@ void main() {
 
       // The grant made before the "reinstall" is still there — nothing
       // about owning this card lived in the storage that was wiped.
-      expect(find.text(title), findsOneWidget);
+      expect(await scrollToText(tester, title), findsOneWidget);
     },
     timeout: const Timeout(Duration(minutes: 2)),
   );

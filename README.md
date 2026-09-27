@@ -256,6 +256,8 @@ make coverage-baseline
 Current baseline is 34.9% overall; `lib/core` 83.9%, `lib/network` 93.5%,
 `lib/data` 45.4%, `lib/presentation` 32.7%, `lib/services` 6.0%.
 
+Full guide (integration flows on an emulator, Patrol, CI): [`docs/automation-testing.md`](docs/automation-testing.md).
+
 ### Flaky tests
 
 A flaky test is one whose result changes between runs on an unchanged commit.

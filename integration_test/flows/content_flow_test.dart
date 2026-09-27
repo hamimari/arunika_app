@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import '../helpers/boot_app.dart';
+import '../helpers/scroll.dart';
 import '../helpers/signed_in_session.dart';
 import '../helpers/test_backend.dart';
 
@@ -60,7 +61,7 @@ void main() {
       // test/presentation/screens/vocab/ar_entry_gate_test.dart; what this
       // proves is that a card just created via the real admin API is served
       // back through the real GET /ar/cards endpoint as locked by default.
-      expect(find.text(title), findsOneWidget);
+      expect(await scrollToText(tester, title), findsOneWidget);
     },
     timeout: const Timeout(Duration(minutes: 2)),
   );
@@ -96,7 +97,7 @@ void main() {
       // A blanket subscription unlocks every product, this card included —
       // real entitlement state, computed by the real backend, reaching the
       // real UI.
-      expect(find.text(title), findsOneWidget);
+      expect(await scrollToText(tester, title), findsOneWidget);
     },
     timeout: const Timeout(Duration(minutes: 2)),
   );
