@@ -51,6 +51,9 @@ SignupState _filledParentState() => SignupState(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  // Records what the bloc persisted to secure storage.
+  final secureWrites = <String, String?>{};
+
   const secureStorageChannel = MethodChannel(
     'plugins.it_nomads.com/flutter_secure_storage',
   );
@@ -68,10 +71,13 @@ void main() {
       ),
     );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-          secureStorageChannel,
-          (MethodCall call) async => null,
-        );
+        .setMockMethodCallHandler(secureStorageChannel, (MethodCall call) async {
+          if (call.method == 'write') {
+            final args = Map<String, dynamic>.from(call.arguments as Map);
+            secureWrites[args['key'] as String] = args['value'] as String?;
+          }
+          return null;
+        });
   });
 
   late MockAuthRepository mockRepo;
@@ -237,6 +243,23 @@ void main() {
         isA<SignupState>().having((s) => s.isSubmitting, 'submitting', true),
         isA<SignupState>().having((s) => s.isSuccess, 'success', true),
       ],
+    );
+
+    blocTest<SignupBloc, SignupState>(
+      'SignupSubmitted stores the new user id, as sign-in does',
+      setUp: secureWrites.clear,
+      build: () {
+        when(
+          () => mockRepo.signup(any()),
+        ).thenAnswer((_) async => _signUpResponse());
+        return SignupBloc(repository: mockRepo);
+      },
+      seed: _filledParentState,
+      act: (b) => b.add(SignupSubmitted()),
+      verify: (_) {
+        expect(secureWrites['user_id'], 'u1');
+        expect(secureWrites['auth_token'], 'tok');
+      },
     );
 
     blocTest<SignupBloc, SignupState>(

@@ -5,11 +5,10 @@ import 'package:arunika_app/data/repositories/auth_repository.dart';
 import 'package:arunika_app/di/locator.dart';
 
 import 'test_accounts.dart';
-import 'test_backend.dart';
 
 /// Registers a fresh account through the real signup endpoint and leaves the
 /// session signed in, exactly as `signup_bloc.dart` does on success (save
-/// token, save refresh token, notify `AuthNotifier`).
+/// token, save refresh token, save user id, notify `AuthNotifier`).
 ///
 /// The multi-step signup wizard's own mechanics (name/phone/email/address/
 /// city/password/child fields, validation, terms and privacy screens) are
@@ -20,9 +19,7 @@ import 'test_backend.dart';
 /// repository rather than by tapping through the wizard keeps these flows
 /// about that claim instead of about wizard navigation.
 ///
-/// Returns the account and its backend user id (decoded from the issued
-/// token — see [userIdFromToken] — since `SignUpResponse` itself carries no
-/// id; only `POST /auth/login` returns one).
+/// Returns the account and its backend user id, as returned by signup.
 class SignedInSession {
   SignedInSession({required this.account, required this.userId});
 
@@ -52,12 +49,10 @@ Future<SignedInSession> registerAndSignIn() async {
 
   await SecureTokenStorage.saveToken(response.token);
   await SecureTokenStorage.saveRefreshToken(response.refreshToken);
+  await SecureTokenStorage.saveUserId(response.id);
   await locator<AuthNotifier>().checkAuth();
 
-  return SignedInSession(
-    account: account,
-    userId: userIdFromToken(response.token),
-  );
+  return SignedInSession(account: account, userId: response.id);
 }
 
 /// Signs the current session out, clearing the token and cached profile —

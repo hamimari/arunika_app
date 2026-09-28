@@ -206,6 +206,12 @@ class SignupBloc extends Bloc<SignupEvent, SignupState> {
           }
           await SecureTokenStorage.saveToken(response.token);
           await SecureTokenStorage.saveRefreshToken(response.refreshToken);
+          // Stored like sign-in does, so screens that fetch the fresh profile
+          // by user id (home, premium, payment) work without signing in again.
+          // Older backends don't return the id; skip rather than store "".
+          if (response.id.isNotEmpty) {
+            await SecureTokenStorage.saveUserId(response.id);
+          }
           await LocalProfileStorage.save(
             UserResponseConverter.toUserResponse(response),
           );

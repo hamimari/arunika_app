@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:arunika_app/config/app_config.dart';
 import 'package:dio/dio.dart';
 
@@ -100,16 +98,4 @@ class TestBackend {
       options: await _adminAuth(),
     );
   }
-}
-
-/// Decodes the `sub` (user id) claim from a JWT without verifying its
-/// signature — the token was just issued by the real backend we are talking
-/// to, so there is nothing to verify against; this only reads a value the
-/// signup response itself does not carry (see SignUpResponse, which returns
-/// no id — only login does).
-String userIdFromToken(String jwt) {
-  final payload = jwt.split('.')[1];
-  final normalised = base64Url.normalize(payload);
-  final decoded = utf8.decode(base64Url.decode(normalised));
-  return (jsonDecode(decoded) as Map<String, dynamic>)['sub'] as String;
 }
