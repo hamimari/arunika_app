@@ -1,5 +1,6 @@
 // ignore_for_file: inference_failure_on_function_invocation
 
+import 'package:arunika_app/core/legal/legal_versions.dart';
 import 'package:arunika_app/data/models/request/signup_request.dart';
 import 'package:arunika_app/data/models/response/child_response.dart';
 import 'package:arunika_app/data/models/response/signup_response.dart';
@@ -46,6 +47,8 @@ SignupState _filledParentState() => SignupState(
   childName: 'Child',
   childGender: 'male',
   childBirthDate: DateTime(2020, 1, 1),
+  tncAccepted: true,
+  parentalConsentAccepted: true,
 );
 
 void main() {
@@ -71,7 +74,9 @@ void main() {
       ),
     );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(secureStorageChannel, (MethodCall call) async {
+        .setMockMethodCallHandler(secureStorageChannel, (
+          MethodCall call,
+        ) async {
           if (call.method == 'write') {
             final args = Map<String, dynamic>.from(call.arguments as Map);
             secureWrites[args['key'] as String] = args['value'] as String?;
@@ -228,6 +233,72 @@ void main() {
     );
   });
 
+  group('SignupBloc — consent', () {
+    test('consent is given only when both boxes are ticked', () {
+      expect(SignupState().consentGiven, isFalse);
+      expect(SignupState(tncAccepted: true).consentGiven, isFalse);
+      expect(SignupState(parentalConsentAccepted: true).consentGiven, isFalse);
+      expect(
+        SignupState(
+          tncAccepted: true,
+          parentalConsentAccepted: true,
+        ).consentGiven,
+        isTrue,
+      );
+    });
+
+    blocTest<SignupBloc, SignupState>(
+      'ParentalConsentToggled flips only the parental box',
+      build: () => SignupBloc(repository: mockRepo),
+      act: (b) => b.add(ParentalConsentToggled(true)),
+      expect: () => [
+        isA<SignupState>()
+            .having((s) => s.parentalConsentAccepted, 'parental', true)
+            .having((s) => s.tncAccepted, 'tnc', false),
+      ],
+    );
+
+    blocTest<SignupBloc, SignupState>(
+      'SignupSubmitted without the parental declaration does nothing',
+      build: () => SignupBloc(repository: mockRepo),
+      seed: () => _filledParentState().copyWith(parentalConsentAccepted: false),
+      act: (b) => b.add(SignupSubmitted()),
+      expect: () => <SignupState>[],
+      verify: (_) => verifyNever(() => mockRepo.signup(any())),
+    );
+
+    blocTest<SignupBloc, SignupState>(
+      'SignupSubmitted without the terms box does nothing',
+      build: () => SignupBloc(repository: mockRepo),
+      seed: () => _filledParentState().copyWith(tncAccepted: false),
+      act: (b) => b.add(SignupSubmitted()),
+      expect: () => <SignupState>[],
+      verify: (_) => verifyNever(() => mockRepo.signup(any())),
+    );
+
+    blocTest<SignupBloc, SignupState>(
+      'SignupSubmitted sends the legal versions the app shows',
+      build: () {
+        when(
+          () => mockRepo.signup(any()),
+        ).thenAnswer((_) async => _signUpResponse());
+        return SignupBloc(repository: mockRepo);
+      },
+      seed: _filledParentState,
+      act: (b) => b.add(SignupSubmitted()),
+      verify: (_) {
+        final request =
+            verify(() => mockRepo.signup(captureAny())).captured.single
+                as SignUpRequest;
+        expect(request.toJson()['consent'], {
+          'terms_version': LegalVersions.terms,
+          'privacy_version': LegalVersions.privacy,
+          'parental_version': LegalVersions.parental,
+        });
+      },
+    );
+  });
+
   group('SignupBloc — submit', () {
     blocTest<SignupBloc, SignupState>(
       'SignupSubmitted succeeds and emits isSuccess=true',
@@ -265,6 +336,7 @@ void main() {
     blocTest<SignupBloc, SignupState>(
       'SignupSubmitted with empty child fields emits validation error',
       build: () => SignupBloc(repository: mockRepo),
+      seed: () => SignupState(tncAccepted: true, parentalConsentAccepted: true),
       act: (b) => b.add(SignupSubmitted()),
       expect: () => [
         isA<SignupState>().having(

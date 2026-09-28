@@ -1,4 +1,5 @@
 import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/core/auth/consent_gate.dart';
 import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
 import 'package:arunika_app/core/utils/dongeng_tab_controller.dart';
@@ -12,6 +13,7 @@ import 'package:arunika_app/presentation/navigation/main_shell.dart';
 import 'package:arunika_app/presentation/navigation/signup_navigator.dart';
 import 'package:arunika_app/presentation/screens/animal_detail/animal_detail_screen.dart';
 import 'package:arunika_app/presentation/screens/arscanner/ar_scan_shell.dart';
+import 'package:arunika_app/presentation/screens/consent/consent_screen.dart';
 import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_bloc.dart';
 import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_screen.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_bloc.dart';
@@ -62,9 +64,14 @@ class AppRouter {
       // ── Landing ────────────────────────────────────────────────────────────
       GoRoute(path: '/landing', builder: (_, __) => const NewLandingScreen()),
 
+      // ── Re-consent (UU PDP) ────────────────────────────────────────────────
+      GoRoute(path: '/consent', builder: (_, __) => const ConsentScreen()),
+
       // ── Main Shell (5 tabs) ────────────────────────────────────────────────
       GoRoute(
         path: '/shell',
+        // Sends a user whose consent is missing or outdated to /consent.
+        redirect: (context, state) => ConsentGate.redirect(),
         builder: (context, state) {
           return MainShell(
             key: MainShell.shellKey,

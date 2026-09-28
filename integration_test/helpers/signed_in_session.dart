@@ -1,5 +1,6 @@
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
+import 'package:arunika_app/data/models/request/consent_request.dart';
 import 'package:arunika_app/data/models/request/signup_request.dart';
 import 'package:arunika_app/data/repositories/auth_repository.dart';
 import 'package:arunika_app/di/locator.dart';
@@ -44,6 +45,9 @@ Future<SignedInSession> registerAndSignIn() async {
         gender: 'M',
         dateOfBirth: '2020-01-02T00:00:00.000',
       ),
+      // As the app sends after both consent boxes are ticked. Without it the
+      // account is flagged consent_required and /shell redirects to /consent.
+      consent: const ConsentRequest.current(),
     ),
   );
 

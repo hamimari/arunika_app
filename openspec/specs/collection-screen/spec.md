@@ -51,7 +51,8 @@ The collection screen SHALL show a gear/settings icon button beside the category
 ### Requirement: AR cards show ownership and a Beli or Buka AR action
 Each AR card in the Koleksi grid SHALL be a card with its picture on top, then its title and one action.
 - A locked card SHALL show its picture in greyscale with a lock badge, and, when it has a `price_idr`, its price formatted as "Rp 15.000" (with `strike_price_idr` crossed out beside it when non-null) and a "Beli" button with a cart icon. A locked card on promo (non-null `strike_price_idr` and `discount_percent`) SHALL also show a "-N%" badge over the picture.
-- An unlocked card SHALL show its picture in full colour with no dimming, a "Dimiliki" badge, the text "Sudah jadi milikmu" and a "Buka AR" button. It SHALL NOT show a price.
+- An unlocked card SHALL show its picture in full colour with no dimming, no badge over the picture, a status chip under its title, and a "Buka AR" button. It SHALL NOT show a price, and SHALL NOT show any other caption under its title.
+- The status chip of an unlocked card that has a product (it was bought) SHALL read "Dimiliki", in grey with a check icon. The status chip of an unlocked card without a product (free content) SHALL read "Gratis", in green with a gift icon.
 
 Tapping the card or its button SHALL open the card when unlocked. When locked, it SHALL open the purchase for that card, passing its product id, price, strike price and Google Play product id, or ask a signed-out user to sign in first.
 
@@ -71,9 +72,13 @@ Tapping the card or its button SHALL open the card when unlocked. When locked, i
 - **WHEN** a signed-out user taps "Beli"
 - **THEN** the app SHALL ask them to sign in and SHALL NOT open the payment screen
 
-#### Scenario: Owned card
-- **WHEN** an AR card is unlocked for the user
-- **THEN** its picture SHALL be in full colour, it SHALL show "Dimiliki", "Sudah jadi milikmu" and "Buka AR", no lock badge and no price, and "Buka AR" SHALL open the card
+#### Scenario: Bought card
+- **WHEN** an AR card is unlocked for the user and has a product
+- **THEN** its picture SHALL be in full colour with no badge over it, a "Dimiliki" chip SHALL sit under the title, "Buka AR" SHALL be shown, and there SHALL be no lock badge, price or "Sudah jadi milikmu" caption; "Buka AR" SHALL open the card
+
+#### Scenario: Free card
+- **WHEN** an AR card is unlocked and has no product
+- **THEN** it SHALL show its picture in full colour with no badge over it, its title, a "Gratis" chip under the title and "Buka AR", and no "Dimiliki" label, whether or not the user is signed in
 
 #### Scenario: Narrow phone with enlarged text
 - **WHEN** the grid is shown on a 360-pixel-wide screen with 140% text

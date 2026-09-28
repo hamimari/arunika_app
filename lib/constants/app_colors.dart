@@ -50,6 +50,8 @@ class AppColors {
   static const Color discountRed = Color(0xFFC0361F);
   static const Color discountRedSoft = Color(0xFFFDE4E0);
   static const Color ownedGreen = Color(0xFF1F7A4D);
+  static const Color freeGreenSoft = Color(0xFFE2F3E9);
+  static const Color ownedGreySoft = Color(0xFFEFEBE7);
 
   // Bottom nav
   static const Color navActive = Color(0xFFFF8A3D);

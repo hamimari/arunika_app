@@ -363,6 +363,10 @@ class _ArCardItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final locked = !card.isUnlocked;
+    // Free cards come back unlocked with no product; only a card that has a
+    // product and is unlocked was bought. Free is "Gratis", bought is
+    // "Dimiliki"; both show as a chip under the title, not over the picture.
+    final owned = !locked && card.productId != null;
     final onPromo =
         locked && card.strikePriceIdr != null && card.discountPercent != null;
 
@@ -404,18 +408,12 @@ class _ArCardItem extends StatelessWidget {
                   Positioned(
                     top: 10,
                     left: 10,
-                    child: locked
-                        ? (onPromo
-                              ? _Pill(
-                                  label: '-${card.discountPercent}%',
-                                  color: AppColors.discountRed,
-                                )
-                              : const SizedBox.shrink())
-                        : const _Pill(
-                            label: AppStrings.badgeOwned,
-                            color: AppColors.ownedGreen,
-                            icon: Icons.check_rounded,
-                          ),
+                    child: onPromo
+                        ? _Pill(
+                            label: '-${card.discountPercent}%',
+                            color: AppColors.discountRed,
+                          )
+                        : const SizedBox.shrink(),
                   ),
                   if (locked)
                     Positioned(
@@ -455,21 +453,30 @@ class _ArCardItem extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-                  if (locked && card.priceIdr != null)
+                  if (locked && card.priceIdr != null) ...[
+                    const SizedBox(height: 4),
                     PriceTag(
                       price: card.priceIdr!,
                       strikePrice: card.strikePriceIdr,
                       showDiscount: false,
                       priceColor: AppColors.ctaRust,
-                    )
-                  else if (!locked)
-                    Text(
-                      AppStrings.ownedCaption,
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.mediumBrown,
-                      ),
                     ),
+                  ] else if (!locked) ...[
+                    const SizedBox(height: 6),
+                    owned
+                        ? const _StatusChip(
+                            label: AppStrings.badgeOwned,
+                            icon: Icons.check_rounded,
+                            background: AppColors.ownedGreySoft,
+                            foreground: AppColors.deepBrown,
+                          )
+                        : const _StatusChip(
+                            label: AppStrings.freeCaption,
+                            icon: Icons.card_giftcard_rounded,
+                            background: AppColors.freeGreenSoft,
+                            foreground: AppColors.ownedGreen,
+                          ),
+                  ],
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
@@ -552,8 +559,7 @@ class _ArCardItem extends StatelessWidget {
 class _Pill extends StatelessWidget {
   final String label;
   final Color color;
-  final IconData? icon;
-  const _Pill({required this.label, required this.color, this.icon});
+  const _Pill({required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -566,14 +572,50 @@ class _Pill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[
-            Icon(icon, size: 13, color: AppColors.white),
-            const SizedBox(width: 3),
-          ],
           Text(
             label,
             style: AppTextStyles.caption.copyWith(
               color: AppColors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The "Gratis" / "Dimiliki" chip under an unlocked card's title.
+class _StatusChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color background;
+  final Color foreground;
+  const _StatusChip({
+    required this.label,
+    required this.icon,
+    required this.background,
+    required this.foreground,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: foreground),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: foreground,
               fontWeight: FontWeight.w700,
               fontSize: 11,
             ),

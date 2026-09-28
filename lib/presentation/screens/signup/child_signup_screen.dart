@@ -2,12 +2,12 @@ import 'package:arunika_app/presentation/screens/signup/signup_bloc.dart';
 import 'package:arunika_app/presentation/screens/signup/signup_event.dart';
 import 'package:arunika_app/presentation/screens/signup/signup_state.dart';
 import 'package:arunika_app/presentation/screens/widgets/app_button.dart';
+import 'package:arunika_app/presentation/screens/widgets/consent_checkboxes.dart';
 import 'package:arunika_app/presentation/screens/widgets/date_field.dart';
 import 'package:arunika_app/presentation/screens/widgets/dropdown_field.dart';
 import 'package:arunika_app/presentation/screens/widgets/error_dialog.dart';
 import 'package:arunika_app/presentation/screens/widgets/progress_bar.dart';
 import 'package:arunika_app/presentation/screens/widgets/text_field.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -254,64 +254,21 @@ class _ChildSignupState extends State<ChildSignupScreen> {
 
                         const SizedBox(height: 16),
 
-                        // T&C
+                        // Consent (UU PDP): two separate, required boxes
                         BlocBuilder<SignupBloc, SignupState>(
-                          buildWhen: (p, c) => p.tncAccepted != c.tncAccepted,
+                          buildWhen: (p, c) =>
+                              p.tncAccepted != c.tncAccepted ||
+                              p.parentalConsentAccepted !=
+                                  c.parentalConsentAccepted,
                           builder: (context, state) {
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Checkbox(
-                                  value: state.tncAccepted,
-                                  activeColor: Colors.orange,
-                                  onChanged: (value) {
-                                    context.read<SignupBloc>().add(
-                                      TncToggled(value ?? false),
-                                    );
-                                  },
-                                ),
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(top: 10),
-                                    child: Text.rich(
-                                      TextSpan(
-                                        text:
-                                            'Dengan mendaftar, Kamu menyetujui ',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.black54,
-                                        ),
-                                        children: [
-                                          TextSpan(
-                                            text: 'Syarat & Ketentuan',
-                                            style: const TextStyle(
-                                              color: Colors.orange,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                            recognizer: TapGestureRecognizer()
-                                              ..onTap = () {
-                                                context.push('/terms');
-                                              },
-                                          ),
-                                          const TextSpan(text: ' dan '),
-                                          TextSpan(
-                                            text: 'Kebijakan Privasi',
-                                            style: const TextStyle(
-                                              color: Colors.orange,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                            recognizer: TapGestureRecognizer()
-                                              ..onTap = () {
-                                                context.push('/privacy');
-                                              },
-                                          ),
-                                          const TextSpan(text: ' kami'),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            return ConsentCheckboxes(
+                              termsAccepted: state.tncAccepted,
+                              parentalAccepted: state.parentalConsentAccepted,
+                              onTermsChanged: (v) =>
+                                  context.read<SignupBloc>().add(TncToggled(v)),
+                              onParentalChanged: (v) => context
+                                  .read<SignupBloc>()
+                                  .add(ParentalConsentToggled(v)),
                             );
                           },
                         ),
@@ -323,7 +280,7 @@ class _ChildSignupState extends State<ChildSignupScreen> {
                           builder: (context, state) {
                             return AppButton(
                               text: 'Simpan',
-                              enabled: state.tncAccepted,
+                              enabled: state.consentGiven,
                               loading: state.isSubmitting,
                               onPressed: () {
                                 context.read<SignupBloc>().add(

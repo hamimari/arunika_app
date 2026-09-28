@@ -51,7 +51,6 @@ class AppStrings {
   static const String btnRead = 'Baca';
   static const String btnOpenAr = 'Buka AR';
   static const String badgeOwned = 'Dimiliki';
-  static const String ownedCaption = 'Sudah jadi milikmu';
   static const String freeCaption = 'Gratis';
 
   // AR

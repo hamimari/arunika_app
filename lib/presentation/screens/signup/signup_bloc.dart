@@ -2,6 +2,7 @@ import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/storage/LocalProfileStorage.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
 import 'package:arunika_app/data/models/converter/user_response_converter.dart';
+import 'package:arunika_app/data/models/request/consent_request.dart';
 import 'package:arunika_app/data/models/request/signup_request.dart';
 import 'package:arunika_app/data/models/response/signup_response.dart';
 import 'package:arunika_app/data/repositories/auth_repository.dart';
@@ -136,6 +137,9 @@ class SignupBloc extends Bloc<SignupEvent, SignupState> {
     });
 
     on<TncToggled>((e, emit) => emit(state.copyWith(tncAccepted: e.accepted)));
+    on<ParentalConsentToggled>(
+      (e, emit) => emit(state.copyWith(parentalConsentAccepted: e.accepted)),
+    );
     on<ChildNameChanged>((e, emit) => emit(state.copyWith(childName: e.name)));
     on<ChildBirthDateChanged>(
       (e, emit) => emit(state.copyWith(childBirthDate: e.birthDate)),
@@ -151,6 +155,10 @@ class SignupBloc extends Bloc<SignupEvent, SignupState> {
     });
 
     on<SignupSubmitted>((e, emit) async {
+      // The button is disabled until both boxes are ticked; this keeps the
+      // rule true for any other way of dispatching the event.
+      if (!state.consentGiven) return;
+
       final childNameError = state.childName.isEmpty
           ? 'Nama anak wajib diisi'
           : null;
@@ -190,6 +198,7 @@ class SignupBloc extends Bloc<SignupEvent, SignupState> {
               gender: state.childGender!,
               dateOfBirth: state.childBirthDate!.toIso8601String(),
             ),
+            consent: const ConsentRequest.current(),
           );
 
           final SignUpResponse response = await repository.signup(request);

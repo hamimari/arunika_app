@@ -47,9 +47,17 @@ class ChildGenderChanged extends SignupEvent {
   ChildGenderChanged(this.gender);
 }
 
+/// The parent ticked "I agree to the Terms and Privacy Policy".
 class TncToggled extends SignupEvent {
   final bool accepted;
   TncToggled(this.accepted);
+}
+
+/// The parent ticked the declaration that they are the child's parent or
+/// legal guardian and consent to processing of the child's data.
+class ParentalConsentToggled extends SignupEvent {
+  final bool accepted;
+  ParentalConsentToggled(this.accepted);
 }
 
 class ObscurePasswordToggled extends SignupEvent {

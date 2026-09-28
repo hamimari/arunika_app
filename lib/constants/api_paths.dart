@@ -6,6 +6,7 @@ class ApiPaths {
   static const String findUserById = "/user/";
   static const String updateUser = "/user";
   static const String deleteAccount = "/user/me";
+  static const String recordConsent = "/user/consent";
   static const String fairyTales = "/fairy-tales";
   static const String fairyTaleById = "/fairy-tales/";
   static const String dongengCategories = "/dongeng-categories";

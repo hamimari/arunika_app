@@ -18,6 +18,14 @@ class UserApi {
     return res.data;
   }
 
+  /// POST /user/consent — records acceptance of the legal documents.
+  /// Returns whether consent is still required afterwards.
+  Future<bool> recordConsent(Map<String, dynamic> payload) async {
+    final res = await dio.post(ApiPaths.recordConsent, data: payload);
+    return (res.data as Map<String, dynamic>)['consent_required'] as bool? ??
+        false;
+  }
+
   /// DELETE /user/me — deletes/anonymizes the authenticated user's account
   /// and data (see AccountDeletionService on the backend).
   Future<void> deleteAccount() async {

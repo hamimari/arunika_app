@@ -1,3 +1,5 @@
+import 'package:arunika_app/data/models/request/consent_request.dart';
+
 class SignUpRequest {
   final String name;
   final String phoneNumber;
@@ -7,6 +9,9 @@ class SignUpRequest {
   final String password;
   final ChildRequest child;
 
+  /// What the parent agreed to. Null only for callers that predate consent.
+  final ConsentRequest? consent;
+
   SignUpRequest({
     required this.name,
     required this.phoneNumber,
@@ -15,6 +20,7 @@ class SignUpRequest {
     required this.city,
     required this.password,
     required this.child,
+    this.consent,
   });
 
   Map<String, dynamic> toJson() => {
@@ -25,6 +31,7 @@ class SignUpRequest {
     "city": city,
     "password": password,
     "child": [child.toJson()],
+    if (consent != null) "consent": consent!.toJson(),
   };
 }
 

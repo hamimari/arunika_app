@@ -141,8 +141,9 @@ void main() {
     expect(find.text('Harimau'), findsWidgets);
   });
 
-  testWidgets('should_ask_an_anonymous_user_to_sign_in_rather_than_to_pay',
-      (tester) async {
+  testWidgets('should_ask_an_anonymous_user_to_sign_in_rather_than_to_pay', (
+    tester,
+  ) async {
     useAuth(loggedIn: false);
     when(() => repo.findAll()).thenAnswer(
       (_) async => [_card(id: '2', title: 'Singa', unlocked: false)],
@@ -156,8 +157,9 @@ void main() {
     expect(find.textContaining('koleksi kartu AR'), findsWidgets);
   });
 
-  testWidgets('should_not_open_a_locked_card_for_a_signed_in_user',
-      (tester) async {
+  testWidgets('should_not_open_a_locked_card_for_a_signed_in_user', (
+    tester,
+  ) async {
     useAuth(loggedIn: true);
     when(() => repo.findAll()).thenAnswer(
       (_) async => [
@@ -180,8 +182,9 @@ void main() {
     expect(find.text('Payment screen'), findsOneWidget);
   });
 
-  testWidgets('should_distinguish_owned_from_unowned_cards_in_the_grid',
-      (tester) async {
+  testWidgets('should_distinguish_owned_from_unowned_cards_in_the_grid', (
+    tester,
+  ) async {
     useAuth(loggedIn: true);
     when(() => repo.findAll()).thenAnswer(
       (_) async => [
@@ -198,8 +201,9 @@ void main() {
     expect(find.text('Singa'), findsOneWidget);
   });
 
-  testWidgets('should_show_price_and_strike_price_only_on_locked_cards',
-      (tester) async {
+  testWidgets('should_show_price_and_strike_price_only_on_locked_cards', (
+    tester,
+  ) async {
     useAuth(loggedIn: true);
     when(() => repo.findAll()).thenAnswer(
       (_) async => [
@@ -235,8 +239,9 @@ void main() {
         .widgetList<ColorFiltered>(find.byType(ColorFiltered))
         .any((w) => w.colorFilter.toString().contains('matrix'));
 
-    testWidgets('should_show_a_locked_card_with_price_promo_badge_and_Beli',
-        (tester) async {
+    testWidgets('should_show_a_locked_card_with_price_promo_badge_and_Beli', (
+      tester,
+    ) async {
       useAuth(loggedIn: true);
       when(() => repo.findAll()).thenAnswer(
         (_) async => [
@@ -259,12 +264,17 @@ void main() {
       expect(find.text('-50%'), findsOneWidget);
       expect(find.widgetWithText(ElevatedButton, 'Beli'), findsOneWidget);
       expect(find.byIcon(Icons.lock_outline_rounded), findsOneWidget);
-      expect(greyscale(tester), isTrue, reason: 'a locked picture is greyscale');
+      expect(
+        greyscale(tester),
+        isTrue,
+        reason: 'a locked picture is greyscale',
+      );
       expect(find.text('Dimiliki'), findsNothing);
     });
 
-    testWidgets('should_not_show_a_promo_badge_without_a_strike_price',
-        (tester) async {
+    testWidgets('should_not_show_a_promo_badge_without_a_strike_price', (
+      tester,
+    ) async {
       useAuth(loggedIn: true);
       when(() => repo.findAll()).thenAnswer(
         (_) async => [
@@ -284,8 +294,9 @@ void main() {
       expect(find.textContaining('%'), findsNothing);
     });
 
-    testWidgets('should_open_the_purchase_from_Beli_with_the_play_sku',
-        (tester) async {
+    testWidgets('should_open_the_purchase_from_Beli_with_the_play_sku', (
+      tester,
+    ) async {
       useAuth(loggedIn: true);
       when(() => repo.findAll()).thenAnswer(
         (_) async => [
@@ -306,15 +317,24 @@ void main() {
 
       expect(find.text('Payment screen'), findsOneWidget);
       expect(lastPurchase?.id, 'prod-2');
-      expect(lastPurchase?.playProductId, 'sku_frog',
-          reason: 'without the SKU the item can never be bought through Play');
+      expect(
+        lastPurchase?.playProductId,
+        'sku_frog',
+        reason: 'without the SKU the item can never be bought through Play',
+      );
     });
 
     testWidgets('should_ask_a_guest_to_sign_in_from_Beli', (tester) async {
       useAuth(loggedIn: false);
       when(() => repo.findAll()).thenAnswer(
         (_) async => [
-          _card(id: '2', title: 'Frog', unlocked: false, productId: 'p', priceIdr: 15000),
+          _card(
+            id: '2',
+            title: 'Frog',
+            unlocked: false,
+            productId: 'p',
+            priceIdr: 15000,
+          ),
         ],
       );
 
@@ -326,8 +346,9 @@ void main() {
       expect(find.text('Payment screen'), findsNothing);
     });
 
-    testWidgets('should_show_an_owned_card_in_colour_with_Buka_AR',
-        (tester) async {
+    testWidgets('should_show_an_owned_card_in_colour_with_Buka_AR', (
+      tester,
+    ) async {
       useAuth(loggedIn: true);
       when(() => repo.findAll()).thenAnswer(
         (_) async => [
@@ -344,12 +365,100 @@ void main() {
       await pumpCollection(tester);
 
       expect(find.text('Dimiliki'), findsOneWidget);
-      expect(find.text('Sudah jadi milikmu'), findsOneWidget);
+      expect(
+        find.text('Sudah jadi milikmu'),
+        findsNothing,
+        reason: 'the caption under the title is gone',
+      );
       expect(find.widgetWithText(OutlinedButton, 'Buka AR'), findsOneWidget);
       expect(find.byIcon(Icons.lock_outline_rounded), findsNothing);
       expect(find.text('Rp 30.000'), findsNothing);
       expect(find.widgetWithText(ElevatedButton, 'Beli'), findsNothing);
-      expect(greyscale(tester), isFalse, reason: 'an owned picture keeps its colours');
+      expect(
+        greyscale(tester),
+        isFalse,
+        reason: 'an owned picture keeps its colours',
+      );
+    });
+
+    // A chip is part of the card body, under the title, not on the picture.
+    bool sitsUnderTitle(WidgetTester tester, String title, String chip) {
+      final titleBottom = tester.getBottomLeft(find.text(title)).dy;
+      final chipTop = tester.getTopLeft(find.text(chip)).dy;
+      return chipTop >= titleBottom;
+    }
+
+    testWidgets('should_show_a_free_card_with_a_Gratis_chip_and_Buka_AR', (
+      tester,
+    ) async {
+      useAuth(loggedIn: true);
+      // Free content is unlocked and carries no product.
+      when(() => repo.findAll()).thenAnswer(
+        (_) async => [_card(id: '3', title: 'Lion', unlocked: true)],
+      );
+
+      await pumpCollection(tester);
+
+      expect(find.text('Gratis'), findsOneWidget);
+      expect(find.byIcon(Icons.card_giftcard_rounded), findsOneWidget);
+      expect(sitsUnderTitle(tester, 'Lion', 'Gratis'), isTrue);
+      expect(find.text('Dimiliki'), findsNothing);
+      expect(find.text('Sudah jadi milikmu'), findsNothing);
+      expect(find.byIcon(Icons.lock_outline_rounded), findsNothing);
+      expect(find.text('Rp 30.000'), findsNothing);
+      expect(find.widgetWithText(OutlinedButton, 'Buka AR'), findsOneWidget);
+      expect(find.widgetWithText(ElevatedButton, 'Beli'), findsNothing);
+      expect(
+        greyscale(tester),
+        isFalse,
+        reason: 'a free picture keeps its colours',
+      );
+    });
+
+    testWidgets('should_show_the_Gratis_chip_to_a_guest_visitor_too', (
+      tester,
+    ) async {
+      useAuth(loggedIn: false);
+      when(() => repo.findAll()).thenAnswer(
+        (_) async => [_card(id: '3', title: 'Lion', unlocked: true)],
+      );
+
+      await pumpCollection(tester);
+
+      expect(find.text('Gratis'), findsOneWidget);
+      expect(find.text('Dimiliki'), findsNothing);
+    });
+
+    testWidgets('should_label_only_the_bought_card_in_a_mixed_list', (
+      tester,
+    ) async {
+      useAuth(loggedIn: true);
+      when(() => repo.findAll()).thenAnswer(
+        (_) async => [
+          _card(
+            id: '1',
+            title: 'Frog',
+            unlocked: true,
+            productId: 'prod-1',
+            priceIdr: 30000,
+          ),
+          _card(id: '3', title: 'Lion', unlocked: true),
+          _card(
+            id: '2',
+            title: 'Owl',
+            unlocked: false,
+            productId: 'prod-2',
+            priceIdr: 15000,
+          ),
+        ],
+      );
+
+      await pumpCollection(tester);
+
+      expect(find.text('Dimiliki'), findsOneWidget);
+      expect(find.text('Gratis'), findsOneWidget);
+      expect(find.text('Sudah jadi milikmu'), findsNothing);
+      expect(find.widgetWithText(ElevatedButton, 'Beli'), findsOneWidget);
     });
 
     testWidgets('should_fit_a_narrow_phone_with_enlarged_text', (tester) async {
@@ -389,8 +498,11 @@ void main() {
       await tester.tap(find.widgetWithText(OutlinedButton, 'Buka AR'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(CollectionScreen), findsNothing,
-          reason: 'the card detail screen opened');
+      expect(
+        find.byType(CollectionScreen),
+        findsNothing,
+        reason: 'the card detail screen opened',
+      );
     });
   });
 }
