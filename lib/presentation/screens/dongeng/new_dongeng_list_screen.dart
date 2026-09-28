@@ -11,6 +11,7 @@ import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_bloc.dart'
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_event.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_state.dart';
 import 'package:arunika_app/presentation/screens/widgets/category_dropdowns.dart';
+import 'package:arunika_app/presentation/screens/widgets/error_retry_view.dart';
 import 'package:arunika_app/presentation/screens/widgets/login_required_dialog.dart';
 import 'package:arunika_app/presentation/screens/widgets/ownership_filter_sheet.dart';
 import 'package:flutter/material.dart';
@@ -199,32 +200,9 @@ class _NewDongengListScreenState extends State<NewDongengListScreen> {
     }
 
     if (state is DongengListError) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                size: 64,
-                color: AppColors.primaryOrange,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                state.message,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.body,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () =>
-                    context.read<DongengListBloc>().add(LoadDongengList()),
-                child: const Text('Coba Lagi'),
-              ),
-            ],
-          ),
-        ),
+      return ErrorRetryView(
+        message: state.message,
+        onRetry: () => context.read<DongengListBloc>().add(LoadDongengList()),
       );
     }
 

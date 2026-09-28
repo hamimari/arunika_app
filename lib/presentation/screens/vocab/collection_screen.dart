@@ -12,6 +12,7 @@ import 'package:arunika_app/core/utils/auth_guard.dart';
 import 'package:arunika_app/presentation/screens/vocab/ar_card_detail_screen.dart';
 import 'package:arunika_app/presentation/screens/vocab/collection_bloc.dart';
 import 'package:arunika_app/presentation/screens/widgets/category_dropdowns.dart';
+import 'package:arunika_app/presentation/screens/widgets/error_retry_view.dart';
 import 'package:arunika_app/presentation/screens/widgets/login_required_dialog.dart';
 import 'package:arunika_app/presentation/screens/widgets/ownership_filter_sheet.dart';
 import 'package:arunika_app/presentation/screens/vocab/collection_bloc_handler.dart';
@@ -92,151 +93,132 @@ class _CollectionViewState extends State<_CollectionView> {
           ),
         ),
         child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: _isSearching ? _buildSearchBar() : _buildTitle(),
-                ),
-              ),
-
-              // Category dropdown(s) + gear icon opening the ownership
-              // ("Kepemilikan") filter sheet — replaces the old "Sudah
-              // dibeli saja" chip.
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-                child: BlocBuilder<CollectionBlocHandler, CollectionState>(
-                  builder: (context, state) {
-                    if (state is! CollectionLoaded) {
-                      return const SizedBox.shrink();
-                    }
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: CategoryDropdowns(
-                            categories: state.categories
-                                .map(_fromArCardCategory)
-                                .toList(),
-                            activeCategoryId: state.activeCategoryId,
-                            activeSubCategoryId: state.activeSubCategoryId,
-                            onCategoryChanged: (id) => context
-                                .read<CollectionBlocHandler>()
-                                .add(FilterByCategory(id)),
-                            onSubCategoryChanged: (id) => context
-                                .read<CollectionBlocHandler>()
-                                .add(FilterBySubCategory(id)),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        FilterIconButton(
-                          onTap: () => showOwnershipFilterSheet(
-                            context,
-                            currentOwnedOnly: state.ownedOnly,
-                            onApply: (v) => context
-                                .read<CollectionBlocHandler>()
-                                .add(ToggleOwnedOnly(v)),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Grid / Loading / Error
-              Expanded(
-                child: RefreshIndicator(
-                  color: AppColors.primaryOrange,
-                  onRefresh: () async {
-                    context.read<CollectionBlocHandler>().add(LoadArCards());
-                  },
-                  child: BlocBuilder<CollectionBlocHandler, CollectionState>(
-                    builder: (context, state) {
-                      if (state is CollectionLoading) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.primaryOrange,
-                          ),
-                        );
-                      }
-                      if (state is CollectionError) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.error_outline,
-                                size: 48,
-                                color: AppColors.primaryOrange,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                state.message,
-                                textAlign: TextAlign.center,
-                                style: AppTextStyles.body.copyWith(
-                                  color: AppColors.mediumBrown,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: () => context
-                                    .read<CollectionBlocHandler>()
-                                    .add(LoadArCards()),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primaryOrange,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Coba Lagi',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                      if (state is CollectionLoaded) {
-                        final cards = state.displayed;
-                        if (cards.isEmpty) {
-                          return Center(
-                            child: Text(
-                              'Tidak ada kartu yang ditemukan.',
-                              style: AppTextStyles.body.copyWith(
-                                color: AppColors.mediumBrown,
-                              ),
-                            ),
-                          );
-                        }
-                        return GridView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                mainAxisSpacing: 14,
-                                crossAxisSpacing: 14,
-                                childAspectRatio: 0.78,
-                              ),
-                          itemCount: cards.length,
-                          itemBuilder: (_, i) => _ArCardItem(card: cards[i]),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                ),
-              ),
-            ],
+          child: BlocBuilder<CollectionBlocHandler, CollectionState>(
+            buildWhen: (prev, curr) =>
+                prev is CollectionError || curr is CollectionError,
+            builder: (context, state) {
+              // Like the dongeng list: on a load failure the whole page is
+              // the error view — no header, search or filters.
+              if (state is CollectionError) {
+                return ErrorRetryView(
+                  message: state.message,
+                  onRetry: () =>
+                      context.read<CollectionBlocHandler>().add(LoadArCards()),
+                );
+              }
+              return _buildContent(context);
+            },
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: _isSearching ? _buildSearchBar() : _buildTitle(),
+          ),
+        ),
+
+        // Category dropdown(s) + gear icon opening the ownership
+        // ("Kepemilikan") filter sheet — replaces the old "Sudah
+        // dibeli saja" chip.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+          child: BlocBuilder<CollectionBlocHandler, CollectionState>(
+            builder: (context, state) {
+              if (state is! CollectionLoaded) {
+                return const SizedBox.shrink();
+              }
+              return Row(
+                children: [
+                  Expanded(
+                    child: CategoryDropdowns(
+                      categories: state.categories
+                          .map(_fromArCardCategory)
+                          .toList(),
+                      activeCategoryId: state.activeCategoryId,
+                      activeSubCategoryId: state.activeSubCategoryId,
+                      onCategoryChanged: (id) => context
+                          .read<CollectionBlocHandler>()
+                          .add(FilterByCategory(id)),
+                      onSubCategoryChanged: (id) => context
+                          .read<CollectionBlocHandler>()
+                          .add(FilterBySubCategory(id)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilterIconButton(
+                    onTap: () => showOwnershipFilterSheet(
+                      context,
+                      currentOwnedOnly: state.ownedOnly,
+                      onApply: (v) => context.read<CollectionBlocHandler>().add(
+                        ToggleOwnedOnly(v),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Grid / Loading / Error
+        Expanded(
+          child: RefreshIndicator(
+            color: AppColors.primaryOrange,
+            onRefresh: () async {
+              context.read<CollectionBlocHandler>().add(LoadArCards());
+            },
+            child: BlocBuilder<CollectionBlocHandler, CollectionState>(
+              builder: (context, state) {
+                if (state is CollectionLoading) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primaryOrange,
+                    ),
+                  );
+                }
+                if (state is CollectionLoaded) {
+                  final cards = state.displayed;
+                  if (cards.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'Tidak ada kartu yang ditemukan.',
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.mediumBrown,
+                        ),
+                      ),
+                    );
+                  }
+                  return GridView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 14,
+                          crossAxisSpacing: 14,
+                          childAspectRatio: 0.78,
+                        ),
+                    itemCount: cards.length,
+                    itemBuilder: (_, i) => _ArCardItem(card: cards[i]),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 
