@@ -16,6 +16,10 @@ enum PaymentOptionsStatus {
   /// The user's active subscription already covers everything — no options,
   /// prices or "Bayar" are shown.
   subscribed,
+
+  /// Nothing can be bought on this device: purchases go through Google Play
+  /// Billing, which only exists on Android (see PaymentOptionsCubit).
+  unavailable,
 }
 
 class PaymentOptionsState {
@@ -56,6 +60,10 @@ class PaymentOptionsState {
 
   List<PurchasableItem> get options => [?singleItem, ...packages];
 
+  /// Whether [selected] can be paid for here — only through Google Play, so
+  /// it must be mapped to a Play product.
+  bool get selectedPurchasable => PaymentOptionsCubit.isPurchasable(selected);
+
   /// For a renewal: the new expiry if [selected] is bought now — added on
   /// top of the current expiry, mirroring the backend's stacking.
   DateTime? get renewedUntil {
@@ -95,17 +103,25 @@ class PaymentOptionsState {
 /// for plus every active premium package, which one is selected (and so
 /// what "Bayar" pays for), and whether the user is an active subscriber who
 /// shouldn't be offered anything.
+///
+/// Digital content is sold only through Google Play Billing (Midtrans is at
+/// most the alternative Google Play itself offers under User Choice
+/// Billing), so nothing is purchasable where Play Billing isn't available,
+/// and only Play-mapped items are purchasable where it is.
 class PaymentOptionsCubit extends Cubit<PaymentOptionsState> {
   final PurchasableItem entry;
   final PremiumPackRepository _packs;
   final ProfileLoader _profiles;
+  final bool _playBillingAvailable;
 
   PaymentOptionsCubit({
     required this.entry,
     required PremiumPackRepository packs,
     required ProfileLoader profiles,
+    required bool playBillingAvailable,
   }) : _packs = packs,
        _profiles = profiles,
+       _playBillingAvailable = playBillingAvailable,
        super(
          PaymentOptionsState(
            status: PaymentOptionsStatus.loading,
@@ -113,6 +129,9 @@ class PaymentOptionsCubit extends Cubit<PaymentOptionsState> {
            singleItem: entry.kind == PurchaseKind.product ? entry : null,
          ),
        );
+
+  /// Only items mapped to a Google Play product can be bought.
+  static bool isPurchasable(PurchasableItem item) => item.isPlayBillingEligible;
 
   Future<void> load() async {
     SubscriptionInfo? sub;
@@ -134,6 +153,10 @@ class PaymentOptionsCubit extends Cubit<PaymentOptionsState> {
           subscription: sub,
         ),
       );
+      return;
+    }
+    if (!_playBillingAvailable) {
+      emit(state.copyWith(status: PaymentOptionsStatus.unavailable));
       return;
     }
 
@@ -163,7 +186,11 @@ class PaymentOptionsCubit extends Cubit<PaymentOptionsState> {
     try {
       final packs = await _packs.fetchPacks();
       if (isClosed) return;
-      var items = packs.map(PurchasableItem.fromPackage).toList();
+      // Packages without a Play product can't be bought, so aren't offered.
+      var items = packs
+          .map(PurchasableItem.fromPackage)
+          .where(isPurchasable)
+          .toList();
       if (state.renewing) {
         items = items.where((p) => p.isSubscriptionPurchase).toList();
       }
@@ -206,7 +233,16 @@ class PaymentOptionsCubit extends Cubit<PaymentOptionsState> {
 
   void select(PurchasableItem item) {
     if (state.locked || state.status != PaymentOptionsStatus.ready) return;
+    if (!isPurchasable(item)) return;
     emit(state.copyWith(selected: item));
+  }
+
+  /// The backend refused the payment method (403
+  /// ALTERNATIVE_BILLING_DISABLED).
+  void markUnavailable() {
+    emit(
+      state.copyWith(status: PaymentOptionsStatus.unavailable, locked: false),
+    );
   }
 
   /// Freezes (or releases) the selection while a payment is being started.

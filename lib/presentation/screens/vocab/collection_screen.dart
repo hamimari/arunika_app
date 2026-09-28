@@ -208,7 +208,7 @@ class _CollectionViewState extends State<_CollectionView> {
                           crossAxisCount: 2,
                           mainAxisSpacing: 14,
                           crossAxisSpacing: 14,
-                          childAspectRatio: 0.78,
+                          mainAxisExtent: 276,
                         ),
                     itemCount: cards.length,
                     itemBuilder: (_, i) => _ArCardItem(card: cards[i]),
@@ -320,190 +320,221 @@ class _CollectionViewState extends State<_CollectionView> {
 
 // ── AR Card Item ──────────────────────────────────────────────────────────────
 
+// Locked cards are shown in greyscale; owned cards keep their colours.
+const _greyscale = ColorFilter.matrix([
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0, 0, 0, 1, 0, //
+]);
+
+/// One card in the collection grid: the picture on top, then title, and an
+/// action — "Beli" with the price for a locked card, "Buka AR" for one the
+/// user owns.
 class _ArCardItem extends StatelessWidget {
   final ArCardResponse card;
   const _ArCardItem({required this.card});
 
+  void _onTap(BuildContext context) {
+    final isLoggedIn = locator<AuthNotifier>().isLoggedIn;
+    if (card.isUnlocked) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ArCardDetailScreen(card: card)),
+      );
+    } else if (!isLoggedIn) {
+      showLoginRequiredDialog(context, featureLabel: 'koleksi kartu AR');
+    } else {
+      goToProductPurchase(
+        context,
+        productId: card.productId,
+        title: card.title ?? 'Kartu AR',
+        priceIdr: card.priceIdr,
+        contentType: PurchasedContentType.arCard,
+        subtitle: 'Akses ke kartu AR ${card.title ?? ''}'.trim(),
+        playProductId: card.playProductId,
+        strikePriceIdr: card.strikePriceIdr,
+        discountPercent: card.discountPercent,
+        promoEndsAt: card.promoEndsAt,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final locked = !card.isUnlocked;
+    final onPromo =
+        locked && card.strikePriceIdr != null && card.discountPercent != null;
+
     return GestureDetector(
-      onTap: () {
-        final isLoggedIn = locator<AuthNotifier>().isLoggedIn;
-        if (card.isUnlocked) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => ArCardDetailScreen(card: card)),
-          );
-        } else if (!isLoggedIn) {
-          showLoginRequiredDialog(context, featureLabel: 'koleksi kartu AR');
-        } else {
-          goToProductPurchase(
-            context,
-            productId: card.productId,
-            title: card.title ?? 'Kartu AR',
-            priceIdr: card.priceIdr,
-            contentType: PurchasedContentType.arCard,
-            subtitle: 'Akses ke kartu AR ${card.title ?? ''}'.trim(),
-            strikePriceIdr: card.strikePriceIdr,
-            discountPercent: card.discountPercent,
-            promoEndsAt: card.promoEndsAt,
-          );
-        }
-      },
+      onTap: () => _onTap(context),
       child: Container(
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: _parseBgColor(card.bgColor),
-          borderRadius: BorderRadius.circular(20),
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.10),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Colored background with image
-              Column(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Picture; the space left over after the body below.
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Expanded(
-                    child: ColorFiltered(
-                      colorFilter: card.isUnlocked
-                          ? const ColorFilter.mode(
-                              Colors.transparent,
-                              BlendMode.multiply,
-                            )
-                          : const ColorFilter.matrix([
-                              0.2126,
-                              0.7152,
-                              0.0722,
-                              0,
-                              0,
-                              0.2126,
-                              0.7152,
-                              0.0722,
-                              0,
-                              0,
-                              0.2126,
-                              0.7152,
-                              0.0722,
-                              0,
-                              0,
-                              0,
-                              0,
-                              0,
-                              1,
-                              0,
-                            ]),
-                      child: Container(
-                        color: _parseBgColor(card.bgColor),
-                        child: card.imageUrl.isNotEmpty
-                            ? Image(
-                                image: MediaCache.image(card.imageUrl),
-                                width: double.infinity,
-                                height: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Center(
-                                  child: Text(
-                                    card.emoji.isNotEmpty ? card.emoji : '🃏',
-                                    style: const TextStyle(fontSize: 56),
-                                  ),
-                                ),
-                              )
-                            : Center(
-                                child: Text(
-                                  card.emoji.isNotEmpty ? card.emoji : '🃏',
-                                  style: const TextStyle(fontSize: 56),
-                                ),
-                              ),
-                      ),
+                  ColorFiltered(
+                    colorFilter: locked
+                        ? _greyscale
+                        : const ColorFilter.mode(
+                            Colors.transparent,
+                            BlendMode.multiply,
+                          ),
+                    child: Container(
+                      color: _parseBgColor(card.bgColor),
+                      child: _picture(),
                     ),
                   ),
-                  // Name strip at bottom
-                  Container(
-                    width: double.infinity,
-                    color: AppColors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 10,
-                    ),
-                    child: Text(
-                      card.title ?? '',
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: locked
+                        ? (onPromo
+                              ? _Pill(
+                                  label: '-${card.discountPercent}%',
+                                  color: AppColors.discountRed,
+                                )
+                              : const SizedBox.shrink())
+                        : const _Pill(
+                            label: AppStrings.badgeOwned,
+                            color: AppColors.ownedGreen,
+                            icon: Icons.check_rounded,
+                          ),
+                  ),
+                  if (locked)
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.lock_outline_rounded,
+                          color: AppColors.white,
+                          size: 16,
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
+                ],
+              ),
+            ),
+
+            // Body: title + price/ownership + action.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    card.title ?? '',
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  if (locked && card.priceIdr != null)
+                    PriceTag(
+                      price: card.priceIdr!,
+                      strikePrice: card.strikePriceIdr,
+                      showDiscount: false,
+                      priceColor: AppColors.ctaRust,
+                    )
+                  else if (!locked)
+                    Text(
+                      AppStrings.ownedCaption,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.mediumBrown,
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 38,
+                    child: locked
+                        ? ElevatedButton.icon(
+                            onPressed: () => _onTap(context),
+                            icon: const Icon(
+                              Icons.shopping_cart_outlined,
+                              size: 18,
+                            ),
+                            label: const Text(AppStrings.btnBuy),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.ctaRust,
+                              foregroundColor: AppColors.white,
+                              elevation: 0,
+                              padding: EdgeInsets.zero,
+                              textStyle: AppTextStyles.buttonSmall,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                          )
+                        : OutlinedButton.icon(
+                            onPressed: () => _onTap(context),
+                            icon: const Icon(
+                              Icons.view_in_ar_rounded,
+                              size: 18,
+                            ),
+                            label: const Text(AppStrings.btnOpenAr),
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: AppColors.ctaRustSoft,
+                              foregroundColor: AppColors.ctaRust,
+                              side: const BorderSide(color: AppColors.ctaRust),
+                              padding: EdgeInsets.zero,
+                              textStyle: AppTextStyles.buttonSmall,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                          ),
                   ),
                 ],
               ),
-
-              // Full gray overlay for locked cards
-              if (!card.isUnlocked)
-                Container(color: Colors.black.withValues(alpha: 0.40)),
-
-              // Price (with promo strike price) on locked, purchasable cards
-              if (!card.isUnlocked && card.priceIdr != null)
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  right: 44,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: PriceTag(
-                        price: card.priceIdr!,
-                        strikePrice: card.strikePriceIdr,
-                        compact: true,
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Lock / unlock badge
-              Positioned(
-                top: 8,
-                right: 8,
-                child: card.isUnlocked
-                    ? Container(
-                        width: 24,
-                        height: 24,
-                        decoration: const BoxDecoration(
-                          color: AppColors.successGreen,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.check,
-                          color: AppColors.white,
-                          size: 14,
-                        ),
-                      )
-                    : Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.45),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.lock_rounded,
-                          color: AppColors.white,
-                          size: 18,
-                        ),
-                      ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _picture() {
+    Widget emoji() => Center(
+      child: Text(
+        card.emoji.isNotEmpty ? card.emoji : '🃏',
+        style: const TextStyle(fontSize: 56),
+      ),
+    );
+    if (card.imageUrl.isEmpty) return emoji();
+    return Image(
+      image: MediaCache.image(card.imageUrl),
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => emoji(),
     );
   }
 
@@ -514,6 +545,42 @@ class _ArCardItem extends StatelessWidget {
     } catch (_) {
       return const Color(0xFFFFF3E0);
     }
+  }
+}
+
+/// A small rounded label over a card picture ("-50%", "Dimiliki").
+class _Pill extends StatelessWidget {
+  final String label;
+  final Color color;
+  final IconData? icon;
+  const _Pill({required this.label, required this.color, this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 13, color: AppColors.white),
+            const SizedBox(width: 3),
+          ],
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

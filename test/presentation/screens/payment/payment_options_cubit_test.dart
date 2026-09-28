@@ -18,6 +18,7 @@ const _hutan = PremiumPack(
   priceIdr: 79000,
   strikePriceIdr: 99000,
   discountPercent: 20,
+  playProductId: 'pack_hutan',
 );
 const _bulanan = PremiumPack(
   id: 'pkg-bulanan',
@@ -26,6 +27,7 @@ const _bulanan = PremiumPack(
   priceIdr: 39000,
   type: 'subscription',
   durationDays: 30,
+  playProductId: 'sub_monthly',
 );
 const _tahunan = PremiumPack(
   id: 'pkg-tahunan',
@@ -34,6 +36,7 @@ const _tahunan = PremiumPack(
   priceIdr: 299000,
   type: 'subscription',
   durationDays: 365,
+  playProductId: 'sub_annual',
 );
 
 final _card = PurchasableItem.fromProduct(
@@ -41,6 +44,15 @@ final _card = PurchasableItem.fromProduct(
   title: 'Harimau',
   priceIdr: 15000,
   contentType: PurchasedContentType.arCard,
+  playProductId: 'card_harimau',
+);
+
+// Not mapped to a Google Play product, so not sold.
+const _unmapped = PremiumPack(
+  id: 'pkg-unmapped',
+  name: 'Paket Lama',
+  subtitle: 'Belum di Play',
+  priceIdr: 29000,
 );
 
 void main() {
@@ -54,8 +66,13 @@ void main() {
     when(() => profiles.activeSubscription()).thenAnswer((_) async => null);
   });
 
-  PaymentOptionsCubit build(PurchasableItem entry) =>
-      PaymentOptionsCubit(entry: entry, packs: packs, profiles: profiles);
+  PaymentOptionsCubit build(PurchasableItem entry, {bool play = true}) =>
+      PaymentOptionsCubit(
+        entry: entry,
+        packs: packs,
+        profiles: profiles,
+        playBillingAvailable: play,
+      );
 
   test('a single product is listed first and preselected, then every package', () async {
     final cubit = build(_card);
@@ -185,6 +202,54 @@ void main() {
 
     expect(cubit.state.status, PaymentOptionsStatus.subscribed);
     expect(cubit.state.locked, isFalse);
+    await cubit.close();
+  });
+
+  test('packages without a Google Play product are not offered', () async {
+    when(() => packs.fetchPacks()).thenAnswer((_) async => [_hutan, _unmapped]);
+    final cubit = build(_card);
+    await cubit.load();
+
+    expect(cubit.state.packages.map((p) => p.id), ['pkg-hutan']);
+    await cubit.close();
+  });
+
+  test('an unmapped single product is shown but can\'t be bought', () async {
+    final unmappedCard = PurchasableItem.fromProduct(
+      productId: 'prod-lama',
+      title: 'Kartu Lama',
+      priceIdr: 15000,
+      contentType: PurchasedContentType.arCard,
+    );
+    final cubit = build(unmappedCard);
+    await cubit.load();
+
+    expect(cubit.state.singleItem?.id, 'prod-lama');
+    expect(cubit.state.selectedPurchasable, isFalse);
+
+    cubit.select(cubit.state.packages.first);
+    expect(cubit.state.selectedPurchasable, isTrue, reason: 'a package can still be chosen');
+    cubit.select(unmappedCard);
+    expect(cubit.state.selected.id, 'pkg-hutan', reason: 'the unmapped item can\'t be selected');
+    await cubit.close();
+  });
+
+  test('nothing is sold where Google Play Billing is unavailable (iOS, web)', () async {
+    final cubit = build(_card, play: false);
+    await cubit.load();
+
+    expect(cubit.state.status, PaymentOptionsStatus.unavailable);
+    verifyNever(() => packs.fetchPacks());
+    await cubit.close();
+  });
+
+  test('a 403 from the backend switches to the unavailable state', () async {
+    final cubit = build(_card);
+    await cubit.load();
+
+    cubit.markUnavailable();
+
+    expect(cubit.state.status, PaymentOptionsStatus.unavailable);
     await cubit.close();
   });
 }

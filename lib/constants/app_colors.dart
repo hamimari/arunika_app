@@ -43,6 +43,14 @@ class AppColors {
   static const Color lockGrey = Color(0xFFBDBDBD);
   static const Color lockedOverlay = Color(0xAA9E9E9E);
 
+  // Purchase UI (buy buttons, prices, promo and ownership badges). A deeper
+  // orange than [primaryOrange] so white button text stays readable.
+  static const Color ctaRust = Color(0xFFC85A1A);
+  static const Color ctaRustSoft = Color(0xFFFFF1E6);
+  static const Color discountRed = Color(0xFFC0361F);
+  static const Color discountRedSoft = Color(0xFFFDE4E0);
+  static const Color ownedGreen = Color(0xFF1F7A4D);
+
   // Bottom nav
   static const Color navActive = Color(0xFFFF8A3D);
   static const Color navInactive = Color(0xFFBDBDBD);

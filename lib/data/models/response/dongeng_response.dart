@@ -12,6 +12,8 @@ class DongengResponse {
   final bool isUnlocked;
   final String? productId;
   final int? priceIdr;
+  // Google Play SKU of the linked product — needed to buy it via Play.
+  final String? playProductId;
   // Display-only promotional strike price; null when no promo is running.
   final int? strikePriceIdr;
   final int? discountPercent;
@@ -38,6 +40,7 @@ class DongengResponse {
     bool? isUnlocked,
     this.productId,
     this.priceIdr,
+    this.playProductId,
     this.strikePriceIdr,
     this.discountPercent,
     this.promoEndsAt,
@@ -67,6 +70,7 @@ class DongengResponse {
       isUnlocked: json['is_unlocked'] as bool?,
       productId: json['product_id'] as String?,
       priceIdr: (json['price_idr'] as num?)?.toInt(),
+      playProductId: json['play_product_id'] as String?,
       strikePriceIdr: (json['strike_price_idr'] as num?)?.toInt(),
       discountPercent: (json['discount_percent'] as num?)?.toInt(),
       promoEndsAt: parseOptionalDate(json['promo_ends_at']),

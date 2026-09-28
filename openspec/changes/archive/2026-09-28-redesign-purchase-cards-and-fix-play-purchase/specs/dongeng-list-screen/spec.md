@@ -1,8 +1,5 @@
-# dongeng-list-screen Specification
+## MODIFIED Requirements
 
-## Purpose
-Defines the dongeng (story) list screen's UI and behavior: the featured story card, the popular stories list, and the read-only player screen it links into.
-## Requirements
 ### Requirement: Featured premium story card
 The dongeng list screen SHALL display a featured story card at the top: a wide cover picture with a "Pilihan minggu ini" pill, and below it the story's title, its "{age start}–{age end} tahun · {duration}" line and a button. The button SHALL be "Baca" when the user can open the story, and "Beli" (with the price shown under the title) when the story is locked.
 
@@ -45,47 +42,6 @@ Tapping a locked story or its "Beli" button SHALL open the purchase for that sto
 - **WHEN** the list is shown on a 360-pixel-wide screen with 140% text
 - **THEN** the header, section title and story cards SHALL NOT overflow
 
-### Requirement: Existing dongeng player preserved
-The dongeng player screen (story reading/narration UI) SHALL remain visually unchanged.
-
-#### Scenario: Player screen is not modified
-- **WHEN** the user opens a story to read
-- **THEN** the player screen renders identically to its pre-change state
-
-### Requirement: Category filter row on the dongeng screen
-The dongeng list screen SHALL display a category filter row with a "Semua Kategori" dropdown (default: "Semua", showing all stories) listing top-level dongeng categories, and a second dropdown for sub-categories that appears only when the selected category has children — mirroring the collection screen's category dropdown pattern.
-
-#### Scenario: All stories shown by default
-- **WHEN** the dongeng screen first loads
-- **THEN** the category dropdown shows "Semua" selected and stories from every category are displayed
-
-#### Scenario: Filtering by category
-- **WHEN** the user selects a category from the dropdown
-- **THEN** only stories linked to that category (via `dongeng_category_id`) are shown
-
-#### Scenario: Filtering by sub-category
-- **WHEN** the user selects a sub-category from the second dropdown
-- **THEN** only stories matching both the category and sub-category are shown
-
-### Requirement: Filter bottom sheet replaces the ownership filter chip
-The dongeng list screen SHALL show a gear/settings icon button beside the category dropdown row. Tapping it SHALL open a "Filter" bottom sheet with a "Kepemilikan" section offering two radio options — "Semua" (default) and "Koleksiku" — and a "Terapkan" button. Applying SHALL filter the list to owned-only stories when "Koleksiku" is chosen, or show all stories when "Semua" is chosen, and close the sheet. The previous "Sudah dibeli saja" filter chip SHALL be removed.
-
-#### Scenario: Opening the filter sheet shows the current selection
-- **WHEN** the user taps the gear icon
-- **THEN** the "Filter" bottom sheet opens with "Kepemilikan" showing the currently active choice selected
-
-#### Scenario: Applying "Koleksiku" filters to owned stories
-- **WHEN** the user selects "Koleksiku" and taps "Terapkan"
-- **THEN** the sheet closes and only unlocked/owned stories are shown
-
-#### Scenario: Applying "Semua" shows every story
-- **WHEN** the user selects "Semua" and taps "Terapkan"
-- **THEN** the sheet closes and stories are shown regardless of ownership
-
-#### Scenario: Old filter chip no longer present
-- **WHEN** the dongeng screen renders
-- **THEN** no "Sudah dibeli saja" chip is present anywhere on the screen
-
 ### Requirement: Paid dongeng show price and strike price
 Each dongeng in the dongeng list that is locked for the user and has a `price_idr` SHALL show its price, formatted as "Rp 39.000", together with a "Beli" button. When `strike_price_idr` is non-null, the strike price SHALL be shown crossed out above the price. Free or already-owned dongeng SHALL NOT show a price.
 
@@ -96,4 +52,3 @@ Each dongeng in the dongeng list that is locked for the user and has a `price_id
 #### Scenario: Owned dongeng
 - **WHEN** the user already owns a paid dongeng
 - **THEN** its list item SHALL NOT show a price
-

@@ -21,4 +21,17 @@ void main() {
     expect(isSubscriptionActiveError(_error(409, 'not json')), isFalse);
     expect(isSubscriptionActiveError(Exception('offline')), isFalse);
   });
+
+  test('recognises the refusal while alternative billing is off', () {
+    expect(
+      isAlternativeBillingDisabledError(_error(403, {'code': 'ALTERNATIVE_BILLING_DISABLED'})),
+      isTrue,
+    );
+    expect(isAlternativeBillingDisabledError(_error(403, {'code': 'OTHER'})), isFalse);
+    expect(
+      isAlternativeBillingDisabledError(_error(409, {'code': 'ALTERNATIVE_BILLING_DISABLED'})),
+      isFalse,
+    );
+    expect(isAlternativeBillingDisabledError(Exception('offline')), isFalse);
+  });
 }

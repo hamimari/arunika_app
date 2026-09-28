@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:arunika_app/core/logger/app_logger.dart';
 import 'package:arunika_app/data/api/play_billing_api.dart';
 import 'package:arunika_app/network/api_errors.dart';
 import 'package:arunika_app/services/billing_service.dart';
+import 'package:dio/dio.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
@@ -21,13 +23,31 @@ enum PlayPurchaseOutcome {
   // user's active subscription already covers everything, so nothing was
   // charged.
   subscriptionActive,
+  // Google Play Billing can't be used on this device: no Play Store, or the
+  // billing client isn't ready.
+  storeUnavailable,
+  // Google Play doesn't know the product's SKU — it isn't set up in Play
+  // Console, or the build wasn't installed through Google Play (an internal
+  // testing track, with a license-tester account).
+  productNotFound,
+  // The backend didn't create the order, so nothing was started or charged.
+  orderFailed,
 }
 
-/// Maps a failure to create the backend order to a purchase outcome.
-PlayPurchaseOutcome _orderFailureOutcome(Object error) =>
-    isSubscriptionActiveError(error)
-        ? PlayPurchaseOutcome.subscriptionActive
-        : PlayPurchaseOutcome.error;
+const _log = 'PlayBilling';
+
+/// Maps a failure to create the backend order to a purchase outcome, logging
+/// what the backend said so a support case can see why.
+PlayPurchaseOutcome _orderFailureOutcome(Object error) {
+  if (isSubscriptionActiveError(error)) {
+    return PlayPurchaseOutcome.subscriptionActive;
+  }
+  final detail = error is DioException
+      ? '${error.response?.statusCode} ${error.response?.data}'
+      : '$error';
+  AppLogger.warning('Backend did not create the order: $detail', name: _log);
+  return PlayPurchaseOutcome.orderFailed;
+}
 
 class PlayPurchaseResult {
   final PlayPurchaseOutcome outcome;
@@ -38,22 +58,31 @@ class PlayPurchaseResult {
   const PlayPurchaseResult(this.outcome, {this.externalTransactionToken});
 }
 
-/// Wraps the platform `in_app_purchase` plugin for a single premium-package
-/// purchase under Google Play's User Choice Billing: Google Play shows the
-/// user a choice between paying via Google Play or via Arunika's
-/// alternative billing (Midtrans). If the user picks Google Play, this
-/// completes the purchase and verifies it with the backend as usual. If the
-/// user picks the alternative, this resolves with
+/// Wraps the platform `in_app_purchase` plugin for a single purchase through
+/// Google Play Billing. Only while the backoffice's `alternative_billing`
+/// flag is on does it switch to Google Play's User Choice Billing, where
+/// Google Play shows the user a choice between Google Play and Arunika's
+/// alternative billing (Midtrans); picking the alternative resolves with
 /// [PlayPurchaseOutcome.userChoseAlternativeBilling] so the caller can fall
-/// back to the existing Midtrans checkout.
+/// back to the Midtrans checkout. With the flag off, Google Play's own sheet
+/// is the only payment path.
 class GooglePlayBillingService implements BillingService {
   final InAppPurchase _iap;
   final PlayBillingApi _api;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
+  // The BillingClient's current mode: false = Google Play only (its
+  // default), true = User Choice Billing.
   bool _userChoiceBillingEnabled = false;
+  // Whether alternative billing is allowed right now (the backoffice flag).
+  final bool Function() _alternativeBillingAllowed;
 
-  GooglePlayBillingService(this._api, {InAppPurchase? iap})
-    : _iap = iap ?? InAppPurchase.instance;
+  GooglePlayBillingService(
+    this._api, {
+    InAppPurchase? iap,
+    bool Function()? alternativeBillingAllowed,
+  }) : _iap = iap ?? InAppPurchase.instance,
+       _alternativeBillingAllowed =
+           alternativeBillingAllowed ?? (() => false);
 
   Future<bool> isAvailable() => _iap.isAvailable();
 
@@ -67,20 +96,25 @@ class GooglePlayBillingService implements BillingService {
     }
   }
 
-  /// Switches the underlying BillingClient into User Choice Billing mode
-  /// (Google Play shows both payment options) the first time it's needed.
-  /// Reconnecting the BillingClient is relatively slow, so this is done
-  /// once and memoized rather than on every purchase.
-  Future<void> _ensureUserChoiceBillingEnabled() async {
-    if (_userChoiceBillingEnabled) return;
+  /// Puts the BillingClient in User Choice Billing mode (Google Play shows
+  /// both payment options) only while alternative billing is allowed, and
+  /// back to Google Play only when it isn't. Reconnecting the BillingClient
+  /// is relatively slow, so the mode is only changed when it differs.
+  Future<void> _syncBillingChoice() async {
+    final wanted = _alternativeBillingAllowed();
+    if (wanted == _userChoiceBillingEnabled) return;
     final addition = _androidAddition();
     if (addition == null) return;
     try {
-      await addition.setBillingChoice(BillingChoiceMode.userChoiceBilling);
-      _userChoiceBillingEnabled = true;
+      await addition.setBillingChoice(
+        wanted
+            ? BillingChoiceMode.userChoiceBilling
+            : BillingChoiceMode.playBillingOnly,
+      );
+      _userChoiceBillingEnabled = wanted;
     } catch (_) {
-      // Fails open to Google Play-only billing — the purchase can still
-      // proceed, it just won't offer the alternative payment option.
+      // Failing to switch to User Choice Billing leaves Google Play only,
+      // which is always allowed — the purchase can still proceed.
     }
   }
 
@@ -93,9 +127,10 @@ class GooglePlayBillingService implements BillingService {
     required String playProductId,
   }) async {
     if (!await _iap.isAvailable()) {
-      return const PlayPurchaseResult(PlayPurchaseOutcome.error);
+      AppLogger.warning('Google Play Billing is not available', name: _log);
+      return const PlayPurchaseResult(PlayPurchaseOutcome.storeUnavailable);
     }
-    await _ensureUserChoiceBillingEnabled();
+    await _syncBillingChoice();
 
     final Map<String, dynamic> order;
     try {
@@ -105,7 +140,8 @@ class GooglePlayBillingService implements BillingService {
     }
     final orderId = order['order_id'] as String?;
     if (orderId == null) {
-      return const PlayPurchaseResult(PlayPurchaseOutcome.error);
+      AppLogger.warning('Order response carried no order_id', name: _log);
+      return const PlayPurchaseResult(PlayPurchaseOutcome.orderFailed);
     }
 
     return _doPurchase(playProductId, orderId);
@@ -119,9 +155,10 @@ class GooglePlayBillingService implements BillingService {
     required String playProductId,
   }) async {
     if (!await _iap.isAvailable()) {
-      return const PlayPurchaseResult(PlayPurchaseOutcome.error);
+      AppLogger.warning('Google Play Billing is not available', name: _log);
+      return const PlayPurchaseResult(PlayPurchaseOutcome.storeUnavailable);
     }
-    await _ensureUserChoiceBillingEnabled();
+    await _syncBillingChoice();
 
     final Map<String, dynamic> order;
     try {
@@ -131,7 +168,8 @@ class GooglePlayBillingService implements BillingService {
     }
     final orderId = order['order_id'] as String?;
     if (orderId == null) {
-      return const PlayPurchaseResult(PlayPurchaseOutcome.error);
+      AppLogger.warning('Order response carried no order_id', name: _log);
+      return const PlayPurchaseResult(PlayPurchaseOutcome.orderFailed);
     }
 
     return _doPurchase(playProductId, orderId);
@@ -148,7 +186,12 @@ class GooglePlayBillingService implements BillingService {
     try {
       final response = await _iap.queryProductDetails({playProductId});
       if (response.productDetails.isEmpty) {
-        return const PlayPurchaseResult(PlayPurchaseOutcome.error);
+        AppLogger.warning(
+          'Google Play does not know product "$playProductId" '
+          '(notFound: ${response.notFoundIDs}, error: ${response.error?.message})',
+          name: _log,
+        );
+        return const PlayPurchaseResult(PlayPurchaseOutcome.productNotFound);
       }
 
       final completer = Completer<PlayPurchaseResult>();
@@ -182,6 +225,7 @@ class GooglePlayBillingService implements BillingService {
       final purchaseParam = PurchaseParam(productDetails: response.productDetails.first);
       final launched = await _iap.buyNonConsumable(purchaseParam: purchaseParam);
       if (!launched && !completer.isCompleted) {
+        AppLogger.warning('Google Play refused to launch the purchase', name: _log);
         completer.complete(const PlayPurchaseResult(PlayPurchaseOutcome.error));
       }
 
@@ -189,7 +233,13 @@ class GooglePlayBillingService implements BillingService {
         const Duration(minutes: 5),
         onTimeout: () => const PlayPurchaseResult(PlayPurchaseOutcome.error),
       );
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.error(
+        'Google Play purchase threw',
+        name: _log,
+        error: e,
+        stackTrace: st,
+      );
       return const PlayPurchaseResult(PlayPurchaseOutcome.error);
     } finally {
       await _purchaseSubscription?.cancel();
@@ -216,6 +266,10 @@ class GooglePlayBillingService implements BillingService {
           }
           break;
         case PurchaseStatus.error:
+          AppLogger.warning(
+            'Google Play reported a purchase error: ${purchase.error?.message}',
+            name: _log,
+          );
           if (!completer.isCompleted) {
             completer.complete(const PlayPurchaseResult(PlayPurchaseOutcome.error));
           }
@@ -235,7 +289,15 @@ class GooglePlayBillingService implements BillingService {
             if (!completer.isCompleted) {
               completer.complete(const PlayPurchaseResult(PlayPurchaseOutcome.success));
             }
-          } catch (_) {
+          } catch (e) {
+            // Google took the payment but the backend couldn't confirm it.
+            // Left unacknowledged, it is retried on the next app start
+            // (syncPendingPurchases) — the user must not pay again.
+            AppLogger.error(
+              'Backend could not verify the Google Play purchase',
+              name: _log,
+              error: e,
+            );
             if (!completer.isCompleted) {
               completer.complete(const PlayPurchaseResult(PlayPurchaseOutcome.verificationFailed));
             }

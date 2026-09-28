@@ -54,7 +54,11 @@ void setupLocator() {
   );
   locator.registerLazySingleton(() => PlayBillingApi());
   locator.registerLazySingleton<BillingService>(
-    () => GooglePlayBillingService(locator<PlayBillingApi>()),
+    () => GooglePlayBillingService(
+      locator<PlayBillingApi>(),
+      alternativeBillingAllowed: () =>
+          locator<FeatureFlagsNotifier>().alternativeBillingEnabled,
+    ),
   );
   locator.registerLazySingleton(() => FeatureFlagsNotifier(FeatureFlagApi()));
   locator.registerLazySingleton(

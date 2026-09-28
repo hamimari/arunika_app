@@ -4,11 +4,11 @@
 Defines the required behaviour for payment screen in the Arunika system.
 ## Requirements
 ### Requirement: Pay now button
-The payment screen SHALL have a "Bayar Sekarang 🔒" button at the bottom that initiates payment by calling `POST /payment/create` and opening the Midtrans Snap webview. The webview's own `onSuccess`/`onPending` callbacks SHALL NOT directly navigate to the unlock success screen; they SHALL instead trigger backend-confirmation polling.
+The payment screen SHALL have a "Bayar Sekarang 🔒" button at the bottom that starts payment for the selected option. The Midtrans path (calling `POST /payment/create` or `/payment/create-product` and opening the Midtrans Snap webview) SHALL be used only while the `alternative_billing` flag is on. On that path, the webview's own `onSuccess`/`onPending` callbacks SHALL NOT directly navigate to the unlock success screen; they SHALL instead trigger backend-confirmation polling.
 
 #### Scenario: Bayar Sekarang is tappable
-- **WHEN** the user selects a payment method and taps "Bayar Sekarang"
-- **THEN** `POST /payment/create` is called and, on success, the Midtrans Snap webview opens with the returned token
+- **WHEN** the `alternative_billing` flag is on, the user selects an option that uses the Midtrans path, and taps "Bayar Sekarang"
+- **THEN** the create-payment endpoint is called and, on success, the Midtrans Snap webview opens with the returned token
 
 ### Requirement: Payment outcome is confirmed by the backend, not the client
 After the Midtrans webview reports `onSuccess` or `onPending`, the payment screen SHALL show a waiting state and poll `GET /orders/:id` (using the `order_id` returned by `POST /payment/create`) at a fixed interval until the order status is `PAID`, `FAILED`, or `EXPIRED`, or a timeout elapses. The screen SHALL navigate to `/unlock-success` only when the polled status is `PAID`.
@@ -97,4 +97,49 @@ When the logged-in user has an active subscription and `subscription.can_renew` 
 #### Scenario: Backend reports an active subscription
 - **WHEN** `POST /payment/create` returns 409 `SUBSCRIPTION_ACTIVE`
 - **THEN** the screen SHALL show the "Langganan aktif" state and no charge SHALL be started
+
+### Requirement: Only Google Play purchases while alternative billing is off
+While the `alternative_billing` flag is off, the payment screen SHALL offer only Google Play purchases:
+- the payment screen SHALL NOT call `POST /payment/create` or `/payment/create-product`, and SHALL NOT open the Midtrans webview
+- on Android, packages without a `play_product_id` SHALL NOT be listed as options
+- a single product without a `play_product_id` SHALL be shown with "Belum tersedia di perangkat ini" and no "Bayar Sekarang" button
+- on iOS and web, the screen SHALL show a purchase-unavailable state instead of options
+
+A 403 `ALTERNATIVE_BILLING_DISABLED` from the backend SHALL be shown as that unavailable state.
+
+#### Scenario: Unmapped package hidden on Android
+- **WHEN** the flag is off and the package list contains one package with a `play_product_id` and one without
+- **THEN** only the mapped package SHALL be listed
+
+#### Scenario: Unmapped single product not sold
+- **WHEN** the flag is off and the screen is opened for an AR card without a `play_product_id`
+- **THEN** that option SHALL show "Belum tersedia di perangkat ini", no "Bayar Sekarang" button SHALL be shown for it, and no Midtrans request SHALL be made
+
+#### Scenario: iOS has no purchase path
+- **WHEN** the flag is off and the payment screen opens on iOS
+- **THEN** a purchase-unavailable state SHALL be shown, and no Midtrans webview SHALL open
+
+### Requirement: A failed purchase says why
+When starting a purchase fails, the payment screen SHALL show a message for the specific cause instead of one generic error, and SHALL log the cause. The button SHALL remain so the user can retry, and a cancellation SHALL NOT show an error.
+- Google Play Billing unavailable on the device: "Google Play tidak tersedia di perangkat ini…".
+- Google Play doesn't know the item's product: "Item ini belum tersedia di Google Play…".
+- The backend didn't create the order: "Pesanan gagal dibuat…".
+- Google Play took the payment but the backend couldn't confirm it: a message telling the user not to pay again and that access will activate automatically. The purchase SHALL be left unacknowledged so that it is retried on the next app start.
+- Anything else: "Pembayaran gagal. Coba lagi.".
+
+#### Scenario: Play Store unavailable
+- **WHEN** the user taps "Bayar Sekarang" and Google Play Billing is unavailable
+- **THEN** the screen SHALL show that Google Play isn't available on this device, and "Bayar Sekarang" SHALL remain
+
+#### Scenario: Product not found in Google Play
+- **WHEN** Google Play doesn't recognise the item's product
+- **THEN** the screen SHALL show that the item isn't available in Google Play yet
+
+#### Scenario: Paid but not confirmed
+- **WHEN** Google Play completes the payment but the backend verification fails
+- **THEN** the screen SHALL tell the user not to pay again and that access will activate automatically
+
+#### Scenario: Cancelled
+- **WHEN** the user cancels in Google Play
+- **THEN** no error message SHALL be shown
 

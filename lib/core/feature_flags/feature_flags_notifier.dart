@@ -10,6 +10,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 class FeatureFlag {
   static const String printableCards = 'printable_cards';
   static const String qrScan = 'qr_scan';
+  // Midtrans as Google Play's User Choice Billing alternative. Off unless
+  // explicitly enabled — see FeatureFlagsNotifier.failClosed.
+  static const String alternativeBilling = 'alternative_billing';
 }
 
 /// Holds the backoffice-controlled feature switches.
@@ -17,7 +20,8 @@ class FeatureFlag {
 /// Starts from the last values cached on device so the UI doesn't flash a
 /// hidden feature on launch, then refreshes from the backend. Flags the
 /// backend doesn't know about (or that were never fetched) default to
-/// enabled, so an unreachable backend never hides existing features.
+/// enabled, so an unreachable backend never hides existing features —
+/// except the [failClosed] ones, which default to disabled.
 class FeatureFlagsNotifier extends ChangeNotifier {
   static const _cacheKey = 'feature_flags';
 
@@ -27,10 +31,17 @@ class FeatureFlagsNotifier extends ChangeNotifier {
 
   FeatureFlagsNotifier(this._api);
 
-  bool isEnabled(String key) => _flags[key] ?? true;
+  /// Flags that must default to off when unknown, because defaulting to on
+  /// would re-open something only allowed when explicitly enabled — Midtrans
+  /// is only permitted alongside Google Play under User Choice Billing.
+  static const Set<String> failClosed = {FeatureFlag.alternativeBilling};
+
+  bool isEnabled(String key) => _flags[key] ?? !failClosed.contains(key);
 
   bool get printableCardsEnabled => isEnabled(FeatureFlag.printableCards);
   bool get qrScanEnabled => isEnabled(FeatureFlag.qrScan);
+  bool get alternativeBillingEnabled =>
+      isEnabled(FeatureFlag.alternativeBilling);
 
   Future<void> loadCached() async {
     try {

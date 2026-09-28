@@ -41,10 +41,13 @@ Google Play is never touched by any test.
 
 ## Integration flows on an Android emulator
 
-Five files, 11 tests: signup + sign-in, free dongeng and locked/unlocked AR cards,
+Five files, 13 tests: signup + sign-in, free dongeng and locked/unlocked AR cards,
 purchase outcomes (success / cancel / verification failure), re-login restoring
-entitlements, and pricing (a promo strike price on a locked card, switching to a
-package on the payment screen, an active subscriber offered nothing). They run the
+entitlements, and pricing (a promo strike price on a locked card, an item with no
+Google Play product shown as "Belum tersedia", buying a Play-mapped card from its
+"Beli" button through to the unlock screen, the dongeng list with a promo,
+switching to a Play-mapped package on the payment screen, an active subscriber
+offered nothing). They run the
 real app against the real backend stack and seed data through the same admin API
 the backoffice uses.
 
@@ -85,7 +88,7 @@ uninstalled after the run, so nothing is left on the device). Rebuild one with
 > crashed the machine. Cap the emulator (`-memory 4096`), run it headless
 > (`-no-window`), and close other heavy apps. Stop the stack with Ctrl-C when done.
 
-### Writing flows — four traps already hit
+### Writing flows — six traps already hit
 
 - **Never mount a second `MaterialApp` without the app theme.** Doing so on top
   of `bootApp`'s app made a button's text style animate from the app theme to
@@ -99,6 +102,12 @@ uninstalled after the run, so nothing is left on the device). Rebuild one with
   `integration_test/helpers/scroll.dart`.
 - **`AppRouter.router` is a process-wide singleton.** `bootApp` resets it to `/`;
   don't bypass it.
+- **Don't `pumpAndSettle()` on the unlock-success screen.** In the full app it
+  animates forever, so the call never returns and the test dies at its timeout
+  (taking the next tests down with a binding assertion). Use bounded `pump`s.
+- **The dongeng list only shows its first 10 stories, oldest first.** A shared stack
+  that has accumulated more never lists a newly seeded one; the dongeng flows fail
+  or (in `pricing_flow_test.dart`) skip. Restart the stack for a clean run.
 - **Leave the shell before a test that pushed a route over it ends.** `MainShell`
   keeps a platform view mounted; with a route pushed on top, its per-frame offset
   callback runs on into the next test in the same file and fails with *"RenderBox

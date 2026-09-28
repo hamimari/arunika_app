@@ -25,11 +25,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-/// Whether this item's purchase should route through Google Play Billing
-/// (Android only, and only for items the backoffice has mapped to a Play
-/// product) instead of the Midtrans webview.
-bool _usesPlayBilling(PurchasableItem item) =>
-    !kIsWeb && Platform.isAndroid && item.isPlayBillingEligible;
+/// Digital content is sold through Google Play Billing, which only exists on
+/// Android. Midtrans is reachable only as the alternative Google Play itself
+/// offers under User Choice Billing (when the backoffice enables it).
+bool get _playBillingAvailableOnDevice => !kIsWeb && Platform.isAndroid;
 
 class PaymentScreen extends StatefulWidget {
   /// The item the user tapped to get here — a single product or a package.
@@ -37,7 +36,15 @@ class PaymentScreen extends StatefulWidget {
   /// this screen; "Bayar" pays for whatever is selected.
   final PurchasableItem item;
 
-  const PaymentScreen({super.key, required this.item});
+  /// Overrides the platform check in tests, which run on a desktop host.
+  @visibleForTesting
+  final bool? playBillingAvailable;
+
+  const PaymentScreen({
+    super.key,
+    required this.item,
+    this.playBillingAvailable,
+  });
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
@@ -47,7 +54,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   late final PaymentPollingCubit _pollingCubit;
   late final PaymentOptionsCubit _optionsCubit;
   bool _isLoadingToken = false;
-  bool _hasError = false;
+  // Why the last attempt failed, shown under the total; null when it hasn't.
+  String? _errorMessage;
   String? _snapToken;
   String? _orderId;
   bool _isProcessingPlayPurchase = false;
@@ -67,6 +75,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
       entry: widget.item,
       packs: locator<PremiumPackRepository>(),
       profiles: locator<ProfileLoader>(),
+      playBillingAvailable:
+          widget.playBillingAvailable ?? _playBillingAvailableOnDevice,
     )..load();
   }
 
@@ -80,13 +90,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Future<void> _onPayPressed() async {
     // The selection is frozen until the payment has been started, so what
     // is charged is always what the summary showed.
+    if (!_optionsCubit.state.selectedPurchasable) return;
     _optionsCubit.setLocked(true);
     try {
-      if (_usesPlayBilling(_selected)) {
-        await _startPlayBillingPurchase();
-      } else {
-        await _startPayment();
-      }
+      await _startPlayBillingPurchase();
     } finally {
       if (!_optionsCubit.isClosed) _optionsCubit.setLocked(false);
     }
@@ -96,7 +103,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final item = _selected;
     setState(() {
       _isProcessingPlayPurchase = true;
-      _hasError = false;
+      _errorMessage = null;
     });
 
     PlayPurchaseResult result;
@@ -119,7 +126,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (!mounted) return;
       setState(() {
         _isProcessingPlayPurchase = false;
-        _hasError = true;
+        _errorMessage = _messageFor(PlayPurchaseOutcome.error);
       });
       return;
     }
@@ -146,7 +153,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
         break;
       case PlayPurchaseOutcome.error:
       case PlayPurchaseOutcome.verificationFailed:
-        setState(() => _hasError = true);
+      case PlayPurchaseOutcome.storeUnavailable:
+      case PlayPurchaseOutcome.productNotFound:
+      case PlayPurchaseOutcome.orderFailed:
+        setState(() => _errorMessage = _messageFor(result.outcome));
         break;
     }
   }
@@ -155,7 +165,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final item = _selected;
     setState(() {
       _isLoadingToken = true;
-      _hasError = false;
+      _errorMessage = null;
     });
     try {
       final isProduct = item.kind == PurchaseKind.product;
@@ -181,8 +191,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _optionsCubit.markSubscriptionActive();
         return;
       }
+      if (isAlternativeBillingDisabledError(e)) {
+        setState(() => _isLoadingToken = false);
+        _optionsCubit.markUnavailable();
+        return;
+      }
       setState(() {
-        _hasError = true;
+        _errorMessage = _messageFor(PlayPurchaseOutcome.orderFailed);
         _isLoadingToken = false;
       });
     }
@@ -287,13 +302,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 subscription: options.subscription,
                 onBack: () => Navigator.of(context).maybePop(),
               );
+            case PaymentOptionsStatus.unavailable:
+              return _PurchaseUnavailableView(
+                onBack: () => Navigator.of(context).maybePop(),
+              );
             case PaymentOptionsStatus.ready:
               return Column(
                 children: [
                   Expanded(child: _OptionList(options: options)),
                   _SummaryBar(
                     options: options,
-                    hasError: _hasError,
+                    errorMessage: _errorMessage,
                     isBusy: _isLoadingToken || _isProcessingPlayPurchase,
                     onPay: _onPayPressed,
                   ),
@@ -321,7 +340,8 @@ class _OptionList extends StatelessWidget {
       item: item,
       title: title ?? item.name,
       selected: options.selected.id == item.id,
-      enabled: !options.locked,
+      enabled: !options.locked && PaymentOptionsCubit.isPurchasable(item),
+      unavailable: !PaymentOptionsCubit.isPurchasable(item),
       onTap: () => cubit.select(item),
     );
 
@@ -374,6 +394,8 @@ class _OptionTile extends StatelessWidget {
   final String title;
   final bool selected;
   final bool enabled;
+  // Not sold on this device (no Google Play product).
+  final bool unavailable;
   final VoidCallback onTap;
 
   const _OptionTile({
@@ -381,6 +403,7 @@ class _OptionTile extends StatelessWidget {
     required this.title,
     required this.selected,
     required this.enabled,
+    required this.unavailable,
     required this.onTap,
   });
 
@@ -461,11 +484,20 @@ class _OptionTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    PriceTag(
-                      price: item.priceIdr,
-                      strikePrice: item.strikePriceIdr,
-                      discountPercent: item.discountPercent,
-                    ),
+                    if (unavailable)
+                      Text(
+                        _notAvailableHere,
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.mediumBrown,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      )
+                    else
+                      PriceTag(
+                        price: item.priceIdr,
+                        strikePrice: item.strikePriceIdr,
+                        discountPercent: item.discountPercent,
+                      ),
                   ],
                 ),
               ),
@@ -510,13 +542,13 @@ class _PackagesRetryRow extends StatelessWidget {
 
 class _SummaryBar extends StatelessWidget {
   final PaymentOptionsState options;
-  final bool hasError;
+  final String? errorMessage;
   final bool isBusy;
   final VoidCallback onPay;
 
   const _SummaryBar({
     required this.options,
-    required this.hasError,
+    required this.errorMessage,
     required this.isBusy,
     required this.onPay,
   });
@@ -524,7 +556,8 @@ class _SummaryBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final item = options.selected;
-    final savings = item.savingsIdr;
+    // No promo pitch for something that can't be bought here.
+    final savings = options.selectedPurchasable ? item.savingsIdr : null;
     final renewedUntil = options.renewedUntil;
     final currentExpiry = options.subscription?.expiresAt;
 
@@ -614,47 +647,127 @@ class _SummaryBar extends StatelessWidget {
                   ),
                 ],
               ),
-              if (hasError)
+              if (errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    'Gagal memuat halaman pembayaran. Coba lagi.',
+                    errorMessage!,
+                    key: const Key('payment-error'),
                     style: AppTextStyles.caption.copyWith(color: Colors.red),
                     textAlign: TextAlign.center,
                   ),
                 ),
               const SizedBox(height: 12),
-              SizedBox(
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: isBusy ? null : onPay,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryOrange,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
+              if (!options.selectedPurchasable)
+                Text(
+                  '$_notAvailableHere. Pilih paket lain di atas.',
+                  key: const Key('payment-not-available'),
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.mediumBrown,
                   ),
-                  child: isBusy
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2.5,
+                )
+              else
+                SizedBox(
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: isBusy ? null : onPay,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryOrange,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: isBusy
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : Text(
+                            AppStrings.btnPayNow,
+                            style: AppTextStyles.bodyLarge.copyWith(
+                              color: AppColors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        )
-                      : Text(
-                          AppStrings.btnPayNow,
-                          style: AppTextStyles.bodyLarge.copyWith(
-                            color: AppColors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                  ),
                 ),
-              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+const _notAvailableHere = 'Belum tersedia di perangkat ini';
+
+/// What to tell the user when a purchase didn't go through — one message per
+/// cause, so "why" is never a guess. [PlayPurchaseOutcome.verificationFailed]
+/// is the serious one: Google took the payment but the server couldn't
+/// confirm it yet, and the user must not pay a second time.
+String _messageFor(PlayPurchaseOutcome outcome) {
+  switch (outcome) {
+    case PlayPurchaseOutcome.storeUnavailable:
+      return 'Google Play tidak tersedia di perangkat ini. Pastikan Play Store '
+          'terpasang dan kamu sudah masuk dengan akun Google.';
+    case PlayPurchaseOutcome.productNotFound:
+      return 'Item ini belum tersedia di Google Play. Coba lagi nanti.';
+    case PlayPurchaseOutcome.orderFailed:
+      return 'Pesanan gagal dibuat. Periksa koneksi internet lalu coba lagi.';
+    case PlayPurchaseOutcome.verificationFailed:
+      return 'Pembayaran diterima Google Play tetapi belum terkonfirmasi. '
+          'Jangan bayar ulang — buka kembali aplikasi beberapa saat lagi, '
+          'aksesmu akan aktif otomatis.';
+    case PlayPurchaseOutcome.error:
+    case PlayPurchaseOutcome.success:
+    case PlayPurchaseOutcome.canceled:
+    case PlayPurchaseOutcome.userChoseAlternativeBilling:
+    case PlayPurchaseOutcome.subscriptionActive:
+      return 'Pembayaran gagal. Coba lagi.';
+  }
+}
+
+class _PurchaseUnavailableView extends StatelessWidget {
+  final VoidCallback onBack;
+  const _PurchaseUnavailableView({required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.phonelink_lock_rounded,
+              size: 56,
+              color: AppColors.lockGrey,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Pembelian belum tersedia di perangkat ini',
+              key: const Key('payment-unavailable'),
+              textAlign: TextAlign.center,
+              style: AppTextStyles.subheading.copyWith(
+                color: AppColors.deepBrown,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Paket premium bisa dibeli lewat Google Play di perangkat Android.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.body.copyWith(color: AppColors.mediumBrown),
+            ),
+            const SizedBox(height: 24),
+            OutlinedButton(onPressed: onBack, child: const Text('Kembali')),
+          ],
         ),
       ),
     );

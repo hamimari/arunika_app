@@ -5,6 +5,8 @@ import 'package:arunika_app/services/google_play_billing_service.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:mocktail/mocktail.dart';
 
 class _MockIap extends Mock implements InAppPurchase {}
@@ -24,6 +26,9 @@ DioException _subscriptionActive() {
 }
 
 class _MockPlayBillingApi extends Mock implements PlayBillingApi {}
+
+class _MockAndroidAddition extends Mock
+    implements InAppPurchaseAndroidPlatformAddition {}
 
 class _FakeProductDetails extends Fake implements ProductDetails {
   _FakeProductDetails(this._id);
@@ -47,6 +52,8 @@ class _FakePurchaseDetails extends Fake implements PurchaseDetails {
   final PurchaseStatus status;
   @override
   final bool pendingCompletePurchase;
+  @override
+  IAPError? get error => null;
 
   static const _token = 'purchase-token';
 
@@ -70,6 +77,7 @@ void main() {
   late GooglePlayBillingService service;
 
   setUpAll(() {
+    registerFallbackValue(BillingChoiceMode.playBillingOnly);
     registerFallbackValue(_FakePurchaseParam());
     registerFallbackValue(_FakePurchaseDetails(
       productID: 'x',
@@ -280,7 +288,7 @@ void main() {
   });
 
   group('failure paths that must never hang', () {
-    test('should_error_when_billing_is_unavailable', () async {
+    test('should_report_the_store_unavailable_when_billing_is_unavailable', () async {
       when(() => iap.isAvailable()).thenAnswer((_) async => false);
 
       final result = await service.purchaseProduct(
@@ -288,11 +296,11 @@ void main() {
         playProductId: 'sku_card',
       );
 
-      expect(result.outcome, PlayPurchaseOutcome.error);
+      expect(result.outcome, PlayPurchaseOutcome.storeUnavailable);
       verifyNever(() => api.createProductOrder(any()));
     });
 
-    test('should_error_when_the_backend_will_not_create_an_order', () async {
+    test('should_report_a_failed_order_when_the_backend_will_not_create_one', () async {
       when(() => api.createProductOrder(any())).thenThrow(Exception('down'));
 
       final result = await service.purchaseProduct(
@@ -300,7 +308,7 @@ void main() {
         playProductId: 'sku_card',
       );
 
-      expect(result.outcome, PlayPurchaseOutcome.error);
+      expect(result.outcome, PlayPurchaseOutcome.orderFailed);
       // No Play UI should open for an order that does not exist.
       verifyNever(() =>
           iap.buyNonConsumable(purchaseParam: any(named: 'purchaseParam')));
@@ -327,7 +335,7 @@ void main() {
           iap.buyNonConsumable(purchaseParam: any(named: 'purchaseParam')));
     });
 
-    test('should_error_when_the_order_response_carries_no_id', () async {
+    test('should_report_a_failed_order_when_the_response_carries_no_id', () async {
       when(() => api.createProductOrder(any())).thenAnswer((_) async => {});
 
       final result = await service.purchaseProduct(
@@ -335,10 +343,10 @@ void main() {
         playProductId: 'sku_card',
       );
 
-      expect(result.outcome, PlayPurchaseOutcome.error);
+      expect(result.outcome, PlayPurchaseOutcome.orderFailed);
     });
 
-    test('should_error_when_the_sku_is_unknown_to_play', () async {
+    test('should_report_product_not_found_when_the_sku_is_unknown_to_play', () async {
       when(() => iap.queryProductDetails(any())).thenAnswer(
         (_) async => ProductDetailsResponse(
           productDetails: const [],
@@ -351,7 +359,7 @@ void main() {
         playProductId: 'sku_card',
       );
 
-      expect(result.outcome, PlayPurchaseOutcome.error);
+      expect(result.outcome, PlayPurchaseOutcome.productNotFound);
     });
 
     test('should_error_when_the_purchase_flow_will_not_launch', () async {
@@ -409,6 +417,64 @@ void main() {
       expect((await future).outcome, PlayPurchaseOutcome.success);
       verify(() => api.createOrder('package-1')).called(1);
       verifyNever(() => api.createProductOrder(any()));
+    });
+  });
+
+  group('billing choice', () {
+    late _MockAndroidAddition addition;
+
+    setUp(() {
+      addition = _MockAndroidAddition();
+      when(
+        () => iap.getPlatformAddition<InAppPurchaseAndroidPlatformAddition>(),
+      ).thenReturn(addition);
+      when(() => addition.setBillingChoice(any())).thenAnswer((_) async {});
+      when(
+        () => addition.userChoiceDetailsStream,
+      ).thenAnswer((_) => const Stream.empty());
+    });
+
+    Future<void> cancelledPurchase(GooglePlayBillingService svc) async {
+      final future = svc.purchaseProduct(
+        productId: 'product-1',
+        playProductId: 'sku_card',
+      );
+      await Future<void>.delayed(Duration.zero);
+      purchaseStream.add([
+        _FakePurchaseDetails(productID: 'sku_card', status: PurchaseStatus.canceled),
+      ]);
+      await future;
+    }
+
+    test('should_never_enable_user_choice_billing_while_alternative_billing_is_off',
+        () async {
+      await cancelledPurchase(service);
+
+      verifyNever(() => addition.setBillingChoice(any()));
+    });
+
+    test('should_follow_the_flag_on_and_back_off', () async {
+      var allowed = true;
+      final svc = GooglePlayBillingService(
+        api,
+        iap: iap,
+        alternativeBillingAllowed: () => allowed,
+      );
+      addTearDown(svc.dispose);
+
+      await cancelledPurchase(svc);
+      verify(
+        () => addition.setBillingChoice(BillingChoiceMode.userChoiceBilling),
+      ).called(1);
+
+      await cancelledPurchase(svc);
+      verifyNever(() => addition.setBillingChoice(BillingChoiceMode.playBillingOnly));
+
+      allowed = false;
+      await cancelledPurchase(svc);
+      verify(
+        () => addition.setBillingChoice(BillingChoiceMode.playBillingOnly),
+      ).called(1);
     });
   });
 }

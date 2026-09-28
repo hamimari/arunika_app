@@ -3,6 +3,7 @@ import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/utils/auth_guard.dart';
+import 'package:arunika_app/core/utils/price_format.dart';
 import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/data/models/response/dongeng_category.dart';
 import 'package:arunika_app/data/models/response/dongeng_response.dart';
@@ -154,19 +155,22 @@ class _NewDongengListScreenState extends State<NewDongengListScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(AppStrings.dongengTitle, style: AppTextStyles.heading),
-            const SizedBox(height: 4),
-            Text(
-              'Nikmati cerita seru yang penuh petualangan!',
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.textMedium,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(AppStrings.dongengTitle, style: AppTextStyles.heading),
+              const SizedBox(height: 4),
+              Text(
+                'Nikmati cerita seru yang penuh petualangan!',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textMedium,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+        const SizedBox(width: 12),
         GestureDetector(
           onTap: _startSearch,
           child: Container(
@@ -348,6 +352,9 @@ class _NewDongengListScreenState extends State<NewDongengListScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _FeaturedCard(
                 dongeng: featured,
+                isLoading:
+                    state is DongengListNavigating &&
+                    state.selectedId == featured.id,
                 onTap: () => _onTap(context, featured),
               ),
             ),
@@ -360,16 +367,21 @@ class _NewDongengListScreenState extends State<NewDongengListScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    AppStrings.dongengPopular,
-                    style: AppTextStyles.subheading,
+                  Expanded(
+                    child: Text(
+                      AppStrings.dongengPopular,
+                      style: AppTextStyles.subheading,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   TextButton(
                     onPressed: () {},
                     child: Text(
                       AppStrings.dongengSeeAll,
                       style: AppTextStyles.body.copyWith(
-                        color: AppColors.primaryOrange,
+                        color: AppColors.ctaRust,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -414,6 +426,7 @@ class _NewDongengListScreenState extends State<NewDongengListScreen> {
         priceIdr: story.priceIdr,
         contentType: PurchasedContentType.dongeng,
         subtitle: 'Akses ke dongeng ${story.title}',
+        playProductId: story.playProductId,
         strikePriceIdr: story.strikePriceIdr,
         discountPercent: story.discountPercent,
         promoEndsAt: story.promoEndsAt,
@@ -422,136 +435,253 @@ class _NewDongengListScreenState extends State<NewDongengListScreen> {
   }
 }
 
-// ── Featured Card ──────────────────────────────────────────────────────────────
+// ── Shared bits ────────────────────────────────────────────────────────────────
 
-class _FeaturedCard extends StatelessWidget {
-  final DongengResponse dongeng;
-  final VoidCallback onTap;
+String _meta(DongengResponse d) =>
+    '${d.ageStart.toInt()}–${d.ageEnd.toInt()} tahun · ${d.duration}';
 
-  const _FeaturedCard({required this.dongeng, required this.onTap});
+/// "Beli" (solid) for a locked story, "Baca" (outlined) for one the user can
+/// open. Shows a spinner while the story is being opened.
+class _StoryAction extends StatelessWidget {
+  final bool locked;
+  final bool isLoading;
+  final VoidCallback onPressed;
+
+  const _StoryAction({
+    required this.locked,
+    required this.onPressed,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.10),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+    );
+    final child = isLoading
+        ? SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: locked ? AppColors.white : AppColors.ctaRust,
+            ),
+          )
+        : null;
+    return SizedBox(
+      height: 42,
+      child: locked
+          ? ElevatedButton.icon(
+              onPressed: isLoading ? null : onPressed,
+              icon: child ?? const Icon(Icons.shopping_cart_outlined, size: 18),
+              label: isLoading
+                  ? const SizedBox.shrink()
+                  : const Text(AppStrings.btnBuy),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.ctaRust,
+                foregroundColor: AppColors.white,
+                elevation: 0,
+                minimumSize: const Size(96, 42),
+                textStyle: AppTextStyles.buttonSmall,
+                shape: shape,
+              ),
+            )
+          : OutlinedButton.icon(
+              onPressed: isLoading ? null : onPressed,
+              icon: child ?? const Icon(Icons.menu_book_outlined, size: 18),
+              label: isLoading
+                  ? const SizedBox.shrink()
+                  : const Text(AppStrings.btnRead),
+              style: OutlinedButton.styleFrom(
+                backgroundColor: AppColors.ctaRustSoft,
+                foregroundColor: AppColors.ctaRust,
+                side: const BorderSide(color: AppColors.ctaRust),
+                minimumSize: const Size(96, 42),
+                textStyle: AppTextStyles.buttonSmall,
+                shape: shape,
+              ),
+            ),
+    );
+  }
+}
+
+/// The price block of a locked story: the crossed-out price above the real
+/// one.
+class _StoryPrice extends StatelessWidget {
+  final DongengResponse dongeng;
+  const _StoryPrice({required this.dongeng});
+
+  @override
+  Widget build(BuildContext context) {
+    final strike = dongeng.strikePriceIdr;
+    final price = dongeng.priceIdr!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (strike != null && strike > price)
+          Text(
+            formatIdr(strike),
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textLight,
+              decoration: TextDecoration.lineThrough,
+              decorationColor: AppColors.textLight,
+            ),
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Stack(
+        Text(
+          formatIdr(price),
+          style: AppTextStyles.subheading.copyWith(
+            color: AppColors.ctaRust,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A dashed horizontal rule between a story and its price/buy row.
+class _DashedDivider extends StatelessWidget {
+  const _DashedDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size(double.infinity, 1),
+      painter: _DashedLinePainter(AppColors.lockGrey.withValues(alpha: 0.7)),
+    );
+  }
+}
+
+class _DashedLinePainter extends CustomPainter {
+  final Color color;
+  const _DashedLinePainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+    const dash = 4.0;
+    const gap = 3.0;
+    for (var x = 0.0; x < size.width; x += dash + gap) {
+      canvas.drawLine(Offset(x, 0), Offset(x + dash, 0), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedLinePainter old) => old.color != color;
+}
+
+// ── Featured Card ──────────────────────────────────────────────────────────────
+
+/// The story at the top of the list: a wide picture with a "Pilihan minggu
+/// ini" pill, then its title, age/duration and a "Baca" (or "Beli") button.
+class _FeaturedCard extends StatelessWidget {
+  final DongengResponse dongeng;
+  final VoidCallback onTap;
+  final bool isLoading;
+
+  const _FeaturedCard({
+    required this.dongeng,
+    required this.onTap,
+    this.isLoading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final locked = !dongeng.isUnlocked;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cover image
-            SizedBox(
-              width: double.infinity,
-              height: 200,
-              child: Image(
-                image: MediaCache.image(dongeng.imageUrl),
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: AppColors.creamCard,
-                  child: const Center(
-                    child: Text('📖', style: TextStyle(fontSize: 64)),
-                  ),
-                ),
-              ),
-            ),
-
-            // Gradient overlay
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      AppColors.deepBrown.withValues(alpha: 0.85),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-              ),
-            ),
-
-            // Content
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!dongeng.isFree)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.accentGold,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              AppStrings.badgePremium,
-                              style: AppTextStyles.caption.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.deepBrown,
-                              ),
-                            ),
-                          ),
-                          if (!dongeng.isUnlocked &&
-                              dongeng.priceIdr != null) ...[
-                            const SizedBox(width: 8),
-                            PriceTag(
-                              price: dongeng.priceIdr!,
-                              strikePrice: dongeng.strikePriceIdr,
-                              compact: true,
-                            ),
-                          ],
-                        ],
+            Stack(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  height: 150,
+                  child: Image(
+                    image: MediaCache.image(dongeng.imageUrl),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: AppColors.creamCard,
+                      child: const Center(
+                        child: Text('📖', style: TextStyle(fontSize: 64)),
                       ),
                     ),
-                  Text(
-                    dongeng.title,
-                    style: AppTextStyles.subheading.copyWith(
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
                       color: AppColors.white,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      AppStrings.dongengFeaturedBadge,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textDark,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${dongeng.ageStart.toInt()}–${dongeng.ageEnd.toInt()} tahun · ${dongeng.duration}',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.white.withValues(alpha: 0.8),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: 160,
-                    height: 44,
-                    child: ElevatedButton(
-                      onPressed: onTap,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryOrange,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          dongeng.title,
+                          style: AppTextStyles.subheading,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      child: Text(
-                        AppStrings.btnReadNow,
-                        style: AppTextStyles.buttonSmall,
-                      ),
+                        const SizedBox(height: 2),
+                        Text(_meta(dongeng), style: AppTextStyles.caption),
+                        if (locked && dongeng.priceIdr != null) ...[
+                          const SizedBox(height: 6),
+                          PriceTag(
+                            price: dongeng.priceIdr!,
+                            strikePrice: dongeng.strikePriceIdr,
+                            showDiscount: false,
+                            priceColor: AppColors.ctaRust,
+                          ),
+                        ],
+                      ],
                     ),
+                  ),
+                  const SizedBox(width: 12),
+                  _StoryAction(
+                    locked: locked,
+                    isLoading: isLoading,
+                    onPressed: onTap,
                   ),
                 ],
               ),
@@ -565,6 +695,9 @@ class _FeaturedCard extends StatelessWidget {
 
 // ── Story Row ─────────────────────────────────────────────────────────────────
 
+/// A story in the list. A locked one gets the full card — thumbnail with a
+/// lock, "Hemat N%" when it's on promo, then a dashed rule and its price
+/// beside a "Beli" button. One the user can open stays compact, with "Baca".
 class _StoryRow extends StatelessWidget {
   final DongengResponse dongeng;
   final bool isLoading;
@@ -578,6 +711,13 @@ class _StoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locked = !dongeng.isUnlocked;
+    final buyable = locked && dongeng.priceIdr != null;
+    final onPromo =
+        buyable &&
+        dongeng.strikePriceIdr != null &&
+        dongeng.discountPercent != null;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -585,89 +725,140 @@ class _StoryRow extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 10,
               offset: const Offset(0, 3),
             ),
           ],
         ),
-        child: Row(
+        child: Column(
           children: [
-            // Thumbnail
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image(
-                image: MediaCache.image(dongeng.imageUrl),
-                width: 64,
-                height: 64,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  width: 64,
-                  height: 64,
-                  color: AppColors.creamCard,
-                  child: const Center(
-                    child: Text('📖', style: TextStyle(fontSize: 28)),
+            Row(
+              children: [
+                _thumbnail(locked),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        dongeng.title,
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(_meta(dongeng), style: AppTextStyles.caption),
+                      if (onPromo) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.discountRedSoft,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            'Hemat ${dongeng.discountPercent}%',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.discountRed,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-              ),
+                if (!locked) ...[
+                  const SizedBox(width: 8),
+                  _StoryAction(
+                    locked: false,
+                    isLoading: isLoading,
+                    onPressed: onTap,
+                  ),
+                ],
+              ],
             ),
-            const SizedBox(width: 14),
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            if (buyable) ...[
+              const SizedBox(height: 12),
+              const _DashedDivider(),
+              const SizedBox(height: 12),
+              Row(
                 children: [
-                  Text(
-                    dongeng.title,
-                    style: AppTextStyles.bodyLarge,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${dongeng.ageStart.toInt()}–${dongeng.ageEnd.toInt()} tahun · ${dongeng.duration}',
-                    style: AppTextStyles.caption,
-                  ),
-                  if (!dongeng.isUnlocked && dongeng.priceIdr != null) ...[
-                    const SizedBox(height: 4),
-                    PriceTag(
-                      price: dongeng.priceIdr!,
-                      strikePrice: dongeng.strikePriceIdr,
-                      discountPercent: dongeng.discountPercent,
+                  // Shrinks a long price rather than pushing Beli off screen.
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: _StoryPrice(dongeng: dongeng),
+                      ),
                     ),
-                  ],
+                  ),
+                  const SizedBox(width: 8),
+                  _StoryAction(
+                    locked: true,
+                    isLoading: isLoading,
+                    onPressed: onTap,
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(width: 8),
-            // Lock / loading icon
-            if (isLoading)
-              const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.primaryOrange,
-                ),
-              )
-            else if (dongeng.isUnlocked)
-              const Icon(
-                Icons.play_circle_fill_rounded,
-                color: AppColors.primaryOrange,
-                size: 28,
-              )
-            else
-              const Icon(
-                Icons.lock_rounded,
-                color: AppColors.lockGrey,
-                size: 24,
-              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _thumbnail(bool locked) {
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Image(
+            image: MediaCache.image(dongeng.imageUrl),
+            width: 72,
+            height: 72,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              width: 72,
+              height: 72,
+              color: AppColors.creamCard,
+              child: const Center(
+                child: Text('📖', style: TextStyle(fontSize: 30)),
+              ),
+            ),
+          ),
+        ),
+        if (locked)
+          Positioned(
+            right: 6,
+            bottom: 6,
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.6),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.lock_outline_rounded,
+                size: 14,
+                color: AppColors.white,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

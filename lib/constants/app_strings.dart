@@ -44,6 +44,15 @@ class AppStrings {
   static const String dongengSeeAll = 'Lihat Semua';
   static const String btnReadNow = 'Baca Sekarang';
   static const String badgePremium = 'Premium';
+  static const String dongengFeaturedBadge = 'Pilihan minggu ini';
+
+  // Purchase actions on cards and list rows
+  static const String btnBuy = 'Beli';
+  static const String btnRead = 'Baca';
+  static const String btnOpenAr = 'Buka AR';
+  static const String badgeOwned = 'Dimiliki';
+  static const String ownedCaption = 'Sudah jadi milikmu';
+  static const String freeCaption = 'Gratis';
 
   // AR
   static const String arScanGuide = 'Arahkan kamera ke kartu AR';

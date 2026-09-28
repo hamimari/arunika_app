@@ -22,6 +22,19 @@ void main() {
     expect(notifier.printableCardsEnabled, isTrue);
   });
 
+  test('alternative billing fails closed while unknown', () async {
+    final notifier = FeatureFlagsNotifier(api);
+    expect(notifier.alternativeBillingEnabled, isFalse, reason: 'never fetched');
+
+    when(() => api.fetchFlags()).thenAnswer((_) async => {'qr_scan': true});
+    await notifier.refresh();
+    expect(notifier.alternativeBillingEnabled, isFalse, reason: 'missing from the backend');
+
+    when(() => api.fetchFlags()).thenAnswer((_) async => {'alternative_billing': true});
+    await notifier.refresh();
+    expect(notifier.alternativeBillingEnabled, isTrue, reason: 'explicitly enabled');
+  });
+
   test('refresh applies backend flags, notifies, and caches them', () async {
     when(
       () => api.fetchFlags(),

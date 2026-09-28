@@ -50,12 +50,58 @@ class TestBackend {
     return res.data['data']['id'] as String;
   }
 
+  /// Titles on the first page of the public dongeng list — all the app ever
+  /// requests (10 stories, oldest first).
+  Future<List<String>> firstPageDongengTitles() async {
+    final res = await _dio.get('/fairy-tales');
+    return [
+      for (final item in res.data['data'] as List<dynamic>)
+        (item as Map<String, dynamic>)['title'] as String,
+    ];
+  }
+
+  /// Creates a paid dongeng with a linked product, so the backend serves it
+  /// locked (with its price, and its Play SKU when given) until the viewing
+  /// user is entitled.
+  Future<({String dongengId, String productId})> seedPaidDongeng({
+    required String title,
+    int priceIdr = 39000,
+    String? playProductId,
+  }) async {
+    final auth = await _adminAuth();
+    final tale = await _dio.post(
+      '/admin/content/fairy-tales',
+      data: {
+        'title': title,
+        'image_url': 'https://example.test/dongeng.png',
+        'audio_url': 'https://example.test/dongeng.mp3',
+        'is_free': false,
+        'duration': 300,
+      },
+      options: auth,
+    );
+    final dongengId = tale.data['data']['id'] as String;
+    final product = await _dio.post(
+      '/admin/products',
+      data: {
+        'feature_code': 'DONGENG',
+        'price_idr': priceIdr,
+        'dongeng_id': dongengId,
+        'play_product_id': ?playProductId,
+      },
+      options: auth,
+    );
+    return (dongengId: dongengId, productId: product.data['data']['id'] as String);
+  }
+
   /// Creates an AR card with a linked product, so the backend serves it
   /// locked until the viewing user has an entitlement or an active
   /// subscription — see ArService.applyUnlocked.
   Future<({String cardId, String productId})> seedPaidArCard({
     required String title,
     int priceIdr = 25000,
+    // Google Play SKU selling the card; without one it can't be bought.
+    String? playProductId,
   }) async {
     final auth = await _adminAuth();
     final shortCode = 'ITEST${DateTime.now().microsecondsSinceEpoch}';
@@ -78,6 +124,7 @@ class TestBackend {
         'feature_code': 'AR_CARD',
         'price_idr': priceIdr,
         'ar_card_id': cardId,
+        'play_product_id': ?playProductId,
       },
       options: auth,
     );
