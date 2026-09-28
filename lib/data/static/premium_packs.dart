@@ -1,3 +1,4 @@
+import 'package:arunika_app/core/utils/price_format.dart';
 import 'package:flutter/foundation.dart';
 
 @immutable
@@ -15,6 +16,12 @@ class PremiumPack {
   // package isn't purchasable via Google Play Billing yet — the purchase
   // flow falls back to the existing Midtrans checkout for it.
   final String? playProductId;
+  // Subscription length; null for content packages.
+  final int? durationDays;
+  // Display-only promotional strike price; null when no promo is running.
+  final int? strikePriceIdr;
+  final int? discountPercent;
+  final DateTime? promoEndsAt;
 
   const PremiumPack({
     required this.id,
@@ -26,6 +33,10 @@ class PremiumPack {
     this.isActive = true,
     this.type = 'content',
     this.playProductId,
+    this.durationDays,
+    this.strikePriceIdr,
+    this.discountPercent,
+    this.promoEndsAt,
   });
 
   factory PremiumPack.fromJson(Map<String, dynamic> json) {
@@ -39,16 +50,16 @@ class PremiumPack {
       isActive: (json['is_active'] as bool?) ?? true,
       type: json['type'] as String? ?? 'content',
       playProductId: json['play_product_id'] as String?,
+      durationDays: (json['duration_days'] as num?)?.toInt(),
+      strikePriceIdr: (json['strike_price_idr'] as num?)?.toInt(),
+      discountPercent: (json['discount_percent'] as num?)?.toInt(),
+      promoEndsAt: parseOptionalDate(json['promo_ends_at']),
     );
   }
 
-  String get formattedPrice {
-    final formatted = priceIdr.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (m) => '${m[1]}.',
-    );
-    return 'Rp $formatted';
-  }
+  bool get isSubscription => type == 'subscription';
+
+  String get formattedPrice => formatIdr(priceIdr);
 
   /// Alias used by payment screen.
   String get priceLabel => formattedPrice;

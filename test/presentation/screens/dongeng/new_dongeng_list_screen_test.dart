@@ -174,4 +174,45 @@ void main() {
       expect(find.text('Story B'), findsNothing);
     },
   );
+
+  testWidgets('a locked paid story shows its price and strike price; an owned one does not', (
+    tester,
+  ) async {
+    DongengResponse paid(String id, String title, {required bool owned}) =>
+        DongengResponse(
+          id: id,
+          title: title,
+          ageStart: 3,
+          ageEnd: 6,
+          isFree: false,
+          isUnlocked: owned,
+          priceIdr: owned ? 25000 : 39000,
+          strikePriceIdr: owned ? 30000 : 49000,
+          discountPercent: owned ? 17 : 20,
+          imageUrl: 'https://img/$id.png',
+          audioUrl: '',
+          duration: '5 min',
+          createdAt: DateTime(2024),
+          updatedAt: DateTime(2024),
+          isDeleted: false,
+        );
+    when(() => mockRepo.findAll()).thenAnswer(
+      (_) async => DongengListResult(
+        items: [
+          paid('1', 'Owned Story', owned: true),
+          paid('2', 'Locked Story', owned: false),
+        ],
+        total: 2,
+        page: 1,
+      ),
+    );
+
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Rp 39.000'), findsWidgets);
+    expect(find.text('Rp 49.000'), findsWidgets);
+    expect(find.text('Rp 25.000'), findsNothing);
+    expect(find.text('Rp 30.000'), findsNothing);
+  });
 }

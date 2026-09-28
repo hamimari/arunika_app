@@ -4,16 +4,22 @@ import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/core/utils/price_format.dart';
 import 'package:arunika_app/data/models/purchasable_item.dart';
+import 'package:arunika_app/data/models/response/subscription_info.dart';
+import 'package:arunika_app/data/repositories/profile_loader.dart';
 import 'package:arunika_app/data/static/premium_packs.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/screens/premium/premium_pack_cubit.dart';
+import 'package:arunika_app/presentation/screens/widgets/active_subscription_view.dart';
+import 'package:arunika_app/presentation/screens/widgets/price_tag.dart';
 import 'package:go_router/go_router.dart';
 
 class PremiumUpgradeScreen extends StatefulWidget {
-  // When true (reached from the profile page's "extend membership" CTA),
-  // only the subscription tab is shown — extending a subscription has
-  // nothing to do with one-time content bundles.
+  // When true (reached from the profile page's "Perpanjang" CTA), only the
+  // subscription tab is shown — renewing a subscription has nothing to do
+  // with one-time content bundles. An active subscriber inside the renewal
+  // window always gets this mode.
   final bool subscriptionOnly;
 
   const PremiumUpgradeScreen({super.key, this.subscriptionOnly = false});
@@ -25,6 +31,10 @@ class PremiumUpgradeScreen extends StatefulWidget {
 class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
     with SingleTickerProviderStateMixin {
   TabController? _tabController;
+  // An active subscriber sees no packages, except inside the renewal window
+  // of a subscription the app itself can renew (see SubscriptionInfo).
+  bool _checkingSubscription = true;
+  SubscriptionInfo? _subscription;
 
   @override
   void initState() {
@@ -32,7 +42,30 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
     if (!widget.subscriptionOnly) {
       _tabController = TabController(length: 2, vsync: this);
     }
+    _loadSubscription();
   }
+
+  Future<void> _loadSubscription() async {
+    SubscriptionInfo? sub;
+    try {
+      sub = await locator<ProfileLoader>().activeSubscription();
+    } catch (_) {
+      // Unknown status: fall through to the normal package list — the
+      // backend still refuses a purchase that isn't allowed.
+    }
+    if (!mounted) return;
+    setState(() {
+      _subscription = sub;
+      _checkingSubscription = false;
+    });
+  }
+
+  AppBar _plainAppBar(String title) => AppBar(
+    title: Text(title, style: AppTextStyles.subheading),
+    backgroundColor: AppColors.creamBackground,
+    elevation: 0,
+    leading: const BackButton(color: AppColors.deepBrown),
+  );
 
   @override
   void dispose() {
@@ -42,21 +75,42 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
 
   @override
   Widget build(BuildContext context) {
-    if (widget.subscriptionOnly) {
+    if (_checkingSubscription) {
       return Scaffold(
         backgroundColor: AppColors.creamBackground,
-        appBar: AppBar(
-          title: Text(
-            AppStrings.premiumTabSubscription,
-            style: AppTextStyles.subheading,
-          ),
-          backgroundColor: AppColors.creamBackground,
-          elevation: 0,
-          leading: const BackButton(color: AppColors.deepBrown),
+        appBar: _plainAppBar(AppStrings.premiumTitle),
+        body: const _LoadingSkeleton(),
+      );
+    }
+
+    final sub = _subscription;
+    final canRenewInApp = sub != null && sub.canRenew && !sub.isGooglePlay;
+    if (sub != null && !canRenewInApp) {
+      return Scaffold(
+        backgroundColor: AppColors.creamBackground,
+        appBar: _plainAppBar(AppStrings.premiumTitle),
+        body: ActiveSubscriptionView(
+          subscription: sub,
+          onBack: () => Navigator.of(context).maybePop(),
         ),
-        body: BlocProvider(
-          create: (_) => PremiumPackCubit('subscription')..loadPacks(),
-          child: const _PackTabView(),
+      );
+    }
+
+    if (widget.subscriptionOnly || canRenewInApp) {
+      return Scaffold(
+        backgroundColor: AppColors.creamBackground,
+        appBar: _plainAppBar(AppStrings.premiumTabSubscription),
+        body: Column(
+          children: [
+            if (canRenewInApp && sub.expiresAt != null)
+              _RenewalBanner(expiresAt: sub.expiresAt!),
+            Expanded(
+              child: BlocProvider(
+                create: (_) => PremiumPackCubit('subscription')..loadPacks(),
+                child: const _PackTabView(),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -123,6 +177,44 @@ class _PackTabView extends StatelessWidget {
         }
         return const _LoadingSkeleton();
       },
+    );
+  }
+}
+
+// ─── Renewal Banner ───────────────────────────────────────────────────────────
+
+class _RenewalBanner extends StatelessWidget {
+  final DateTime expiresAt;
+  const _RenewalBanner({required this.expiresAt});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.successGreen.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.event_repeat_rounded,
+            color: AppColors.successGreen,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Masa aktif baru ditambahkan mulai ${formatLongDate(expiresAt)}',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.deepBrown,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -286,30 +378,28 @@ class _PackCard extends StatelessWidget {
                           : AppColors.mediumBrown,
                     ),
                   ),
+                  const SizedBox(height: 10),
+                  PriceTag(
+                    price: pack.priceIdr,
+                    strikePrice: pack.strikePriceIdr,
+                    discountPercent: pack.discountPercent,
+                    promoEndsAt: pack.promoEndsAt,
+                    showPromoEnd: true,
+                    priceColor: pack.isBestValue
+                        ? AppColors.white
+                        : AppColors.primaryOrange,
+                    mutedColor: pack.isBestValue
+                        ? AppColors.white.withValues(alpha: 0.75)
+                        : null,
+                  ),
                 ],
               ),
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  pack.formattedPrice,
-                  style: AppTextStyles.subheading.copyWith(
-                    color: pack.isBestValue
-                        ? AppColors.white
-                        : AppColors.primaryOrange,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 16,
-                  color: pack.isBestValue
-                      ? AppColors.white
-                      : AppColors.lockGrey,
-                ),
-              ],
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 16,
+              color: pack.isBestValue ? AppColors.white : AppColors.lockGrey,
             ),
           ],
         ),

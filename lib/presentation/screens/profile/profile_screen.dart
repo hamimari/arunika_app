@@ -1,8 +1,10 @@
 import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/core/utils/price_format.dart';
 import 'package:arunika_app/data/models/response/subscription_info.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/di/locator.dart';
+import 'package:arunika_app/presentation/screens/widgets/active_subscription_view.dart';
 import 'package:arunika_app/presentation/screens/widgets/delete_account_dialog.dart';
 import 'package:arunika_app/presentation/screens/profile/child_form.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_bloc.dart';
@@ -466,31 +468,40 @@ class _MembershipCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            daysLeft != null
+            subscription.autoRenew && subscription.expiresAt != null
+                ? 'Diperpanjang otomatis pada ${formatLongDate(subscription.expiresAt!)}'
+                : daysLeft != null
                 ? '$daysLeft hari lagi sebelum masa aktif berakhir'
                 : 'Langganan aktif',
             style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () => context.push('/premium', extra: true),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.white),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          // Nothing to pay for while the subscription is active — renewing is
+          // offered only in its last days, and a Google Play subscription is
+          // renewed in Google Play (the new period starts at the old expiry).
+          if (subscription.canRenew) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => subscription.isGooglePlay
+                    ? openPlaySubscription(subscription)
+                    : context.push('/premium', extra: true),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-              ),
-              child: const Text(
-                'Perpanjang / Bayar',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
+                child: const Text(
+                  'Perpanjang',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );

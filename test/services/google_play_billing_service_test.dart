@@ -2,11 +2,26 @@ import 'dart:async';
 
 import 'package:arunika_app/data/api/play_billing_api.dart';
 import 'package:arunika_app/services/google_play_billing_service.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:mocktail/mocktail.dart';
 
 class _MockIap extends Mock implements InAppPurchase {}
+
+/// The backend's refusal for a user whose subscription already covers
+/// everything.
+DioException _subscriptionActive() {
+  final options = RequestOptions(path: '/payment/play/create');
+  return DioException(
+    requestOptions: options,
+    response: Response(
+      requestOptions: options,
+      statusCode: 409,
+      data: {'error': 'subscription is already active', 'code': 'SUBSCRIPTION_ACTIVE'},
+    ),
+  );
+}
 
 class _MockPlayBillingApi extends Mock implements PlayBillingApi {}
 
@@ -287,6 +302,27 @@ void main() {
 
       expect(result.outcome, PlayPurchaseOutcome.error);
       // No Play UI should open for an order that does not exist.
+      verifyNever(() =>
+          iap.buyNonConsumable(purchaseParam: any(named: 'purchaseParam')));
+    });
+
+    test('should_report_an_active_subscription_when_the_backend_refuses_with_409',
+        () async {
+      when(() => api.createProductOrder(any())).thenThrow(_subscriptionActive());
+      when(() => api.createOrder(any())).thenThrow(_subscriptionActive());
+
+      final product = await service.purchaseProduct(
+        productId: 'product-1',
+        playProductId: 'sku_card',
+      );
+      final package = await service.purchase(
+        packageId: 'package-1',
+        playProductId: 'sku_card',
+      );
+
+      expect(product.outcome, PlayPurchaseOutcome.subscriptionActive);
+      expect(package.outcome, PlayPurchaseOutcome.subscriptionActive);
+      // Nothing is charged: Play's purchase UI never opens.
       verifyNever(() =>
           iap.buyNonConsumable(purchaseParam: any(named: 'purchaseParam')));
     });

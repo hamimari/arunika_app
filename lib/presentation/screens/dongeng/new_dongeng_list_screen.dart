@@ -14,6 +14,7 @@ import 'package:arunika_app/presentation/screens/widgets/category_dropdowns.dart
 import 'package:arunika_app/presentation/screens/widgets/error_retry_view.dart';
 import 'package:arunika_app/presentation/screens/widgets/login_required_dialog.dart';
 import 'package:arunika_app/presentation/screens/widgets/ownership_filter_sheet.dart';
+import 'package:arunika_app/presentation/screens/widgets/price_tag.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -413,6 +414,9 @@ class _NewDongengListScreenState extends State<NewDongengListScreen> {
         priceIdr: story.priceIdr,
         contentType: PurchasedContentType.dongeng,
         subtitle: 'Akses ke dongeng ${story.title}',
+        strikePriceIdr: story.strikePriceIdr,
+        discountPercent: story.discountPercent,
+        promoEndsAt: story.promoEndsAt,
       );
     }
   }
@@ -484,22 +488,37 @@ class _FeaturedCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (!dongeng.isFree)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.accentGold,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        AppStrings.badgePremium,
-                        style: AppTextStyles.caption.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.deepBrown,
-                        ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentGold,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              AppStrings.badgePremium,
+                              style: AppTextStyles.caption.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.deepBrown,
+                              ),
+                            ),
+                          ),
+                          if (!dongeng.isUnlocked &&
+                              dongeng.priceIdr != null) ...[
+                            const SizedBox(width: 8),
+                            PriceTag(
+                              price: dongeng.priceIdr!,
+                              strikePrice: dongeng.strikePriceIdr,
+                              compact: true,
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   Text(
@@ -612,6 +631,14 @@ class _StoryRow extends StatelessWidget {
                     '${dongeng.ageStart.toInt()}–${dongeng.ageEnd.toInt()} tahun · ${dongeng.duration}',
                     style: AppTextStyles.caption,
                   ),
+                  if (!dongeng.isUnlocked && dongeng.priceIdr != null) ...[
+                    const SizedBox(height: 4),
+                    PriceTag(
+                      price: dongeng.priceIdr!,
+                      strikePrice: dongeng.strikePriceIdr,
+                      discountPercent: dongeng.discountPercent,
+                    ),
+                  ],
                 ],
               ),
             ),

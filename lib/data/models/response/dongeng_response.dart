@@ -1,3 +1,4 @@
+import 'package:arunika_app/core/utils/price_format.dart';
 import 'package:arunika_app/data/models/response/dongeng_category.dart';
 import 'package:arunika_app/data/models/response/dongeng_page.dart';
 
@@ -11,6 +12,10 @@ class DongengResponse {
   final bool isUnlocked;
   final String? productId;
   final int? priceIdr;
+  // Display-only promotional strike price; null when no promo is running.
+  final int? strikePriceIdr;
+  final int? discountPercent;
+  final DateTime? promoEndsAt;
   final String audioUrl;
   final String duration;
   final List<DongengPage> pages;
@@ -33,6 +38,9 @@ class DongengResponse {
     bool? isUnlocked,
     this.productId,
     this.priceIdr,
+    this.strikePriceIdr,
+    this.discountPercent,
+    this.promoEndsAt,
     required this.imageUrl,
     required this.audioUrl,
     required this.duration,
@@ -59,6 +67,9 @@ class DongengResponse {
       isUnlocked: json['is_unlocked'] as bool?,
       productId: json['product_id'] as String?,
       priceIdr: (json['price_idr'] as num?)?.toInt(),
+      strikePriceIdr: (json['strike_price_idr'] as num?)?.toInt(),
+      discountPercent: (json['discount_percent'] as num?)?.toInt(),
+      promoEndsAt: parseOptionalDate(json['promo_ends_at']),
       imageUrl: json['image_url'] as String,
       audioUrl: (json['audio_url'] as String?) ?? '',
       duration: (json['duration'] as String?) ?? '',

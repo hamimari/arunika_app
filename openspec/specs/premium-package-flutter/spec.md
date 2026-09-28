@@ -2,9 +2,7 @@
 
 ## Purpose
 Defines the required behaviour for premium package flutter in the Arunika system.
-
 ## Requirements
-
 ### Requirement: PremiumUpgradeScreen fetches packages from API
 The system SHALL replace all usage of the static `PremiumPacks` class with a `PremiumPackRepository` that calls `GET /premium/packs?type=content` and `GET /premium/packs?type=subscription`. A `PremiumPackCubit` SHALL manage the loading, loaded, and error states for each tab.
 
@@ -28,7 +26,7 @@ The system SHALL remove the `lib/data/static/premium_packs.dart` file once the A
 - **THEN** no widget or screen SHALL import from `lib/data/static/premium_packs.dart`
 
 ### Requirement: PremiumPack model maps from API response
-The existing `PremiumPack` data class SHALL be updated with a `fromJson` factory constructor. All fields (`id`, `name`, `subtitle`, `priceIdr`, `isBestValue`, `badgeLabel`) SHALL map directly from the API JSON keys (`id`, `name`, `subtitle`, `price_idr`, `is_best_value`, `badge_label`).
+The existing `PremiumPack` data class SHALL be updated with a `fromJson` factory constructor. All fields (`id`, `name`, `subtitle`, `priceIdr`, `isBestValue`, `badgeLabel`, `strikePriceIdr`, `discountPercent`, `promoEndsAt`) SHALL map directly from the API JSON keys (`id`, `name`, `subtitle`, `price_idr`, `is_best_value`, `badge_label`, `strike_price_idr`, `discount_percent`, `promo_ends_at`). `strikePriceIdr`, `discountPercent` and `promoEndsAt` (parsed as `DateTime`) SHALL be nullable.
 
 #### Scenario: JSON deserialised correctly
 - **WHEN** the API returns a package JSON object
@@ -37,3 +35,8 @@ The existing `PremiumPack` data class SHALL be updated with a `fromJson` factory
 #### Scenario: Nullable badge_label handled
 - **WHEN** the API returns a package with `badge_label: null`
 - **THEN** the resulting `PremiumPack.badgeLabel` SHALL be `null` and no badge SHALL be shown
+
+#### Scenario: Missing strike fields handled
+- **WHEN** the API returns a package without `strike_price_idr` or with it set to `null`
+- **THEN** `PremiumPack.strikePriceIdr`, `discountPercent` and `promoEndsAt` SHALL be `null`, and deserialisation SHALL NOT fail
+

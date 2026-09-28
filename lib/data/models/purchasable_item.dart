@@ -1,3 +1,4 @@
+import 'package:arunika_app/core/utils/price_format.dart';
 import 'package:arunika_app/data/static/premium_packs.dart';
 
 /// What PaymentScreen is charging for — a whole package (bundle/subscription)
@@ -22,6 +23,17 @@ class PurchasableItem {
   // Google Play product/subscription SKU — set when the item is mapped
   // for Google Play Billing (both packages and products).
   final String? playProductId;
+  // Subscription length — set for subscription packages, so the payment
+  // screen can show the renewed end date.
+  final int? durationDays;
+  // Package presentation, for the payment screen's option list.
+  final String? badgeLabel;
+  final bool isBestValue;
+  // Display-only promotional strike price; null when no promo is running.
+  // Never charged — payments always use [priceIdr].
+  final int? strikePriceIdr;
+  final int? discountPercent;
+  final DateTime? promoEndsAt;
 
   const PurchasableItem({
     required this.kind,
@@ -32,6 +44,12 @@ class PurchasableItem {
     this.contentType,
     this.packageType,
     this.playProductId,
+    this.durationDays,
+    this.badgeLabel,
+    this.isBestValue = false,
+    this.strikePriceIdr,
+    this.discountPercent,
+    this.promoEndsAt,
   });
 
   factory PurchasableItem.fromPackage(PremiumPack pack) {
@@ -43,6 +61,12 @@ class PurchasableItem {
       priceIdr: pack.priceIdr,
       packageType: pack.type,
       playProductId: pack.playProductId,
+      durationDays: pack.durationDays,
+      badgeLabel: pack.badgeLabel,
+      isBestValue: pack.isBestValue,
+      strikePriceIdr: pack.strikePriceIdr,
+      discountPercent: pack.discountPercent,
+      promoEndsAt: pack.promoEndsAt,
     );
   }
 
@@ -53,6 +77,9 @@ class PurchasableItem {
     required PurchasedContentType contentType,
     String? subtitle,
     String? playProductId,
+    int? strikePriceIdr,
+    int? discountPercent,
+    DateTime? promoEndsAt,
   }) {
     return PurchasableItem(
       kind: PurchaseKind.product,
@@ -62,6 +89,9 @@ class PurchasableItem {
       priceIdr: priceIdr,
       contentType: contentType,
       playProductId: playProductId,
+      strikePriceIdr: strikePriceIdr,
+      discountPercent: discountPercent,
+      promoEndsAt: promoEndsAt,
     );
   }
 
@@ -77,13 +107,13 @@ class PurchasableItem {
   bool get isDongengPurchase =>
       kind == PurchaseKind.product && contentType == PurchasedContentType.dongeng;
 
-  String get formattedPrice {
-    final formatted = priceIdr.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (m) => '${m[1]}.',
-    );
-    return 'Rp $formatted';
-  }
+  String get formattedPrice => formatIdr(priceIdr);
+
+  /// Strike price minus the real price, when a promo is running.
+  int? get savingsIdr =>
+      strikePriceIdr != null && strikePriceIdr! > priceIdr
+          ? strikePriceIdr! - priceIdr
+          : null;
 
   /// Alias used by payment screen.
   String get priceLabel => formattedPrice;

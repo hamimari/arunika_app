@@ -15,6 +15,7 @@ import 'package:arunika_app/presentation/screens/widgets/category_dropdowns.dart
 import 'package:arunika_app/presentation/screens/widgets/error_retry_view.dart';
 import 'package:arunika_app/presentation/screens/widgets/login_required_dialog.dart';
 import 'package:arunika_app/presentation/screens/widgets/ownership_filter_sheet.dart';
+import 'package:arunika_app/presentation/screens/widgets/price_tag.dart';
 import 'package:arunika_app/presentation/screens/vocab/collection_bloc_handler.dart';
 import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/core/media/media_cache.dart';
@@ -343,6 +344,9 @@ class _ArCardItem extends StatelessWidget {
             priceIdr: card.priceIdr,
             contentType: PurchasedContentType.arCard,
             subtitle: 'Akses ke kartu AR ${card.title ?? ''}'.trim(),
+            strikePriceIdr: card.strikePriceIdr,
+            discountPercent: card.discountPercent,
+            promoEndsAt: card.promoEndsAt,
           );
         }
       },
@@ -444,6 +448,25 @@ class _ArCardItem extends StatelessWidget {
               // Full gray overlay for locked cards
               if (!card.isUnlocked)
                 Container(color: Colors.black.withValues(alpha: 0.40)),
+
+              // Price (with promo strike price) on locked, purchasable cards
+              if (!card.isUnlocked && card.priceIdr != null)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  right: 44,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: PriceTag(
+                        price: card.priceIdr!,
+                        strikePrice: card.strikePriceIdr,
+                        compact: true,
+                      ),
+                    ),
+                  ),
+                ),
 
               // Lock / unlock badge
               Positioned(

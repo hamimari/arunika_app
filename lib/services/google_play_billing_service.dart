@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:arunika_app/data/api/play_billing_api.dart';
+import 'package:arunika_app/network/api_errors.dart';
 import 'package:arunika_app/services/billing_service.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/billing_client_wrappers.dart';
@@ -16,7 +17,17 @@ enum PlayPurchaseOutcome {
   // Play. The caller must complete the purchase via Midtrans and then report
   // it to Google using [PlayPurchaseResult.externalTransactionToken].
   userChoseAlternativeBilling,
+  // The backend refused to create the order (409 SUBSCRIPTION_ACTIVE): the
+  // user's active subscription already covers everything, so nothing was
+  // charged.
+  subscriptionActive,
 }
+
+/// Maps a failure to create the backend order to a purchase outcome.
+PlayPurchaseOutcome _orderFailureOutcome(Object error) =>
+    isSubscriptionActiveError(error)
+        ? PlayPurchaseOutcome.subscriptionActive
+        : PlayPurchaseOutcome.error;
 
 class PlayPurchaseResult {
   final PlayPurchaseOutcome outcome;
@@ -89,8 +100,8 @@ class GooglePlayBillingService implements BillingService {
     final Map<String, dynamic> order;
     try {
       order = await _api.createOrder(packageId);
-    } catch (_) {
-      return const PlayPurchaseResult(PlayPurchaseOutcome.error);
+    } catch (e) {
+      return PlayPurchaseResult(_orderFailureOutcome(e));
     }
     final orderId = order['order_id'] as String?;
     if (orderId == null) {
@@ -115,8 +126,8 @@ class GooglePlayBillingService implements BillingService {
     final Map<String, dynamic> order;
     try {
       order = await _api.createProductOrder(productId);
-    } catch (_) {
-      return const PlayPurchaseResult(PlayPurchaseOutcome.error);
+    } catch (e) {
+      return PlayPurchaseResult(_orderFailureOutcome(e));
     }
     final orderId = order['order_id'] as String?;
     if (orderId == null) {

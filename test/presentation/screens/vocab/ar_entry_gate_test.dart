@@ -27,6 +27,7 @@ ArCardResponse _card({
   required bool unlocked,
   String? productId,
   int? priceIdr,
+  int? strikePriceIdr,
 }) => ArCardResponse(
   id: id,
   title: title,
@@ -36,6 +37,7 @@ ArCardResponse _card({
   isUnlocked: unlocked,
   productId: productId,
   priceIdr: priceIdr,
+  strikePriceIdr: strikePriceIdr,
 );
 
 /// The automatable half of AR testing, per the strategy's AR split.
@@ -184,5 +186,37 @@ void main() {
     // is browsable before purchase.
     expect(find.text('Harimau'), findsOneWidget);
     expect(find.text('Singa'), findsOneWidget);
+  });
+
+  testWidgets('should_show_price_and_strike_price_only_on_locked_cards',
+      (tester) async {
+    useAuth(loggedIn: true);
+    when(() => repo.findAll()).thenAnswer(
+      (_) async => [
+        _card(
+          id: '1',
+          title: 'Harimau',
+          unlocked: true,
+          productId: 'prod-1',
+          priceIdr: 30000,
+        ),
+        _card(
+          id: '2',
+          title: 'Singa',
+          unlocked: false,
+          productId: 'prod-2',
+          priceIdr: 15000,
+          strikePriceIdr: 19000,
+        ),
+      ],
+    );
+
+    await pumpCollection(tester);
+
+    expect(find.text('Rp 15.000'), findsOneWidget);
+    final strike = tester.widget<Text>(find.text('Rp 19.000'));
+    expect(strike.style?.decoration, TextDecoration.lineThrough);
+    // An owned card is never priced.
+    expect(find.text('Rp 30.000'), findsNothing);
   });
 }

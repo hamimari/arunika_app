@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/data/models/response/child_response.dart';
+import 'package:arunika_app/data/models/response/subscription_info.dart';
 import 'package:arunika_app/data/models/response/user_response.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/di/locator.dart';
@@ -12,6 +13,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -47,6 +49,21 @@ UserResponse _user() => UserResponse(
     ),
   ],
 );
+
+UserResponse _subscribedUser(SubscriptionInfo subscription) {
+  final u = _user();
+  return UserResponse(
+    id: u.id,
+    name: u.name,
+    phoneNumber: u.phoneNumber,
+    emailAddress: u.emailAddress,
+    address: u.address,
+    city: u.city,
+    children: u.children,
+    isSubscribed: true,
+    subscription: subscription,
+  );
+}
 
 /// `ProfileScreen` degrades gracefully by design: it has no separate loading
 /// state, just placeholder text ('-') until `ProfileBloc` resolves a user
@@ -202,5 +219,63 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(auth.loggedOut, isTrue);
+  });
+
+  group('membership card', () {
+    testWidgets('hides Perpanjang outside the renewal window', (tester) async {
+      when(() => repo.findById(any())).thenAnswer(
+        (_) async => _subscribedUser(
+          const SubscriptionInfo(
+            planName: 'Bulanan',
+            status: 'premium',
+            daysLeft: 20,
+          ),
+        ),
+      );
+
+      await pumpProfile(tester);
+
+      expect(find.text('Bulanan'), findsOneWidget);
+      expect(find.text('Perpanjang'), findsNothing);
+    });
+
+    testWidgets('shows Perpanjang inside the renewal window', (tester) async {
+      when(() => repo.findById(any())).thenAnswer(
+        (_) async => _subscribedUser(
+          const SubscriptionInfo(
+            planName: 'Bulanan',
+            status: 'premium',
+            daysLeft: 5,
+            canRenew: true,
+          ),
+        ),
+      );
+
+      await pumpProfile(tester);
+
+      expect(find.text('Perpanjang'), findsOneWidget);
+    });
+
+    testWidgets('an auto-renewing subscription shows its renewal date, no button', (
+      tester,
+    ) async {
+      await initializeDateFormatting('id_ID');
+      when(() => repo.findById(any())).thenAnswer(
+        (_) async => _subscribedUser(
+          SubscriptionInfo(
+            planName: 'Bulanan',
+            status: 'premium',
+            expiresAt: DateTime(2026, 10, 31, 12),
+            provider: 'google_play',
+            autoRenew: true,
+          ),
+        ),
+      );
+
+      await pumpProfile(tester);
+
+      expect(find.text('Diperpanjang otomatis pada 31 Okt 2026'), findsOneWidget);
+      expect(find.text('Perpanjang'), findsNothing);
+    });
   });
 }

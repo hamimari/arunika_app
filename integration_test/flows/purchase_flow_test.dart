@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/core/theme/app_theme.dart';
 import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/presentation/screens/payment/payment_screen.dart';
@@ -72,7 +73,7 @@ void main() {
       await bootApp(tester, billing: FakeBilling.succeeds());
       await pumpPaymentScreen(tester);
 
-      await tester.tap(find.byType(ElevatedButton).first);
+      await tester.tap(find.text(AppStrings.btnPayNow));
       await tester.pumpAndSettle();
 
       expect(find.byType(UnlockSuccessScreen), findsOneWidget);
@@ -87,7 +88,7 @@ void main() {
       await bootApp(tester, billing: FakeBilling.cancels());
       await pumpPaymentScreen(tester);
 
-      await tester.tap(find.byType(ElevatedButton).first);
+      await tester.tap(find.text(AppStrings.btnPayNow));
       await tester.pumpAndSettle();
 
       // A cancellation must not be mistaken for success and must not strand
@@ -105,7 +106,7 @@ void main() {
       await bootApp(tester, billing: FakeBilling.failsVerification());
       await pumpPaymentScreen(tester);
 
-      await tester.tap(find.byType(ElevatedButton).first);
+      await tester.tap(find.text(AppStrings.btnPayNow));
       await tester.pumpAndSettle();
 
       // Google took the money but the backend refused entitlement — a

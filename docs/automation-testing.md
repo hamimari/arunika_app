@@ -41,10 +41,12 @@ Google Play is never touched by any test.
 
 ## Integration flows on an Android emulator
 
-Four files, 9 tests: signup + sign-in, free dongeng and locked/unlocked AR cards,
-purchase outcomes (success / cancel / verification failure), and re-login
-restoring entitlements. They run the real app against the real backend stack and
-seed data through the same admin API the backoffice uses.
+Five files, 11 tests: signup + sign-in, free dongeng and locked/unlocked AR cards,
+purchase outcomes (success / cancel / verification failure), re-login restoring
+entitlements, and pricing (a promo strike price on a locked card, switching to a
+package on the payment screen, an active subscriber offered nothing). They run the
+real app against the real backend stack and seed data through the same admin API
+the backoffice uses.
 
 **1. Start the stack** (from `arunika-backend`) and leave it running:
 
@@ -73,12 +75,17 @@ scripts/run_integration.sh emulator-5554 http://10.0.2.2:8090 artifacts
 A failing file leaves a screenshot in `artifacts/screenshots/`. Run one file with
 `flutter test integration_test/flows/content_flow_test.dart --dart-define=API_BASE_URL=http://10.0.2.2:8090 -d emulator-5554`.
 
+To review UI changes, add `--dart-define=SAVE_SCREENSHOTS=true`: flows that call
+`saveScreenshot` print each PNG as `SCREENSHOT <name> <base64>` lines (the app is
+uninstalled after the run, so nothing is left on the device). Rebuild one with
+`grep -o 'SCREENSHOT <name> [A-Za-z0-9+/=]*' log | cut -d' ' -f3 | tr -d '\n' | base64 -d > <name>.png`.
+
 > **Memory.** The stack (Postgres, Redis, backend, backoffice) plus an emulator
 > plus an IDE is heavy; an earlier run of all three at once exhausted memory and
 > crashed the machine. Cap the emulator (`-memory 4096`), run it headless
 > (`-no-window`), and close other heavy apps. Stop the stack with Ctrl-C when done.
 
-### Writing flows — three traps already hit
+### Writing flows — four traps already hit
 
 - **Never mount a second `MaterialApp` without the app theme.** Doing so on top
   of `bootApp`'s app made a button's text style animate from the app theme to
@@ -92,6 +99,11 @@ A failing file leaves a screenshot in `artifacts/screenshots/`. Run one file wit
   `integration_test/helpers/scroll.dart`.
 - **`AppRouter.router` is a process-wide singleton.** `bootApp` resets it to `/`;
   don't bypass it.
+- **Leave the shell before a test that pushed a route over it ends.** `MainShell`
+  keeps a platform view mounted; with a route pushed on top, its per-frame offset
+  callback runs on into the next test in the same file and fails with *"RenderBox
+  was not laid out"* after the test completed. Go to `/landing` and pump
+  `SizedBox.shrink()` at the end (see `pricing_flow_test.dart`).
 
 ## Patrol — native permission dialogs
 

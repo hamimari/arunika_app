@@ -67,6 +67,7 @@ dependencies:
   # userChoiceDetailsStream) — Android-only APIs beyond the shared
   # in_app_purchase interface.
   in_app_purchase_android: ^0.5.0
+  url_launcher: ^6.3.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

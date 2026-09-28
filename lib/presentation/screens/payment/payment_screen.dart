@@ -4,12 +4,19 @@ import 'package:arunika_app/constants/api_paths.dart';
 import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
+import 'package:arunika_app/core/utils/price_format.dart';
 import 'package:arunika_app/data/api/play_billing_api.dart';
 import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/data/repositories/order_repository.dart';
+import 'package:arunika_app/data/repositories/premium_pack_repository.dart';
+import 'package:arunika_app/data/repositories/profile_loader.dart';
 import 'package:arunika_app/di/locator.dart';
+import 'package:arunika_app/network/api_errors.dart';
 import 'package:arunika_app/network/dio_client.dart';
+import 'package:arunika_app/presentation/screens/payment/payment_options_cubit.dart';
 import 'package:arunika_app/presentation/screens/payment/payment_polling_cubit.dart';
+import 'package:arunika_app/presentation/screens/widgets/active_subscription_view.dart';
+import 'package:arunika_app/presentation/screens/widgets/price_tag.dart';
 import 'package:arunika_app/services/billing_service.dart';
 import 'package:arunika_app/services/google_play_billing_service.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -19,12 +26,15 @@ import 'package:go_router/go_router.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 /// Whether this item's purchase should route through Google Play Billing
-/// (Android only, and only for packages the backoffice has mapped to a Play
+/// (Android only, and only for items the backoffice has mapped to a Play
 /// product) instead of the Midtrans webview.
 bool _usesPlayBilling(PurchasableItem item) =>
     !kIsWeb && Platform.isAndroid && item.isPlayBillingEligible;
 
 class PaymentScreen extends StatefulWidget {
+  /// The item the user tapped to get here — a single product or a package.
+  /// It's preselected, but the user can switch to any active package on
+  /// this screen; "Bayar" pays for whatever is selected.
   final PurchasableItem item;
 
   const PaymentScreen({super.key, required this.item});
@@ -35,6 +45,7 @@ class PaymentScreen extends StatefulWidget {
 
 class _PaymentScreenState extends State<PaymentScreen> {
   late final PaymentPollingCubit _pollingCubit;
+  late final PaymentOptionsCubit _optionsCubit;
   bool _isLoadingToken = false;
   bool _hasError = false;
   String? _snapToken;
@@ -45,26 +56,44 @@ class _PaymentScreenState extends State<PaymentScreen> {
   // order below settles, this must be reported to Google before continuing.
   String? _pendingExternalTransactionToken;
 
+  /// What "Bayar" pays for — the option currently selected on screen.
+  PurchasableItem get _selected => _optionsCubit.state.selected;
+
   @override
   void initState() {
     super.initState();
     _pollingCubit = PaymentPollingCubit(locator<OrderRepository>());
+    _optionsCubit = PaymentOptionsCubit(
+      entry: widget.item,
+      packs: locator<PremiumPackRepository>(),
+      profiles: locator<ProfileLoader>(),
+    )..load();
   }
 
   @override
   void dispose() {
     _pollingCubit.close();
+    _optionsCubit.close();
     super.dispose();
   }
 
-  Future<void> _onPayPressed() {
-    if (_usesPlayBilling(widget.item)) {
-      return _startPlayBillingPurchase();
+  Future<void> _onPayPressed() async {
+    // The selection is frozen until the payment has been started, so what
+    // is charged is always what the summary showed.
+    _optionsCubit.setLocked(true);
+    try {
+      if (_usesPlayBilling(_selected)) {
+        await _startPlayBillingPurchase();
+      } else {
+        await _startPayment();
+      }
+    } finally {
+      if (!_optionsCubit.isClosed) _optionsCubit.setLocked(false);
     }
-    return _startPayment();
   }
 
   Future<void> _startPlayBillingPurchase() async {
+    final item = _selected;
     setState(() {
       _isProcessingPlayPurchase = true;
       _hasError = false;
@@ -72,15 +101,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     PlayPurchaseResult result;
     try {
-      if (widget.item.kind == PurchaseKind.package) {
+      if (item.kind == PurchaseKind.package) {
         result = await locator<BillingService>().purchase(
-          packageId: widget.item.id,
-          playProductId: widget.item.playProductId!,
+          packageId: item.id,
+          playProductId: item.playProductId!,
         );
       } else {
         result = await locator<BillingService>().purchaseProduct(
-          productId: widget.item.id,
-          playProductId: widget.item.playProductId!,
+          productId: item.id,
+          playProductId: item.playProductId!,
         );
       }
     } catch (_) {
@@ -100,17 +129,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     switch (result.outcome) {
       case PlayPurchaseOutcome.success:
-        context.go('/unlock-success', extra: widget.item);
+        context.go('/unlock-success', extra: item);
         break;
       case PlayPurchaseOutcome.canceled:
         break;
       case PlayPurchaseOutcome.userChoseAlternativeBilling:
         // User picked Midtrans in Google Play's selection screen — fall
-        // back to the existing Midtrans checkout below; the pending token
-        // is reported to Google once that payment settles (see the
+        // back to the Midtrans checkout below; the pending token is
+        // reported to Google once that payment settles (see the
         // PaymentPollingPaid listener).
         _pendingExternalTransactionToken = result.externalTransactionToken;
         await _startPayment();
+        break;
+      case PlayPurchaseOutcome.subscriptionActive:
+        _optionsCubit.markSubscriptionActive();
         break;
       case PlayPurchaseOutcome.error:
       case PlayPurchaseOutcome.verificationFailed:
@@ -120,17 +152,18 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Future<void> _startPayment() async {
+    final item = _selected;
     setState(() {
       _isLoadingToken = true;
       _hasError = false;
     });
     try {
-      final isProduct = widget.item.kind == PurchaseKind.product;
+      final isProduct = item.kind == PurchaseKind.product;
       final res = await DioClient.dio.post(
         isProduct ? ApiPaths.paymentCreateProduct : ApiPaths.paymentCreate,
         data: isProduct
-            ? {'product_id': widget.item.id}
-            : {'plan_name': widget.item.name, 'amount': widget.item.priceRaw},
+            ? {'product_id': item.id}
+            : {'plan_name': item.name, 'amount': item.priceRaw},
       );
       final data = res.data['data'] as Map<String, dynamic>;
       if (!mounted) return;
@@ -139,10 +172,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _orderId = data['order_id'] as String?;
         _isLoadingToken = false;
       });
-    } catch (_) {
+    } catch (e) {
       // A 401 here may have already triggered a redirect to /landing (expired
       // session) — the screen can be disposed by the time we get here.
       if (!mounted) return;
+      if (isSubscriptionActiveError(e)) {
+        setState(() => _isLoadingToken = false);
+        _optionsCubit.markSubscriptionActive();
+        return;
+      }
       setState(() {
         _hasError = true;
         _isLoadingToken = false;
@@ -171,11 +209,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: _pollingCubit,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: _pollingCubit),
+        BlocProvider.value(value: _optionsCubit),
+      ],
       child: BlocConsumer<PaymentPollingCubit, PaymentPollingState>(
         listener: (context, state) async {
           if (state is PaymentPollingPaid) {
+            final paidItem = _selected;
             final token = _pendingExternalTransactionToken;
             final orderId = _orderId;
             if (token != null && orderId != null) {
@@ -192,7 +234,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 // purchase for the user, so it must not block them.
               }
             }
-            if (context.mounted) context.go('/unlock-success', extra: widget.item);
+            if (context.mounted) context.go('/unlock-success', extra: paidItem);
           }
         },
         builder: (context, state) {
@@ -231,183 +273,389 @@ class _PaymentScreenState extends State<PaymentScreen> {
         elevation: 0,
         leading: const BackButton(color: AppColors.deepBrown),
       ),
-      body: Column(
-        children: [
-          // Order summary card
-          Container(
-            margin: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.deepBrown.withValues(alpha: 0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+      body: BlocBuilder<PaymentOptionsCubit, PaymentOptionsState>(
+        builder: (context, options) {
+          switch (options.status) {
+            case PaymentOptionsStatus.loading:
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.primaryOrange,
                 ),
-              ],
+              );
+            case PaymentOptionsStatus.subscribed:
+              return ActiveSubscriptionView(
+                subscription: options.subscription,
+                onBack: () => Navigator.of(context).maybePop(),
+              );
+            case PaymentOptionsStatus.ready:
+              return Column(
+                children: [
+                  Expanded(child: _OptionList(options: options)),
+                  _SummaryBar(
+                    options: options,
+                    hasError: _hasError,
+                    isBusy: _isLoadingToken || _isProcessingPlayPurchase,
+                    onPay: _onPayPressed,
+                  ),
+                ],
+              );
+          }
+        },
+      ),
+    );
+  }
+}
+
+// ── Option list ─────────────────────────────────────────────────────────────────
+
+class _OptionList extends StatelessWidget {
+  final PaymentOptionsState options;
+  const _OptionList({required this.options});
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<PaymentOptionsCubit>();
+    final single = options.singleItem;
+
+    Widget tile(PurchasableItem item, {String? title}) => _OptionTile(
+      item: item,
+      title: title ?? item.name,
+      selected: options.selected.id == item.id,
+      enabled: !options.locked,
+      onTap: () => cubit.select(item),
+    );
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      children: [
+        Text(
+          options.renewing ? 'Pilih paket langganan' : 'Pilih paket',
+          style: AppTextStyles.subheading.copyWith(color: AppColors.deepBrown),
+        ),
+        const SizedBox(height: 12),
+        if (single != null) ...[
+          tile(single, title: 'Beli ${single.name} saja'),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Atau pilih paket yang lebih hemat',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.mediumBrown,
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.item.name,
-                  style: AppTextStyles.subheading.copyWith(
-                    color: AppColors.deepBrown,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.item.subtitle,
-                  style: AppTextStyles.body.copyWith(
-                    color: AppColors.mediumBrown,
-                  ),
-                ),
-                const Divider(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ),
+        ],
+        if (options.packagesLoading)
+          for (var i = 0; i < 3; i++)
+            Container(
+              key: const Key('payment-packages-loading'),
+              margin: const EdgeInsets.only(bottom: 12),
+              height: 84,
+              decoration: BoxDecoration(
+                color: AppColors.pageBackground,
+                borderRadius: BorderRadius.circular(18),
+              ),
+            )
+        else if (options.packagesFailed)
+          _PackagesRetryRow(onRetry: cubit.loadPackages)
+        else
+          for (final pack in options.packages) ...[
+            tile(pack),
+            const SizedBox(height: 12),
+          ],
+      ],
+    );
+  }
+}
+
+class _OptionTile extends StatelessWidget {
+  final PurchasableItem item;
+  final String title;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _OptionTile({
+    required this.item,
+    required this.title,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: GestureDetector(
+        key: Key('payment-option-${item.id}'),
+        onTap: enabled ? onTap : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.primaryOrange.withValues(alpha: 0.06)
+                : AppColors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: selected
+                  ? AppColors.primaryOrange
+                  : AppColors.deepBrown.withValues(alpha: 0.08),
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                selected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                color: selected ? AppColors.primaryOrange : AppColors.lockGrey,
+                size: 22,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (item.badgeLabel != null &&
+                        item.badgeLabel!.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: item.isBestValue
+                              ? AppColors.accentGold
+                              : AppColors.premiumBadgeBg,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          item.badgeLabel!,
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.deepBrown,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                    ],
                     Text(
-                      'Total',
+                      title,
                       style: AppTextStyles.bodyLarge.copyWith(
+                        color: AppColors.deepBrown,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      widget.item.priceLabel,
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        color: AppColors.primaryOrange,
-                        fontWeight: FontWeight.w700,
+                      item.subtitle,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.mediumBrown,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    PriceTag(
+                      price: item.priceIdr,
+                      strikePrice: item.strikePriceIdr,
+                      discountPercent: item.discountPercent,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PackagesRetryRow extends StatelessWidget {
+  final VoidCallback onRetry;
+  const _PackagesRetryRow({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Gagal memuat paket',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.mediumBrown,
+              ),
+            ),
+          ),
+          TextButton(onPressed: onRetry, child: const Text('Coba lagi')),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Summary + pay ───────────────────────────────────────────────────────────────
+
+class _SummaryBar extends StatelessWidget {
+  final PaymentOptionsState options;
+  final bool hasError;
+  final bool isBusy;
+  final VoidCallback onPay;
+
+  const _SummaryBar({
+    required this.options,
+    required this.hasError,
+    required this.isBusy,
+    required this.onPay,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final item = options.selected;
+    final savings = item.savingsIdr;
+    final renewedUntil = options.renewedUntil;
+    final currentExpiry = options.subscription?.expiresAt;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.deepBrown.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                item.name,
+                key: const Key('payment-summary-name'),
+                style: AppTextStyles.bodyLarge.copyWith(
+                  color: AppColors.deepBrown,
+                  fontWeight: FontWeight.w700,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (savings != null) ...[
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      formatIdr(item.strikePriceIdr!),
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textLight,
+                        decoration: TextDecoration.lineThrough,
+                        decorationColor: AppColors.textLight,
+                      ),
+                    ),
+                    Text(
+                      item.promoEndsAt != null
+                          ? 'Hemat ${formatIdr(savings)} · Promo s/d ${formatShortDate(item.promoEndsAt!)}'
+                          : 'Hemat ${formatIdr(savings)}',
+                      key: const Key('payment-summary-savings'),
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.successGreen,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
               ],
-            ),
-          ),
-
-          // Info note
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.primaryOrange.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline_rounded,
-                    color: AppColors.primaryOrange,
-                    size: 20,
+              if (renewedUntil != null && currentExpiry != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Aktif sampai ${formatLongDate(currentExpiry)} → ${formatLongDate(renewedUntil)}',
+                  key: const Key('payment-summary-renewal'),
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.mediumBrown,
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _usesPlayBilling(widget.item)
-                          ? 'Anda dapat memilih membayar melalui Google Play atau metode pembayaran lain (Midtrans) pada layar berikutnya.'
-                          : 'Pembayaran diproses melalui Midtrans yang aman dan terpercaya. Anda akan diarahkan ke halaman pembayaran.',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.primaryOrange,
-                      ),
+                ),
+              ],
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Total',
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    item.priceLabel,
+                    key: const Key('payment-total'),
+                    style: AppTextStyles.subheading.copyWith(
+                      color: AppColors.primaryOrange,
                     ),
                   ),
                 ],
               ),
-            ),
-          ),
-
-          // Offer to browse bundles/subscriptions instead of a single item —
-          // only relevant when buying a single product.
-          if (widget.item.kind == PurchaseKind.product)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: GestureDetector(
-                onTap: () => context.push('/premium'),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.pageBackground,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.primaryOrangeDark.withValues(alpha: 0.3)),
+              if (hasError)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Gagal memuat halaman pembayaran. Coba lagi.',
+                    style: AppTextStyles.caption.copyWith(color: Colors.red),
+                    textAlign: TextAlign.center,
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.workspace_premium_rounded,
-                        color: AppColors.primaryOrangeDark,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Ingin lebih hemat? Lihat paket konten & langganan premium.',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.deepBrown,
+                ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: isBusy ? null : onPay,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryOrange,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: isBusy
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Text(
+                          AppStrings.btnPayNow,
+                          style: AppTextStyles.bodyLarge.copyWith(
+                            color: AppColors.white,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ),
-                      const Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 14,
-                        color: AppColors.primaryOrangeDark,
-                      ),
-                    ],
-                  ),
                 ),
               ),
-            ),
-
-          const Spacer(),
-
-          // Error message
-          if (_hasError)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Text(
-                'Gagal memuat halaman pembayaran. Coba lagi.',
-                style: AppTextStyles.caption.copyWith(color: Colors.red),
-                textAlign: TextAlign.center,
-              ),
-            ),
-
-          // Pay button
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: (_isLoadingToken || _isProcessingPlayPurchase) ? null : _onPayPressed,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryOrange,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: (_isLoadingToken || _isProcessingPlayPurchase)
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2.5,
-                        ),
-                      )
-                    : Text(
-                        AppStrings.btnPayNow,
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          color: AppColors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-              ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -502,9 +750,7 @@ class _MidtransSnapWebViewState extends State<_MidtransSnapWebView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.creamBackground,
-      body: SafeArea(
-        child: WebViewWidget(controller: _controller),
-      ),
+      body: SafeArea(child: WebViewWidget(controller: _controller)),
     );
   }
 }
@@ -538,7 +784,9 @@ class _WaitingConfirmationView extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   'Mohon tunggu sebentar, kami sedang memverifikasi pembayaran Anda.',
-                  style: AppTextStyles.body.copyWith(color: AppColors.mediumBrown),
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.mediumBrown,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -585,7 +833,9 @@ class _PaymentFailedView extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   'Silakan coba lagi atau periksa status pembayaran Anda.',
-                  style: AppTextStyles.body.copyWith(color: AppColors.mediumBrown),
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.mediumBrown,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),

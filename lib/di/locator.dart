@@ -18,6 +18,7 @@ import 'package:arunika_app/data/repositories/dongeng_history_repository.dart';
 import 'package:arunika_app/data/repositories/fairy_tales_repository.dart';
 import 'package:arunika_app/data/repositories/order_repository.dart';
 import 'package:arunika_app/data/repositories/premium_pack_repository.dart';
+import 'package:arunika_app/data/repositories/profile_loader.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
@@ -48,6 +49,9 @@ void setupLocator() {
   );
   locator.registerLazySingleton(() => PremiumPackRepository(PremiumPackApi()));
   locator.registerLazySingleton(() => OrderRepository(OrderApi()));
+  locator.registerLazySingleton(
+    () => ProfileLoader(locator<UserRepository>(), locator<AuthNotifier>()),
+  );
   locator.registerLazySingleton(() => PlayBillingApi());
   locator.registerLazySingleton<BillingService>(
     () => GooglePlayBillingService(locator<PlayBillingApi>()),

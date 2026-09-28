@@ -1,3 +1,4 @@
+import 'package:arunika_app/core/utils/price_format.dart';
 import 'package:arunika_app/data/models/response/ar_card_category.dart';
 
 class ArCardResponse {
@@ -17,6 +18,10 @@ class ArCardResponse {
   final bool isUnlocked;
   final String? productId;
   final int? priceIdr;
+  // Display-only promotional strike price; null when no promo is running.
+  final int? strikePriceIdr;
+  final int? discountPercent;
+  final DateTime? promoEndsAt;
   final String description;
   final String funFact;
   // Structured category refs (from V12)
@@ -41,6 +46,9 @@ class ArCardResponse {
     this.isUnlocked = false,
     this.productId,
     this.priceIdr,
+    this.strikePriceIdr,
+    this.discountPercent,
+    this.promoEndsAt,
     this.description = '',
     this.funFact = '',
     this.categoryId,
@@ -77,6 +85,9 @@ class ArCardResponse {
       isUnlocked: json['is_unlocked'] as bool? ?? false,
       productId: json['product_id'] as String?,
       priceIdr: (json['price_idr'] as num?)?.toInt(),
+      strikePriceIdr: (json['strike_price_idr'] as num?)?.toInt(),
+      discountPercent: (json['discount_percent'] as num?)?.toInt(),
+      promoEndsAt: parseOptionalDate(json['promo_ends_at']),
       description: json['description'] as String? ?? '',
       funFact: json['fun_fact'] as String? ?? '',
       categoryId: json['category_id'] as String?,

@@ -37,6 +37,9 @@ void goToProductPurchase(
   required int? priceIdr,
   required PurchasedContentType contentType,
   String? subtitle,
+  int? strikePriceIdr,
+  int? discountPercent,
+  DateTime? promoEndsAt,
 }) {
   if (productId == null || priceIdr == null) {
     guardPremium(context);
@@ -50,6 +53,9 @@ void goToProductPurchase(
       priceIdr: priceIdr,
       contentType: contentType,
       subtitle: subtitle,
+      strikePriceIdr: strikePriceIdr,
+      discountPercent: discountPercent,
+      promoEndsAt: promoEndsAt,
     ),
   );
 }

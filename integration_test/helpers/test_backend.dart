@@ -86,6 +86,38 @@ class TestBackend {
     return (cardId: cardId, productId: productId);
   }
 
+  /// Sets the global promotional strike-price rule for [scope]
+  /// (`AR_CARD`, `DONGENG` or `PACKAGE`) — what the backoffice's
+  /// "Harga Coret" page sends. The rule is display-only: nothing charged
+  /// changes.
+  Future<void> setStrikeRule(
+    String scope, {
+    required String mode,
+    required int value,
+    required DateTime endsAt,
+  }) async {
+    await _dio.put(
+      '/admin/strike-price-rules/$scope',
+      data: {
+        'mode': mode,
+        'value': value,
+        'starts_at': null,
+        'ends_at': endsAt.toUtc().toIso8601String(),
+      },
+      options: await _adminAuth(),
+    );
+  }
+
+  /// Turns [scope]'s strike-price rule back off. The backend is shared by
+  /// every flow, so a test that sets a rule must clear it.
+  Future<void> clearStrikeRule(String scope) async {
+    await _dio.put(
+      '/admin/strike-price-rules/$scope',
+      data: {'mode': 'NONE', 'value': 0, 'starts_at': null, 'ends_at': null},
+      options: await _adminAuth(),
+    );
+  }
+
   /// Grants a user blanket premium access — exactly what
   /// `PATCH /admin/users/:id/permission` does from the backoffice's
   /// "Grant Premium" button, used here to model a user who already owns
