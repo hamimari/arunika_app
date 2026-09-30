@@ -52,6 +52,7 @@ Decisions: **blocker** (release waits), **fixed**, **tracked** (not blocking; re
 | app | Payment WebView: JS unrestricted, no `NavigationDelegate`, and the `Flutter` JS channel is callable by any page the flow navigates to (bank 3DS, e-wallet redirects) | Acceptable for now: Snap needs JS and cross-domain redirects, and a forged `success:` message isn't trusted, because `PaymentPollingCubit` confirms the order status with the backend. Revisit if the success path ever skips polling. |
 | landing | ZAP: no CSP / X-Frame-Options / X-Content-Type-Options / Permissions-Policy, server version, COEP | Served locally from stock nginx; production headers come from the host. **Verify on host** after deploy. |
 | landing | ZAP: SRI missing | The only external resources are Google Fonts CSS, which is generated per user agent, so SRI can't be used for it. |
+| content | Dongeng page images that are the wrong shape for the reader (from `add-dongeng-page-curl-and-image-check`) | The backoffice now blocks new ones. Existing ones remain: (1) upload `kancil-1-16x9.jpeg` (2400×1350, already cropped) and replace the kancil page's Image URL; (2) run `node scripts/audit_page_images.ts` in arunika-backoffice against the real backend; (3) re-crop and replace every page it lists. |
 | landing | Lighthouse performance 72 (baseline recorded) | Local nginx, no CDN or compression tuning. The large PNGs in `assets/` are the obvious lever. |
 
 ## Manual reviews
@@ -60,7 +61,7 @@ Decisions: **blocker** (release waits), **fixed**, **tracked** (not blocking; re
 - **Payment WebView:** see "Tracked". The sandbox URL issue was fixed.
 - **`url_launcher`:** one call site (`active_subscription_view.dart`), which opens Google Play's subscription page for the app's own package, built from constants. There's no user-controlled URL.
 - **Android exported components / intent filters:** only `MainActivity` is exported, with the `MAIN`/`LAUNCHER` filter. `PROCESS_TEXT` sits in `<queries>` (Flutter's default text-processing query), not an intent filter. There are no deep links or custom schemes.
-- **Profile-mode run on a real device (start time, jank):** ☐ **deferred, no physical device available during this change.** Emulator numbers are below and stand in for now. Before shipping, repeat them on a phone with the same command, and check the AR scan by hand — also worth checking there since the AR placement and Google Play cancel-purchase fixes (see below) were validated on the e2e stack and by unit test, not on a real device.
+- **Profile-mode run on a real device (start time, jank):** ☐ **deferred, no physical device available during this change.** Emulator numbers are below and stand in for now. Before shipping, repeat them on a phone with the same command, and check the AR scan by hand — also worth checking there since the AR placement and Google Play cancel-purchase fixes (see below) were validated on the e2e stack and by unit test, not on a real device. The same goes for the dongeng page curl: it was checked by widget test and in the emulator profile run below, so also swipe through a story on the phone.
 
 ## Performance (emulator, profile mode, 2026-09-30)
 
@@ -72,6 +73,7 @@ API 36 emulator (16 KB pages) against the E2E stack seeded by `scripts/perf_seed
 | Home scroll | ≤ 3.3 ms | avg 16.5, p90 18.6, max 27.1 ms | **50 / 83** |
 | Dongeng list scroll | ≤ 3.5 ms | avg 2.4 ms | 0 |
 | Dongeng page flip | ≤ 2.5 ms | avg 3.2 ms | 0 |
+| Dongeng page curl (8 arrow turns + 4 swipes, re-run after `add-dongeng-page-curl-and-image-check`) | build avg 0.7, max 2.2 ms | avg 2.4, p90 3.1, p99 4.4, max 12.0 ms | 0 / 184 |
 | AR collection scroll | ≤ 1.9 ms | avg 3.6 ms | 0 |
 
 Memory (RSS): 379 MB when home loads, 486 MB after all flows, 475 MB after three rounds of tab switching. It plateaus, so there's no sign of a leak.

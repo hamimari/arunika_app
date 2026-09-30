@@ -86,6 +86,16 @@ void main() {
         await tester.tap(find.byIcon(Icons.arrow_forward_ios_rounded));
         await tester.pumpAndSettle();
       }
+      // Swipe back through a few pages so the finger-driven curl is traced too.
+      final page = tester.getCenter(find.byType(Scaffold).last);
+      for (var i = 0; i < 4; i++) {
+        await tester.timedDragFrom(
+          page,
+          const Offset(500, 0),
+          const Duration(milliseconds: 700),
+        );
+        await tester.pumpAndSettle();
+      }
     }, reportKey: 'dongeng_page_flip');
     sampleMemory('after_dongeng_pages');
     AppRouter.router.pop();
