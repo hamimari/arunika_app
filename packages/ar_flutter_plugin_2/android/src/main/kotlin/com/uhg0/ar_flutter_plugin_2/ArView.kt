@@ -510,19 +510,24 @@ class ArView(
 
                 setOnGestureListener(
                     onSingleTapConfirmed = { motionEvent: MotionEvent, node: Node? ->
-                        if (node != null) {
-                            var anchorName: String? = null
-                            var currentNode: Node? = node
-                            while (currentNode != null) {
-                                anchorNodesMap.forEach { (name, anchorNode) ->
-                                    if (currentNode == anchorNode) {
-                                        anchorName = name
-                                        return@forEach
-                                    }
+                        var anchorName: String? = null
+                        var currentNode: Node? = node
+                        while (currentNode != null) {
+                            anchorNodesMap.forEach { (name, anchorNode) ->
+                                if (currentNode == anchorNode) {
+                                    anchorName = name
+                                    return@forEach
                                 }
-                                if (anchorName != null) break
-                                currentNode = currentNode.parent
                             }
+                            if (anchorName != null) break
+                            currentNode = currentNode.parent
+                        }
+                        // PATCH: upstream sent onNodeTap for any node under the
+                        // finger, so a tap on a scene node that isn't a placed
+                        // model (e.g. plane visuals) never reached
+                        // onPlaneOrPointTap and nothing was placed. Only taps on
+                        // an anchored node count as node taps now.
+                        if (anchorName != null) {
                             if(handleTaps) {
                                 objectChannel.invokeMethod("onNodeTap", listOf(anchorName))
                             }

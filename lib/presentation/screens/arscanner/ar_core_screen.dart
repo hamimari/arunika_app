@@ -15,21 +15,12 @@ import 'package:ar_flutter_plugin_2/models/ar_node.dart';
 import 'package:arunika_app/core/media/media_cache.dart';
 import 'package:arunika_app/data/repositories/ar_repository.dart';
 import 'package:arunika_app/di/locator.dart';
+import 'package:arunika_app/presentation/screens/arscanner/placement_machine.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vector_math/vector_math_64.dart' as vector;
-
-// ── Placement state machine ───────────────────────────────────────────────────
-// Replaces the three independent boolean flags (_placed, _tapped, _planeDetected)
-// that were prone to race conditions when multiple events arrived close together.
-//
-//   scanning → ready    : first onPlaneDetected with count > 0
-//   ready    → placing  : first pointer-down (any number of simultaneous fingers)
-//   placing  → placed   : addNode succeeds
-//   placing  → ready    : placement fails (empty hits, AR error)
-enum _PlacementState { scanning, ready, placing, placed }
 
 class ArCoreSurfacePlaceScreen extends StatefulWidget {
   final String modelUrl;
@@ -70,7 +61,12 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
   static const _platformSizeRatio = 1.0;
 
   // ── State machine ─────────────────────────────────────────────────────────
-  _PlacementState _state = _PlacementState.scanning;
+  final PlacementMachine _placement = PlacementMachine();
+  PlacementState get _state => _placement.state;
+
+  // Why the last tap placed nothing, shown in the banner until the next tap.
+  // Null when there is nothing to explain.
+  String? _placementHint;
 
   // ── Ripple entrance animation ─────────────────────────────────────────────
   // A screen-space ripple plays at the tap position the moment the user taps.
@@ -219,7 +215,7 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
 
           // ── Pulsing tap indicator (center) ────────────────────────────────
           // Visible only when a plane is found AND the user hasn't tapped yet.
-          if (_state == _PlacementState.ready)
+          if (_state == PlacementState.ready)
             const Positioned.fill(
               child: IgnorePointer(
                 child: Center(child: _PulsingTapIndicator()),
@@ -227,16 +223,18 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
             ),
 
           // ── Status banner ─────────────────────────────────────────────────
-          if (_state != _PlacementState.placed)
+          if (_state != PlacementState.placed)
             Positioned(
               bottom: MediaQuery.of(context).padding.bottom + 168,
               left: 24,
               right: 24,
-              child: IgnorePointer(child: _StatusBanner(state: _state)),
+              child: IgnorePointer(
+                child: _StatusBanner(state: _state, hint: _placementHint),
+              ),
             ),
 
           // ── Post-placement resize hint ────────────────────────────────────
-          if (_state == _PlacementState.placed && _showResizeHint)
+          if (_state == PlacementState.placed && _showResizeHint)
             Positioned(
               bottom: MediaQuery.of(context).padding.bottom + 168,
               left: 24,
@@ -289,7 +287,7 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                if (_state == _PlacementState.placed)
+                if (_state == PlacementState.placed)
                   _RotateButton(
                     icon: Icons.rotate_left_rounded,
                     tooltip: 'Rotate left',
@@ -306,7 +304,7 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
                   )
                 else
                   const SizedBox.shrink(),
-                if (_state == _PlacementState.placed)
+                if (_state == PlacementState.placed)
                   _RotateButton(
                     icon: Icons.rotate_right_rounded,
                     tooltip: 'Rotate right',
@@ -417,24 +415,28 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
     arSessionManager!.onPlaneDetected = _onPlaneDetected;
   }
 
+  static const _noSurfaceHint =
+      'No surface there. Tap on the highlighted area';
+  static const _modelFailedHint =
+      'Could not load the model. Check your connection and tap again';
+
   // ── Plane detection feedback ──────────────────────────────────────────────
 
   void _onPlaneDetected(int count) {
     if (!mounted) return;
-    if (_state == _PlacementState.scanning && count > 0) {
-      setState(() => _state = _PlacementState.ready);
-    }
+    if (_placement.planeDetected(count)) setState(() {});
   }
 
   // ── Tap-to-place ──────────────────────────────────────────────────────────
 
   Future<void> _onPlaneTapped(List<ARHitTestResult> hits) async {
-    // Only act when we're in the 'placing' state (pointer-down already fired).
-    if (_state != _PlacementState.placing || !mounted) return;
+    if (!mounted || !_placement.startPlacement()) return;
     _tapResultTimeout?.cancel();
+    setState(() => _placementHint = null);
 
     if (hits.isEmpty) {
-      if (mounted) setState(() => _state = _PlacementState.ready);
+      _placement.placementFailed();
+      setState(() => _placementHint = _noSurfaceHint);
       return;
     }
 
@@ -456,6 +458,8 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
     hit ??= hits.first;
 
     bool placementSucceeded = false;
+    // Set when the surface was fine but the model itself didn't load.
+    bool modelFailed = false;
     try {
       if (anchors.isNotEmpty) {
         await arAnchorManager!.removeAnchor(anchors.first);
@@ -506,12 +510,14 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
           placementSucceeded = true;
           arSessionManager?.showPlanes(false);
           setState(() {
-            _state = _PlacementState.placed;
+            _placement.placementSucceeded();
             _showResizeHint = true;
           });
           Future.delayed(const Duration(seconds: 5), () {
             if (mounted) setState(() => _showResizeHint = false);
           });
+        } else {
+          modelFailed = true;
         }
       }
     } finally {
@@ -522,9 +528,10 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
           nodes.remove(platform);
           _platformNode = null;
         }
-        if (_state == _PlacementState.placing) {
-          setState(() => _state = _PlacementState.ready);
-        }
+        setState(() {
+          _placement.placementFailed();
+          _placementHint = modelFailed ? _modelFailedHint : _noSurfaceHint;
+        });
       }
     }
   }
@@ -537,18 +544,16 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
     // Transition to 'placing' the instant the first finger touches down while
     // the surface is ready. This hides the pulsing indicator immediately —
     // no _pointers.length guard needed (any touch counts).
-    if (_state == _PlacementState.ready) {
+    if (_placement.pointerDown()) {
       setState(() {
-        _state = _PlacementState.placing;
+        _placementHint = null;
         _tapPosition = event.localPosition;
         _showRipple = true;
       });
       _rippleCtrl.forward();
       _tapResultTimeout?.cancel();
       _tapResultTimeout = Timer(const Duration(milliseconds: 1500), () {
-        if (mounted && _state == _PlacementState.placing) {
-          setState(() => _state = _PlacementState.ready);
-        }
+        if (mounted && _placement.tapTimedOut()) setState(() {});
       });
     }
 
@@ -562,7 +567,7 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
   }
 
   void _handlePointerMove(PointerMoveEvent event) {
-    if (_state != _PlacementState.placed || nodes.isEmpty) return;
+    if (_state != PlacementState.placed || nodes.isEmpty) return;
     if (!_pointers.containsKey(event.pointer)) return;
     _pointers[event.pointer] = event.localPosition;
 
@@ -625,7 +630,7 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
   }
 
   void _rotateBy(double radians) {
-    if (_state != _PlacementState.placed) return;
+    if (_state != PlacementState.placed) return;
     _currentRotationY += radians;
     _gestureBaseRotY = _currentRotationY;
     _applyTransform();
@@ -904,9 +909,10 @@ class _PulsingTapIndicatorState extends State<_PulsingTapIndicator>
 // ── Status banner ─────────────────────────────────────────────────────────────
 
 class _StatusBanner extends StatelessWidget {
-  final _PlacementState state;
+  final PlacementState state;
+  final String? hint;
 
-  const _StatusBanner({required this.state});
+  const _StatusBanner({required this.state, this.hint});
 
   @override
   Widget build(BuildContext context) {
@@ -915,7 +921,7 @@ class _StatusBanner extends StatelessWidget {
     final String message;
 
     switch (state) {
-      case _PlacementState.placing:
+      case PlacementState.placing:
         bg = Colors.orange.shade800.withValues(alpha: 0.92);
         leading = const SizedBox(
           width: 18,
@@ -926,16 +932,16 @@ class _StatusBanner extends StatelessWidget {
           ),
         );
         message = 'Placing model\u2026';
-      case _PlacementState.ready:
+      case PlacementState.ready:
         bg = Colors.green.shade700.withValues(alpha: 0.92);
         leading = const Icon(
           Icons.check_circle_outline,
           color: Colors.white,
           size: 20,
         );
-        message = 'Flat surface found! Tap to place';
-      case _PlacementState.scanning:
-      case _PlacementState.placed:
+        message = hint ?? 'Flat surface found! Tap to place';
+      case PlacementState.scanning:
+      case PlacementState.placed:
         bg = Colors.black.withValues(alpha: 0.60);
         leading = const SizedBox(
           width: 18,
