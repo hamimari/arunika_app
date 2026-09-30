@@ -255,7 +255,16 @@ class GooglePlayBillingService implements BillingService {
     required Completer<PlayPurchaseResult> completer,
   }) async {
     for (final purchase in purchases) {
-      if (purchase.productID != playProductId) continue;
+      // When Play returns no purchase (the user closed the sheet, or billing
+      // failed), the plugin reports it with an empty productID. Only one
+      // purchase is in flight at a time, so that cancel/error is this one's —
+      // skipping it left the pay button spinning until the 5-minute timeout.
+      final isOurs =
+          purchase.productID == playProductId ||
+          (purchase.productID.isEmpty &&
+              (purchase.status == PurchaseStatus.canceled ||
+                  purchase.status == PurchaseStatus.error));
+      if (!isOurs) continue;
 
       switch (purchase.status) {
         case PurchaseStatus.pending:

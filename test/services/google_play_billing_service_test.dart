@@ -172,6 +172,64 @@ void main() {
           ));
     });
 
+    // What the Android plugin actually emits when the user closes the Google
+    // Play sheet: no purchase comes back, so the update carries no productID.
+    Future<PlayPurchaseResult> purchaseWithProductlessUpdate(
+      PurchaseStatus status,
+    ) async {
+      final future = service.purchaseProduct(
+        productId: 'product-1',
+        playProductId: 'sku_card',
+      );
+      await Future<void>.delayed(Duration.zero);
+      purchaseStream.add([_FakePurchaseDetails(productID: '', status: status)]);
+      return future.timeout(
+        const Duration(seconds: 1),
+        onTimeout: () => fail('purchase never resolved; the button would keep spinning'),
+      );
+    }
+
+    test('should_report_cancellation_when_the_sheet_is_closed_without_a_product_id',
+        () async {
+      final result = await purchaseWithProductlessUpdate(PurchaseStatus.canceled);
+
+      expect(result.outcome, PlayPurchaseOutcome.canceled);
+    });
+
+    test('should_report_an_error_when_play_fails_without_a_product_id', () async {
+      final result = await purchaseWithProductlessUpdate(PurchaseStatus.error);
+
+      expect(result.outcome, PlayPurchaseOutcome.error);
+    });
+
+    test('should_never_grant_a_purchase_from_an_update_without_a_product_id',
+        () async {
+      final future = service.purchaseProduct(
+        productId: 'product-1',
+        playProductId: 'sku_card',
+      );
+      await Future<void>.delayed(Duration.zero);
+      purchaseStream.add([
+        _FakePurchaseDetails(productID: '', status: PurchaseStatus.purchased),
+      ]);
+      await Future<void>.delayed(Duration.zero);
+
+      var resolved = false;
+      unawaited(future.then((_) => resolved = true));
+      await Future<void>.delayed(Duration.zero);
+      expect(resolved, isFalse);
+      verifyNever(() => api.verifyPurchase(
+            orderId: any(named: 'orderId'),
+            productId: any(named: 'productId'),
+            purchaseToken: any(named: 'purchaseToken'),
+          ));
+
+      purchaseStream.add([
+        _FakePurchaseDetails(productID: 'sku_card', status: PurchaseStatus.canceled),
+      ]);
+      expect((await future).outcome, PlayPurchaseOutcome.canceled);
+    });
+
     test('should_report_an_error_when_play_reports_one', () async {
       final result = await purchaseWith(PurchaseStatus.error);
 
