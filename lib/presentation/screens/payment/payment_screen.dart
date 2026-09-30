@@ -803,6 +803,13 @@ class _MidtransSnapWebViewState extends State<_MidtransSnapWebView> {
     defaultValue: 'Mid-client-5P_BEJCnBYCnPP3W',
   );
 
+  // Must match the backend's MIDTRANS_BASE_URL: a production snap token only
+  // opens with https://app.midtrans.com/snap/snap.js.
+  static const _snapJsUrl = String.fromEnvironment(
+    'MIDTRANS_SNAP_JS_URL',
+    defaultValue: 'https://app.sandbox.midtrans.com/snap/snap.js',
+  );
+
   @override
   void initState() {
     super.initState();
@@ -832,7 +839,7 @@ class _MidtransSnapWebViewState extends State<_MidtransSnapWebView> {
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://app.sandbox.midtrans.com/snap/snap.js"
+  <script src="$_snapJsUrl"
           data-client-key="$_snapClientKey"></script>
 </head>
 <body style="margin:0;background:#FFF8F0;display:flex;align-items:center;justify-content:center;height:100vh;">
