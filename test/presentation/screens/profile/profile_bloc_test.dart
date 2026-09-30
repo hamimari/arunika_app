@@ -10,6 +10,7 @@ import 'package:arunika_app/presentation/screens/profile/profile_state.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MockUserRepository extends Mock implements UserRepository {}
@@ -37,6 +38,7 @@ void main() {
   late MockUserRepository mockRepo;
 
   setUp(() {
+    FlutterSecureStorage.setMockInitialValues({});
     SharedPreferences.setMockInitialValues({});
     mockRepo = MockUserRepository();
     registerFallbackValue(

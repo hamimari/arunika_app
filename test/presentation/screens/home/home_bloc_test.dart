@@ -9,6 +9,7 @@ import 'package:arunika_app/presentation/screens/home/home_state.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MockFairyTalesRepository extends Mock implements FairyTalesRepository {}
@@ -29,12 +30,13 @@ DongengResponse _story(String id) => DongengResponse(
 );
 
 void main() {
-  // SharedPreferences (via LocalProfileStorage) requires this in unit tests.
+  // Secure storage (via LocalProfileStorage) requires this in unit tests.
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late MockFairyTalesRepository mockRepo;
 
   setUp(() {
+    FlutterSecureStorage.setMockInitialValues({});
     SharedPreferences.setMockInitialValues({});
     mockRepo = MockFairyTalesRepository();
   });

@@ -77,6 +77,9 @@ dev_dependencies:
   # (permission dialogs, the real Play Billing sheet), which is Patrol's job.
   integration_test:
     sdk: flutter
+  # test_driver/perf_driver.dart: frame-timing summaries for integration_test/perf.
+  flutter_driver:
+    sdk: flutter
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

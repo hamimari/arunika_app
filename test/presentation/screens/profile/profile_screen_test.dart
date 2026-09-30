@@ -9,8 +9,8 @@ import 'package:arunika_app/presentation/screens/profile/profile_bloc.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_event.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -78,19 +78,8 @@ void main() {
   late _MockUserRepository repo;
   late _StubAuthNotifier auth;
 
-  const secureStorageChannel = MethodChannel(
-    'plugins.it_nomads.com/flutter_secure_storage',
-  );
-
-  setUpAll(() {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(secureStorageChannel, (call) async {
-          if (call.method == 'read') return 'u1'; // userId
-          return null;
-        });
-  });
-
   setUp(() {
+    FlutterSecureStorage.setMockInitialValues({'user_id': 'u1'});
     SharedPreferences.setMockInitialValues({});
     repo = _MockUserRepository();
     auth = _StubAuthNotifier();
@@ -185,25 +174,24 @@ void main() {
     expect(find.byType(BottomSheet), findsOneWidget);
   });
 
-  testWidgets(
-    'should_not_open_an_edit_sheet_before_any_child_has_loaded',
-    (tester) async {
-      // A Completer rather than Future.delayed: this test's whole point is
-      // to sit in the not-yet-loaded state deliberately, and a real timer
-      // left pending when the tree is disposed fails the test on its own.
-      final pending = Completer<UserResponse>();
-      when(() => repo.findById(any())).thenAnswer((_) => pending.future);
-      addTearDown(() => pending.complete(_user()));
+  testWidgets('should_not_open_an_edit_sheet_before_any_child_has_loaded', (
+    tester,
+  ) async {
+    // A Completer rather than Future.delayed: this test's whole point is
+    // to sit in the not-yet-loaded state deliberately, and a real timer
+    // left pending when the tree is disposed fails the test on its own.
+    final pending = Completer<UserResponse>();
+    when(() => repo.findById(any())).thenAnswer((_) => pending.future);
+    addTearDown(() => pending.complete(_user()));
 
-      await pumpProfile(tester);
-      // Deliberately not completing `pending` — the profile has not
-      // resolved yet.
-      await tester.tap(find.byIcon(Icons.edit_rounded));
-      await tester.pump();
+    await pumpProfile(tester);
+    // Deliberately not completing `pending` — the profile has not
+    // resolved yet.
+    await tester.tap(find.byIcon(Icons.edit_rounded));
+    await tester.pump();
 
-      expect(find.byType(BottomSheet), findsNothing);
-    },
-  );
+    expect(find.byType(BottomSheet), findsNothing);
+  });
 
   testWidgets('should_log_out_and_return_to_landing_when_keluar_is_tapped', (
     tester,
@@ -256,26 +244,30 @@ void main() {
       expect(find.text('Perpanjang'), findsOneWidget);
     });
 
-    testWidgets('an auto-renewing subscription shows its renewal date, no button', (
-      tester,
-    ) async {
-      await initializeDateFormatting('id_ID');
-      when(() => repo.findById(any())).thenAnswer(
-        (_) async => _subscribedUser(
-          SubscriptionInfo(
-            planName: 'Bulanan',
-            status: 'premium',
-            expiresAt: DateTime(2026, 10, 31, 12),
-            provider: 'google_play',
-            autoRenew: true,
+    testWidgets(
+      'an auto-renewing subscription shows its renewal date, no button',
+      (tester) async {
+        await initializeDateFormatting('id_ID');
+        when(() => repo.findById(any())).thenAnswer(
+          (_) async => _subscribedUser(
+            SubscriptionInfo(
+              planName: 'Bulanan',
+              status: 'premium',
+              expiresAt: DateTime(2026, 10, 31, 12),
+              provider: 'google_play',
+              autoRenew: true,
+            ),
           ),
-        ),
-      );
+        );
 
-      await pumpProfile(tester);
+        await pumpProfile(tester);
 
-      expect(find.text('Diperpanjang otomatis pada 31 Okt 2026'), findsOneWidget);
-      expect(find.text('Perpanjang'), findsNothing);
-    });
+        expect(
+          find.text('Diperpanjang otomatis pada 31 Okt 2026'),
+          findsOneWidget,
+        );
+        expect(find.text('Perpanjang'), findsNothing);
+      },
+    );
   });
 }

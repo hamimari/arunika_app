@@ -53,3 +53,11 @@ android/key.properties
 # Test output (coverage-baseline.json IS committed — it is the ratchet baseline)
 coverage/
 reports/
+
+# Pre-release gate output
+prerelease-reports/
+
+# Environment files — never commit secrets (use --dart-define at build time)
+.env
+.env.*
+!.env.example

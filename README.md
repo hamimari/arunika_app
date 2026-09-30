@@ -301,8 +301,13 @@ Output: `build/app/outputs/flutter-apk/`
 ### Android App Bundle (Play Store)
 
 ```bash
-flutter build appbundle --release
+flutter build appbundle --release \
+  --dart-define=API_BASE_URL=https://<production API> \
+  --dart-define=MIDTRANS_CLIENT_KEY=<production client key> \
+  --dart-define=MIDTRANS_SNAP_JS_URL=https://app.midtrans.com/snap/snap.js
 ```
+
+The Midtrans defines default to the sandbox. They only matter while the backoffice `alternative_billing` flag is on, but a production build must still set them, and the snap.js URL must match the backend's `MIDTRANS_BASE_URL`.
 
 ### Signing
 

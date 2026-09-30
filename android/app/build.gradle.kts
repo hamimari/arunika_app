@@ -23,7 +23,7 @@ if (hasKeyProperties) {
 android {
     namespace = "com.arunika"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.2.12479018"
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -38,7 +38,7 @@ android {
         applicationId = "com.arunika"
         minSdk = 28
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
+        versionCode = 5
         versionName = flutter.versionName
         // Patrol (patrol_test/): native-UI automation for permission dialogs.
         testInstrumentationRunner = "pl.leancode.patrol.PatrolJUnitRunner"

@@ -1,5 +1,5 @@
 # Local and CI use the same commands. See README "Running Tests".
-.PHONY: deps analyze fmt test-fast test-all coverage-baseline
+.PHONY: deps analyze fmt test-fast test-all coverage-baseline prerelease
 
 deps:
 	flutter pub get
@@ -26,3 +26,7 @@ test-all: analyze
 coverage-baseline:
 	flutter test --coverage
 	python3 scripts/coverage_ratchet.py --write
+
+## prerelease: the pre-release security/quality gate (needs gitleaks).
+prerelease:
+	scripts/prerelease_check.sh

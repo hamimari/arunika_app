@@ -1,7 +1,7 @@
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/data/models/response/user_response.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -29,15 +29,12 @@ UserResponse profile({required bool consentRequired}) => UserResponse(
   consentRequired: consentRequired,
 );
 
-/// Makes SecureTokenStorage report a signed-in user, `userId`.
+/// Makes SecureTokenStorage report a signed-in user, `userId`, with an
+/// otherwise empty in-memory secure store (so no cached profile).
 void mockSecureStorage({String userId = 'u1'}) {
-  const channel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
-  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-      .setMockMethodCallHandler(channel, (call) async {
-        if (call.method == 'read') {
-          final key = (call.arguments as Map)['key'];
-          return key == 'user_id' ? userId : 'token';
-        }
-        return null;
-      });
+  FlutterSecureStorage.setMockInitialValues({
+    'user_id': userId,
+    'auth_token': 'token',
+    'refresh_token': 'token',
+  });
 }
