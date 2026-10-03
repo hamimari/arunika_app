@@ -148,7 +148,7 @@ arunika_backend/              # Go backend (separate directory)
 
 2. **Configure the API base URL**
 
-   The app reads `API_BASE_URL` from `--dart-define` at build/run time. For local development the default is already set in `lib/config/app_config.dart`. To override:
+   The app reads `API_BASE_URL` from `--dart-define` at build/run time. It defaults to production (`https://api.haloarunika.com`, set in `lib/config/app_config.dart`), so for local development point it at your own backend:
 
    ```bash
    flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
@@ -302,7 +302,7 @@ Output: `build/app/outputs/flutter-apk/`
 
 ```bash
 flutter build appbundle --release \
-  --dart-define=API_BASE_URL=https://<production API> \
+  --dart-define=API_BASE_URL=https://api.haloarunika.com \
   --dart-define=MIDTRANS_CLIENT_KEY=<production client key> \
   --dart-define=MIDTRANS_SNAP_JS_URL=https://app.midtrans.com/snap/snap.js
 ```

@@ -162,7 +162,7 @@ class SignInScreen extends StatelessWidget {
                                   builder: (context, state) {
                                     return AppTextField(
                                       label: 'Email',
-                                      hint: 'nagita.slavina@mail.com',
+                                      hint: 'nama@email.com',
                                       onChanged: (value) => context
                                           .read<SigninBloc>()
                                           .add(EmailChanged(value)),

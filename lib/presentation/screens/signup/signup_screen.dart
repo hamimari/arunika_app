@@ -161,7 +161,7 @@ class SignupScreen extends StatelessWidget {
                                   builder: (context, state) {
                                     return AppTextField(
                                       label: 'Nama Orang Tua',
-                                      hint: 'Contoh: Nagita Slavina',
+                                      hint: 'Contoh: Budi Santoso',
                                       onChanged: (value) => context
                                           .read<SignupBloc>()
                                           .add(NameChanged(value)),
@@ -195,7 +195,7 @@ class SignupScreen extends StatelessWidget {
                                   builder: (context, state) {
                                     return AppTextField(
                                       label: 'Email',
-                                      hint: 'nagita.slavina@mail.com',
+                                      hint: 'nama@email.com',
                                       onChanged: (value) => context
                                           .read<SignupBloc>()
                                           .add(EmailChanged(value)),

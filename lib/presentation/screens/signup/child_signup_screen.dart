@@ -189,7 +189,7 @@ class _ChildSignupState extends State<ChildSignupScreen> {
                             return AppTextField(
                               controller: nameController,
                               label: 'Nama Anak',
-                              hint: 'Contoh: Rafatar',
+                              hint: 'Contoh: Dinda',
                               onChanged: (value) => context
                                   .read<SignupBloc>()
                                   .add(ChildNameChanged(value)),

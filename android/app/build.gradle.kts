@@ -38,7 +38,7 @@ android {
         applicationId = "com.arunika"
         minSdk = 28
         targetSdk = flutter.targetSdkVersion
-        versionCode = 5
+        versionCode = flutter.versionCode //latest is 7
         versionName = flutter.versionName
         // Patrol (patrol_test/): native-UI automation for permission dialogs.
         testInstrumentationRunner = "pl.leancode.patrol.PatrolJUnitRunner"
