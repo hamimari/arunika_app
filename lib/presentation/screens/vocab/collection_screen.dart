@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/data/models/response/ar_card_category.dart';
 import 'package:arunika_app/data/models/response/ar_card_response.dart';
@@ -13,12 +14,14 @@ import 'package:arunika_app/presentation/screens/vocab/ar_card_detail_screen.dar
 import 'package:arunika_app/presentation/screens/vocab/collection_bloc.dart';
 import 'package:arunika_app/presentation/screens/widgets/category_dropdowns.dart';
 import 'package:arunika_app/presentation/screens/widgets/error_retry_view.dart';
+import 'package:arunika_app/presentation/screens/widgets/header_icon_button.dart';
 import 'package:arunika_app/presentation/screens/widgets/login_required_dialog.dart';
 import 'package:arunika_app/presentation/screens/widgets/ownership_filter_sheet.dart';
 import 'package:arunika_app/presentation/screens/widgets/price_tag.dart';
 import 'package:arunika_app/presentation/screens/vocab/collection_bloc_handler.dart';
 import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/core/media/media_cache.dart';
+import 'package:go_router/go_router.dart';
 
 CategoryOption _fromArCardCategory(ArCardCategory c) => CategoryOption(
   id: c.id,
@@ -30,13 +33,6 @@ CategoryOption _fromArCardCategory(ArCardCategory c) => CategoryOption(
 class CollectionScreen extends StatelessWidget {
   final String? initialCategoryId;
   const CollectionScreen({super.key, this.initialCategoryId});
-
-  /// Set this from outside to filter the collection tab by category and then
-  /// call [MainShell.shellKey.currentState?.switchTab(MainShellTab.collection)].
-  /// The value is consumed once and reset to null automatically.
-  static final ValueNotifier<String?> externalCategoryFilter = ValueNotifier(
-    null,
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -61,22 +57,7 @@ class _CollectionViewState extends State<_CollectionView> {
   final _searchController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    CollectionScreen.externalCategoryFilter.addListener(_onExternalFilter);
-  }
-
-  void _onExternalFilter() {
-    final catId = CollectionScreen.externalCategoryFilter.value;
-    if (catId != null && mounted) {
-      context.read<CollectionBlocHandler>().add(FilterByCategory(catId));
-      CollectionScreen.externalCategoryFilter.value = null;
-    }
-  }
-
-  @override
   void dispose() {
-    CollectionScreen.externalCategoryFilter.removeListener(_onExternalFilter);
     _searchController.dispose();
     super.dispose();
   }
@@ -227,6 +208,16 @@ class _CollectionViewState extends State<_CollectionView> {
     return Row(
       key: const ValueKey('title'),
       children: [
+        // Opened from the Belajar hub (or the /koleksi route): back returns.
+        if (Navigator.of(context).canPop()) ...[
+          HeaderIconButton(
+            icon: Icons.arrow_back_ios_new_rounded,
+            color: AppColors.textDark,
+            semanticLabel: 'Kembali',
+            onTap: () => Navigator.of(context).maybePop(),
+          ),
+          const SizedBox(width: 12),
+        ],
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,28 +232,25 @@ class _CollectionViewState extends State<_CollectionView> {
             ],
           ),
         ),
-        GestureDetector(
+        // QR scan moved here from the bottom navigation.
+        ListenableBuilder(
+          listenable: locator<FeatureFlagsNotifier>(),
+          builder: (context, _) =>
+              locator<FeatureFlagsNotifier>().qrScanEnabled
+              ? Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: HeaderIconButton(
+                    icon: Icons.qr_code_scanner_rounded,
+                    semanticLabel: 'Scan kartu AR',
+                    onTap: () => context.push('/ar-scan'),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+        HeaderIconButton(
+          icon: Icons.search_rounded,
+          semanticLabel: 'Cari kartu',
           onTap: () => setState(() => _isSearching = true),
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.search_rounded,
-              color: AppColors.primaryOrange,
-              size: 22,
-            ),
-          ),
         ),
       ],
     );

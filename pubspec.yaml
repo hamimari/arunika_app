@@ -95,6 +95,8 @@ dev_dependencies:
   # path this app calls is actually served by the backend.
   yaml: ^3.1.3
   mocktail: ^1.0.4
+  # Checks the bundled WHO LMS file matches the backend's copy.
+  crypto: ^3.0.6
   fake_async: ^1.3.1
   file: ^7.0.1
   patrol: ^4.10.0
@@ -113,6 +115,9 @@ flutter:
   assets:
     - assets/splash.png
     - assets/models/ar_base_platform.glb
+    # WHO Child Growth Standards LMS table, byte-identical to the backend's
+    # growth/data/who2006_lms.csv (see test/core/growth/growth_engine_test.dart).
+    - assets/growth/who2006_lms.csv
 
   # To add assets to your application, add an assets section, like this:
   # assets:

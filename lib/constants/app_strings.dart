@@ -10,10 +10,13 @@ class AppStrings {
 
   // Bottom Nav
   static const String navHome = 'Beranda';
-  static const String navScan = 'Scan';
+  static const String navBelajar = 'Belajar';
+  static const String navTumbuh = 'Tumbuh';
+  static const String navParent = 'Profil';
+  // Cards on the Belajar hub (formerly bottom-nav tabs).
   static const String navCollection = 'Kartu AR';
   static const String navDongeng = 'Dongeng';
-  static const String navParent = 'Profil';
+  static const String belajarSubtitle = 'Pilih petualangan belajar hari ini!';
 
   // Home
   static const String homeGreeting = 'Halo, Selamat Datang! 👋';

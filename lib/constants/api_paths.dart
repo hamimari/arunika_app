@@ -31,4 +31,11 @@ class ApiPaths {
   static String orderById(String id) => "/orders/$id";
   static const String featureFlags = "/app/feature-flags";
   static const String notificationToken = "/notifications/token";
+  static String childGrowth(String childId) => "/children/$childId/growth";
+  static String growthMeasurements(String childId) =>
+      "/children/$childId/growth/measurements";
+  static String growthMeasurement(String childId, String id) =>
+      "/children/$childId/growth/measurements/$id";
+  static String growthMeasurementRestore(String childId, String id) =>
+      "/children/$childId/growth/measurements/$id/restore";
 }

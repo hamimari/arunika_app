@@ -13,6 +13,10 @@ class FeatureFlag {
   // Midtrans as Google Play's User Choice Billing alternative. Off unless
   // explicitly enabled — see FeatureFlagsNotifier.failClosed.
   static const String alternativeBilling = 'alternative_billing';
+  // Tumbuh Kembang: the Tumbuh tab and the Beranda growth card. Off unless
+  // enabled, so an app talking to a backend without the growth API never
+  // shows it.
+  static const String growthTracking = 'growth_tracking';
 }
 
 /// Holds the backoffice-controlled feature switches.
@@ -34,7 +38,10 @@ class FeatureFlagsNotifier extends ChangeNotifier {
   /// Flags that must default to off when unknown, because defaulting to on
   /// would re-open something only allowed when explicitly enabled — Midtrans
   /// is only permitted alongside Google Play under User Choice Billing.
-  static const Set<String> failClosed = {FeatureFlag.alternativeBilling};
+  static const Set<String> failClosed = {
+    FeatureFlag.alternativeBilling,
+    FeatureFlag.growthTracking,
+  };
 
   bool isEnabled(String key) => _flags[key] ?? !failClosed.contains(key);
 
@@ -42,6 +49,7 @@ class FeatureFlagsNotifier extends ChangeNotifier {
   bool get qrScanEnabled => isEnabled(FeatureFlag.qrScan);
   bool get alternativeBillingEnabled =>
       isEnabled(FeatureFlag.alternativeBilling);
+  bool get growthTrackingEnabled => isEnabled(FeatureFlag.growthTracking);
 
   Future<void> loadCached() async {
     try {

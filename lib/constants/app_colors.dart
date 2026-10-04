@@ -54,8 +54,12 @@ class AppColors {
   static const Color ownedGreySoft = Color(0xFFEFEBE7);
 
   // Bottom nav
-  static const Color navActive = Color(0xFFFF8A3D);
-  static const Color navInactive = Color(0xFFBDBDBD);
+  static const Color navActive = Color(0xFFC85A1A);
+  static const Color navActivePill = Color(0xFFFDE4D2);
+  static const Color navInactive = Color(0xFF8C8279);
+
+  // Warm cream page of the redesigned Belajar and Tumbuh tabs.
+  static const Color warmPage = Color(0xFFFBF6F0);
 
   // Shimmer / premium badge
   static const Color premiumGold = Color(0xFFFFD700);

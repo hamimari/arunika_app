@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:arunika_app/presentation/screens/unlock_success/unlock_success_screen.dart';
 import 'package:integration_test/integration_test.dart';
 
+import '../helpers/belajar.dart';
 import '../helpers/boot_app.dart';
 import '../helpers/screenshot.dart';
 import '../helpers/scroll.dart';
@@ -58,7 +59,7 @@ void main() {
       await registerAndSignIn();
       AppRouter.router.go('/');
       await tester.pumpAndSettle(const Duration(seconds: 2));
-      await tester.tap(find.text(AppStrings.navCollection));
+      await openBelajar(tester, AppStrings.navCollection);
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       // Rp 15.000 at 20% → a crossed-out Rp 19.000 next to the real price.
@@ -112,7 +113,7 @@ void main() {
       await registerAndSignIn();
       AppRouter.router.go('/');
       await tester.pumpAndSettle(const Duration(seconds: 2));
-      await tester.tap(find.text(AppStrings.navCollection));
+      await openBelajar(tester, AppStrings.navCollection);
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       // The tile: greyscale picture, lock, price and a Beli button.
@@ -166,7 +167,7 @@ void main() {
       await registerAndSignIn();
       AppRouter.router.go('/');
       await tester.pumpAndSettle(const Duration(seconds: 2));
-      await tester.tap(find.text(AppStrings.navDongeng));
+      await openBelajar(tester, AppStrings.navDongeng);
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       await tester.scrollUntilVisible(

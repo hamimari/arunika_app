@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
+import 'package:arunika_app/data/api/feature_flag_api.dart';
 
 class _MockArRepository extends Mock implements ArRepository {}
 
@@ -72,6 +74,13 @@ void main() {
       locator.unregister<ArRepository>();
     }
     locator.registerSingleton<ArRepository>(repo);
+    // The Kartu AR header reads qr_scan for its scan icon.
+    if (locator.isRegistered<FeatureFlagsNotifier>()) {
+      locator.unregister<FeatureFlagsNotifier>();
+    }
+    locator.registerSingleton<FeatureFlagsNotifier>(
+      FeatureFlagsNotifier(_NoFlagsApi()),
+    );
   });
 
   tearDown(() {
@@ -506,3 +515,5 @@ void main() {
     });
   });
 }
+
+class _NoFlagsApi extends Mock implements FeatureFlagApi {}

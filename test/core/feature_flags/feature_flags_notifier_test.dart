@@ -35,6 +35,19 @@ void main() {
     expect(notifier.alternativeBillingEnabled, isTrue, reason: 'explicitly enabled');
   });
 
+  test('growth tracking fails closed while unknown', () async {
+    final notifier = FeatureFlagsNotifier(api);
+    expect(notifier.growthTrackingEnabled, isFalse, reason: 'never fetched');
+
+    when(() => api.fetchFlags()).thenAnswer((_) async => {'qr_scan': true});
+    await notifier.refresh();
+    expect(notifier.growthTrackingEnabled, isFalse, reason: 'old backend without the flag');
+
+    when(() => api.fetchFlags()).thenAnswer((_) async => {'growth_tracking': true});
+    await notifier.refresh();
+    expect(notifier.growthTrackingEnabled, isTrue, reason: 'explicitly enabled');
+  });
+
   test('refresh applies backend flags, notifies, and caches them', () async {
     when(
       () => api.fetchFlags(),

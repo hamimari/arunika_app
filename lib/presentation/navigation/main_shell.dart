@@ -6,6 +6,7 @@ import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/di/locator.dart';
+import 'package:arunika_app/presentation/screens/belajar/belajar_tab.dart';
 import 'package:arunika_app/services/push_notification_service.dart';
 
 // Tab ids — used by other screens to switch tabs programmatically. These are
@@ -13,26 +14,33 @@ import 'package:arunika_app/services/push_notification_service.dart';
 // feature switched off from the backoffice), which shifts positions.
 class MainShellTab {
   static const int home = 0;
-  static const int scan = 1;
-  static const int collection = 2;
-  static const int dongeng = 3;
-  static const int parent = 4;
+  static const int belajar = 1;
+  static const int tumbuh = 2;
+  static const int profil = 3;
 }
 
+/// Beranda · Belajar · Tumbuh · Profil. Kartu AR and Dongeng live inside
+/// Belajar (see [BelajarTab]); QR scan is reached from the Kartu AR header.
 class MainShell extends StatefulWidget {
   final Widget homeScreen;
-  final Widget scanScreen;
-  final Widget collectionScreen;
-  final Widget dongengScreen;
-  final Widget parentScreen;
+  final Widget Function(BuildContext context, String? categoryId)
+  kartuArBuilder;
+  final Widget Function(BuildContext context, String? highlightProductId)
+  dongengBuilder;
+  final Widget growthScreen;
+  final Widget profileScreen;
+
+  /// Called whenever the visible tab changes, with its id.
+  final ValueChanged<int>? onTabChanged;
 
   const MainShell({
     super.key,
     required this.homeScreen,
-    required this.scanScreen,
-    required this.collectionScreen,
-    required this.dongengScreen,
-    required this.parentScreen,
+    required this.kartuArBuilder,
+    required this.dongengBuilder,
+    required this.growthScreen,
+    required this.profileScreen,
+    this.onTabChanged,
   });
 
   /// Switch tabs from anywhere by using a `GlobalKey<MainShellState>`.
@@ -44,6 +52,8 @@ class MainShell extends StatefulWidget {
 
 class MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int _currentIndex = MainShellTab.home;
+  bool _belajarCanPop = false;
+  final _belajarKey = GlobalKey<BelajarTabState>();
   late final AuthNotifier _authNotifier;
   late final FeatureFlagsNotifier _featureFlags;
 
@@ -51,9 +61,9 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     _authNotifier = locator<AuthNotifier>();
-    _authNotifier.addListener(_onAuthChanged);
+    _authNotifier.addListener(_onVisibilityChanged);
     _featureFlags = locator<FeatureFlagsNotifier>();
-    _featureFlags.addListener(_onFeatureFlagsChanged);
+    _featureFlags.addListener(_onVisibilityChanged);
     WidgetsBinding.instance.addObserver(this);
     // Open whatever a launch-time push notification linked to.
     WidgetsBinding.instance.addPostFrameCallback(
@@ -64,8 +74,8 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _featureFlags.removeListener(_onFeatureFlagsChanged);
-    _authNotifier.removeListener(_onAuthChanged);
+    _featureFlags.removeListener(_onVisibilityChanged);
+    _authNotifier.removeListener(_onVisibilityChanged);
     super.dispose();
   }
 
@@ -76,10 +86,12 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) _featureFlags.refresh();
   }
 
-  void _onFeatureFlagsChanged() {
-    // If the tab being viewed was just hidden, fall back to home.
+  /// Logging out, or a feature switched off, can hide the open tab: whenever
+  /// that happens, return to home.
+  void _onVisibilityChanged() {
     if (!_visibleTabs().contains(_currentIndex)) {
       _currentIndex = MainShellTab.home;
+      widget.onTabChanged?.call(_currentIndex);
     }
     setState(() {});
   }
@@ -87,34 +99,53 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
   /// Tab ids currently shown, in display order.
   List<int> _visibleTabs() => [
     MainShellTab.home,
-    if (_featureFlags.qrScanEnabled) MainShellTab.scan,
-    MainShellTab.collection,
-    MainShellTab.dongeng,
-    if (_authNotifier.isLoggedIn) MainShellTab.parent,
+    MainShellTab.belajar,
+    if (_authNotifier.isLoggedIn && _featureFlags.growthTrackingEnabled)
+      MainShellTab.tumbuh,
+    if (_authNotifier.isLoggedIn) MainShellTab.profil,
   ];
-
-  void _onAuthChanged() {
-    // Whenever the user is no longer logged in, unconditionally return to the
-    // home tab. This covers all tabs (not just the profile tab) and prevents
-    // stale tab indices from leaving the shell in an inconsistent state after
-    // logout.
-    if (!_authNotifier.isLoggedIn) {
-      _currentIndex = MainShellTab.home;
-    }
-    setState(() {});
-  }
 
   /// Switches to the tab with id [tab]; ignored if that tab is hidden.
   void switchTab(int tab) {
     if (!_visibleTabs().contains(tab)) return;
+    if (tab == _currentIndex) {
+      // Tapping Belajar again returns to its hub.
+      if (tab == MainShellTab.belajar) _belajarKey.currentState?.popToHub();
+      return;
+    }
     setState(() => _currentIndex = tab);
+    widget.onTabChanged?.call(tab);
+  }
+
+  /// Opens a Belajar destination (Kartu AR, optionally filtered to a category,
+  /// or Dongeng, optionally highlighting a story).
+  void openBelajar(
+    BelajarDestination destination, {
+    String? categoryId,
+    String? highlightProductId,
+  }) {
+    if (_currentIndex != MainShellTab.belajar) {
+      setState(() => _currentIndex = MainShellTab.belajar);
+      widget.onTabChanged?.call(MainShellTab.belajar);
+    }
+    _belajarKey.currentState?.open(
+      destination,
+      categoryId: categoryId,
+      highlightProductId: highlightProductId,
+    );
   }
 
   Widget _screenFor(int tab) => switch (tab) {
-    MainShellTab.scan => widget.scanScreen,
-    MainShellTab.collection => widget.collectionScreen,
-    MainShellTab.dongeng => widget.dongengScreen,
-    MainShellTab.parent => widget.parentScreen,
+    MainShellTab.belajar => BelajarTab(
+      key: _belajarKey,
+      kartuArBuilder: widget.kartuArBuilder,
+      dongengBuilder: widget.dongengBuilder,
+      onCanPopChanged: (v) {
+        if (mounted && v != _belajarCanPop) setState(() => _belajarCanPop = v);
+      },
+    ),
+    MainShellTab.tumbuh => widget.growthScreen,
+    MainShellTab.profil => widget.profileScreen,
     _ => widget.homeScreen,
   };
 
@@ -124,53 +155,50 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
     final activeTab = tabs.contains(_currentIndex)
         ? _currentIndex
         : MainShellTab.home;
+    final innerBack = activeTab == MainShellTab.belajar && _belajarCanPop;
 
-    return Scaffold(
-      body: IndexedStack(
-        index: tabs.indexOf(activeTab),
-        // Keyed by tab id so hiding a tab doesn't hand its state to the
-        // screen that slides into its position.
-        children: [
-          for (final tab in tabs)
-            KeyedSubtree(key: ValueKey(tab), child: _screenFor(tab)),
-        ],
+    return PopScope(
+      // System back closes Kartu AR / Dongeng before leaving the app.
+      canPop: !innerBack,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && innerBack) _belajarKey.currentState?.pop();
+      },
+      child: Scaffold(
+        body: IndexedStack(
+          index: tabs.indexOf(activeTab),
+          // Keyed by tab id so hiding a tab doesn't hand its state to the
+          // screen that slides into its position.
+          children: [
+            for (final tab in tabs)
+              KeyedSubtree(key: ValueKey(tab), child: _screenFor(tab)),
+          ],
+        ),
+        bottomNavigationBar: _buildBottomNav(tabs, activeTab),
       ),
-      bottomNavigationBar: _buildBottomNav(tabs, activeTab),
     );
   }
 
   Widget _buildBottomNav(List<int> visibleTabs, int activeTab) {
-    final allItems = <_NavTabItem>[
+    const allItems = <_NavTabItem>[
       _NavTabItem(
         label: AppStrings.navHome,
         icon: Iconsax.sun_fog,
-        activeIcon: Iconsax.sun_fog,
         index: MainShellTab.home,
       ),
       _NavTabItem(
-        label: AppStrings.navScan,
-        icon: Iconsax.scan,
-        activeIcon: Iconsax.scan,
-        index: MainShellTab.scan,
-        // isCenter: true, // ignored: feature disabled but field kept for future use
+        label: AppStrings.navBelajar,
+        icon: Iconsax.teacher,
+        index: MainShellTab.belajar,
       ),
       _NavTabItem(
-        label: AppStrings.navCollection,
-        icon: Iconsax.additem,
-        activeIcon: Iconsax.additem,
-        index: MainShellTab.collection,
-      ),
-      _NavTabItem(
-        label: AppStrings.navDongeng,
-        icon: Iconsax.magicpen,
-        activeIcon: Iconsax.magicpen,
-        index: MainShellTab.dongeng,
+        label: AppStrings.navTumbuh,
+        icon: Icons.spa_outlined,
+        index: MainShellTab.tumbuh,
       ),
       _NavTabItem(
         label: AppStrings.navParent,
         icon: Iconsax.profile_circle,
-        activeIcon: Iconsax.profile_circle5,
-        index: MainShellTab.parent,
+        index: MainShellTab.profil,
       ),
     ];
     final items = allItems.where((i) => visibleTabs.contains(i.index));
@@ -202,66 +230,37 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
   }
 
   Widget _buildNavTab(_NavTabItem item, bool isActive) {
-    if (item.isCenter) {
-      // Prominent scan button
-      return GestureDetector(
-        onTap: () => setState(() => _currentIndex = item.index),
-        child: Container(
-          width: 54,
-          height: 54,
+    return Semantics(
+      button: true,
+      selected: isActive,
+      child: GestureDetector(
+        onTap: () => switchTab(item.index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.primaryOrange, AppColors.primaryOrangeDark],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primaryOrange.withValues(alpha: 0.45),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+            color: isActive ? AppColors.navActivePill : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                item.icon,
+                color: isActive ? AppColors.navActive : AppColors.navInactive,
+                size: 22,
+              ),
+              const SizedBox(height: 3),
+              Text(
+                item.label,
+                style: AppTextStyles.caption.copyWith(
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                  color: isActive ? AppColors.navActive : AppColors.navInactive,
+                ),
               ),
             ],
           ),
-          child: Icon(
-            isActive ? item.activeIcon : item.icon,
-            color: AppColors.white,
-            size: 26,
-          ),
-        ),
-      );
-    }
-
-    return GestureDetector(
-      onTap: () => setState(() => _currentIndex = item.index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.primaryOrange.withValues(alpha: 0.12)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isActive ? item.activeIcon : item.icon,
-              color: isActive ? AppColors.navActive : AppColors.navInactive,
-              size: 22,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              item.label,
-              style: AppTextStyles.caption.copyWith(
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                color: isActive ? AppColors.navActive : AppColors.navInactive,
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -271,16 +270,11 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
 class _NavTabItem {
   final String label;
   final IconData icon;
-  final IconData activeIcon;
   final int index;
-  final bool isCenter;
 
   const _NavTabItem({
     required this.label,
     required this.icon,
-    required this.activeIcon,
     required this.index,
-    // ignore: unused_element_parameter
-    this.isCenter = false,
   });
 }

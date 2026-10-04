@@ -3,6 +3,7 @@ import 'package:arunika_app/constants/app_strings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import '../helpers/belajar.dart';
 import '../helpers/boot_app.dart';
 import '../helpers/scroll.dart';
 import '../helpers/signed_in_session.dart';
@@ -29,7 +30,7 @@ void main() {
       AppRouter.router.go('/');
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
-      await tester.tap(find.text(AppStrings.navDongeng));
+      await openBelajar(tester, AppStrings.navDongeng);
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       // Real content, created through the real admin API moments ago,
@@ -52,7 +53,7 @@ void main() {
       AppRouter.router.go('/');
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
-      await tester.tap(find.text(AppStrings.navCollection));
+      await openBelajar(tester, AppStrings.navCollection);
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       // The card is listed — locked content is browsable before purchase —
@@ -91,7 +92,7 @@ void main() {
       // mounted on '/landing', so do the same navigation explicitly.
       AppRouter.router.go('/');
       await tester.pumpAndSettle(const Duration(seconds: 2));
-      await tester.tap(find.text(AppStrings.navCollection));
+      await openBelajar(tester, AppStrings.navCollection);
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       // A blanket subscription unlocks every product, this card included —

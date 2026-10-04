@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import '../helpers/belajar.dart';
 import '../helpers/boot_app.dart';
 import '../helpers/signed_in_session.dart';
 
@@ -63,7 +64,7 @@ void main() {
     );
     sampleMemory('after_home');
 
-    await tester.tap(find.text(AppStrings.navDongeng));
+    await openBelajar(tester, AppStrings.navDongeng);
     await tester.pumpAndSettle(const Duration(seconds: 3));
     await binding.traceAction(
       () => flingAll(find.byType(Scrollable).first, times: 4),
@@ -101,7 +102,7 @@ void main() {
     AppRouter.router.pop();
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
-    await tester.tap(find.text(AppStrings.navCollection));
+    await openBelajar(tester, AppStrings.navCollection);
     await tester.pumpAndSettle(const Duration(seconds: 3));
     await binding.traceAction(
       () => flingAll(
@@ -119,14 +120,10 @@ void main() {
 
     // Back and forth between tabs, to see whether memory keeps climbing.
     for (var round = 0; round < 3; round++) {
-      for (final tab in [
-        AppStrings.navHome,
-        AppStrings.navDongeng,
-        AppStrings.navCollection,
-      ]) {
-        await tester.tap(find.text(tab));
-        await tester.pumpAndSettle(const Duration(seconds: 1));
-      }
+      await tester.tap(find.text(AppStrings.navHome));
+      await tester.pumpAndSettle(const Duration(seconds: 1));
+      await openBelajar(tester, AppStrings.navDongeng);
+      await openBelajar(tester, AppStrings.navCollection);
     }
     await tester.tap(find.text(AppStrings.navHome));
     await tester.pumpAndSettle(const Duration(seconds: 3));

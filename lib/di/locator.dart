@@ -5,6 +5,7 @@ import 'package:arunika_app/data/api/category_api.dart';
 import 'package:arunika_app/data/api/dongeng_history_api.dart';
 import 'package:arunika_app/data/api/fairy_tales_api.dart';
 import 'package:arunika_app/data/api/feature_flag_api.dart';
+import 'package:arunika_app/data/api/growth_api.dart';
 import 'package:arunika_app/data/api/notification_api.dart';
 import 'package:arunika_app/data/api/order_api.dart';
 import 'package:arunika_app/data/api/play_billing_api.dart';
@@ -16,6 +17,7 @@ import 'package:arunika_app/data/repositories/banner_repository.dart';
 import 'package:arunika_app/data/repositories/category_repository.dart';
 import 'package:arunika_app/data/repositories/dongeng_history_repository.dart';
 import 'package:arunika_app/data/repositories/fairy_tales_repository.dart';
+import 'package:arunika_app/data/repositories/growth_repository.dart';
 import 'package:arunika_app/data/repositories/order_repository.dart';
 import 'package:arunika_app/data/repositories/premium_pack_repository.dart';
 import 'package:arunika_app/data/repositories/profile_loader.dart';
@@ -49,6 +51,7 @@ void setupLocator() {
   );
   locator.registerLazySingleton(() => PremiumPackRepository(PremiumPackApi()));
   locator.registerLazySingleton(() => OrderRepository(OrderApi()));
+  locator.registerLazySingleton(() => GrowthRepository(GrowthApi()));
   locator.registerLazySingleton(
     () => ProfileLoader(locator<UserRepository>(), locator<AuthNotifier>()),
   );

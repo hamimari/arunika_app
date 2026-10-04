@@ -19,11 +19,13 @@ import 'package:arunika_app/data/repositories/fairy_tales_repository.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/navigation/main_shell.dart';
+import 'package:arunika_app/presentation/screens/belajar/belajar_tab.dart';
+import 'package:arunika_app/presentation/screens/growth/growth_cubit.dart';
+import 'package:arunika_app/presentation/screens/home/home_growth_card.dart';
 import 'package:arunika_app/presentation/screens/home/home_banner_cubit.dart';
 import 'package:arunika_app/presentation/screens/home/home_dongeng_section_bloc.dart';
 import 'package:arunika_app/presentation/screens/premium/premium_pack_cubit.dart';
 import 'package:arunika_app/presentation/screens/widgets/login_required_dialog.dart';
-import 'package:arunika_app/presentation/screens/vocab/collection_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
@@ -139,6 +141,7 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
                   ctx.read<HomeBannerCubit>().reload(),
                   ctx.read<HomeDongengSectionBloc>().reload(),
                   ctx.read<PremiumPackCubit>().loadPacks(fresh: true),
+                  if (ctx.read<GrowthCubit?>() case final growth?) growth.load(),
                 ]);
               },
               child: CustomScrollView(
@@ -164,6 +167,8 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
                   SliverToBoxAdapter(
                     child: _CategoriesSection(key: ValueKey(_refreshCounter)),
                   ),
+                  // Tumbuh kembang summary (hidden unless growth_tracking).
+                  const SliverToBoxAdapter(child: HomeGrowthCard()),
                   SliverToBoxAdapter(
                     child: BlocBuilder<PremiumPackCubit, PremiumPackState>(
                       builder: (context, packState) {
@@ -235,7 +240,7 @@ class _HomeHeader extends StatelessWidget {
             GestureDetector(
               onTap: () => isLoggedIn
                   ? MainShell.shellKey.currentState?.switchTab(
-                      MainShellTab.parent,
+                      MainShellTab.profil,
                     )
                   : context.push('/signin'),
               child: CircleAvatar(
@@ -359,9 +364,7 @@ class _BannerCarouselSectionState extends State<_BannerCarouselSection> {
             listenable: locator<FeatureFlagsNotifier>(),
             builder: (_, __) => _HeroBanner(
               onScanTap: locator<FeatureFlagsNotifier>().qrScanEnabled
-                  ? () => MainShell.shellKey.currentState?.switchTab(
-                      MainShellTab.scan,
-                    )
+                  ? () => context.push('/ar-scan')
                   : null,
             ),
           );
@@ -570,8 +573,8 @@ class _DailyAnimalBannerCard extends StatelessWidget {
                 ],
                 const SizedBox(height: 14),
                 GestureDetector(
-                  onTap: () => MainShell.shellKey.currentState?.switchTab(
-                    MainShellTab.collection,
+                  onTap: () => MainShell.shellKey.currentState?.openBelajar(
+                    BelajarDestination.kartuAr,
                   ),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -678,8 +681,8 @@ class _StoriesSection extends StatelessWidget {
                 children: [
                   Text('Dongeng Populer', style: AppTextStyles.subheading),
                   GestureDetector(
-                    onTap: () => MainShell.shellKey.currentState?.switchTab(
-                      MainShellTab.dongeng,
+                    onTap: () => MainShell.shellKey.currentState?.openBelajar(
+                      BelajarDestination.dongeng,
                     ),
                     child: Text(
                       'Lihat Semua',
@@ -961,8 +964,8 @@ class _CategoriesSectionState extends State<_CategoriesSection> {
               Text('Kategori Kartu AR', style: AppTextStyles.subheading),
               if (hasMore)
                 GestureDetector(
-                  onTap: () => MainShell.shellKey.currentState?.switchTab(
-                    MainShellTab.collection,
+                  onTap: () => MainShell.shellKey.currentState?.openBelajar(
+                    BelajarDestination.kartuAr,
                   ),
                   child: Text(
                     'Lihat Semua',
@@ -1013,8 +1016,10 @@ class _CategoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        CollectionScreen.externalCategoryFilter.value = id;
-        MainShell.shellKey.currentState?.switchTab(MainShellTab.collection);
+        MainShell.shellKey.currentState?.openBelajar(
+          BelajarDestination.kartuAr,
+          categoryId: id,
+        );
       },
       child: Column(
         children: [

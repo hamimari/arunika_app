@@ -5,12 +5,12 @@ import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/storage/LocalProfileStorage.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
-import 'package:arunika_app/core/utils/dongeng_tab_controller.dart';
 import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/data/repositories/ar_repository.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/navigation/main_shell.dart';
+import 'package:arunika_app/presentation/screens/belajar/belajar_tab.dart';
 import 'package:arunika_app/presentation/screens/vocab/ar_card_detail_screen.dart';
 import 'package:go_router/go_router.dart';
 
@@ -64,13 +64,17 @@ class _UnlockSuccessScreenState extends State<UnlockSuccessScreen> {
     final item = widget.item;
 
     if (item.isSubscriptionPurchase) {
-      _goToShellTab(MainShellTab.parent);
+      _goToShell((shell) => shell.switchTab(MainShellTab.profil));
       return;
     }
 
     if (item.isDongengPurchase) {
-      DongengTabController.pendingHighlightProductId = item.id;
-      _goToShellTab(MainShellTab.dongeng);
+      _goToShell(
+        (shell) => shell.openBelajar(
+          BelajarDestination.dongeng,
+          highlightProductId: item.id,
+        ),
+      );
       return;
     }
 
@@ -82,28 +86,25 @@ class _UnlockSuccessScreenState extends State<UnlockSuccessScreen> {
       if (!context.mounted) return;
       setState(() => _isOpeningCard = false);
       if (card != null) {
-        _goToShellTab(
-          MainShellTab.collection,
-          then: (shellContext) => Navigator.push(
-            shellContext,
+        _goToShell((shell) {
+          shell.openBelajar(BelajarDestination.kartuAr);
+          Navigator.push(
+            shell.context,
             MaterialPageRoute(builder: (_) => ArCardDetailScreen(card: card)),
-          ),
-        );
+          );
+        });
         return;
       }
     }
 
-    _goToShellTab(MainShellTab.collection);
+    _goToShell((shell) => shell.openBelajar(BelajarDestination.kartuAr));
   }
 
-  void _goToShellTab(int tab, {void Function(BuildContext)? then}) {
+  void _goToShell(void Function(MainShellState shell) then) {
     context.go('/shell');
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      MainShell.shellKey.currentState?.switchTab(tab);
-      final shellContext = MainShell.shellKey.currentContext;
-      if (then != null && shellContext != null) {
-        then(shellContext);
-      }
+      final shell = MainShell.shellKey.currentState;
+      if (shell != null) then(shell);
     });
   }
 

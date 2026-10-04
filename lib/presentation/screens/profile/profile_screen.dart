@@ -19,6 +19,10 @@ import 'package:arunika_app/core/media/media_cache.dart';
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
+  /// Set to true to open the edit sheet as soon as the profile is loaded —
+  /// used by Tumbuh's "Lengkapi profil anak". Consumed once.
+  static final ValueNotifier<bool> editRequested = ValueNotifier(false);
+
   void _openEditModal(BuildContext context) {
     final profileBloc = context.read<ProfileBloc>();
     final child = profileBloc.state.user?.children.isNotEmpty == true
@@ -68,6 +72,7 @@ class ProfileScreen extends StatelessWidget {
 
             return Column(
               children: [
+                _EditRequestListener(onOpen: () => _openEditModal(context)),
                 // ── Header — matches home page gradient style ──────────────
                 Container(
                   width: double.infinity,
@@ -602,4 +607,49 @@ int calculateAge(String dobString) {
     age--;
   }
   return age;
+}
+
+/// Opens the edit sheet when [ProfileScreen.editRequested] is set, waiting
+/// for the profile to load first. Renders nothing.
+class _EditRequestListener extends StatefulWidget {
+  final VoidCallback onOpen;
+
+  const _EditRequestListener({required this.onOpen});
+
+  @override
+  State<_EditRequestListener> createState() => _EditRequestListenerState();
+}
+
+class _EditRequestListenerState extends State<_EditRequestListener> {
+  @override
+  void initState() {
+    super.initState();
+    ProfileScreen.editRequested.addListener(_check);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _check());
+  }
+
+  @override
+  void didUpdateWidget(_EditRequestListener oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Rebuilt when the profile state changes, e.g. once it has loaded.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _check());
+  }
+
+  @override
+  void dispose() {
+    ProfileScreen.editRequested.removeListener(_check);
+    super.dispose();
+  }
+
+  void _check() {
+    if (!mounted || !ProfileScreen.editRequested.value) return;
+    if (context.read<ProfileBloc>().state.user?.children.isNotEmpty != true) {
+      return;
+    }
+    ProfileScreen.editRequested.value = false;
+    widget.onOpen();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }

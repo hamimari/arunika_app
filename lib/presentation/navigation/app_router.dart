@@ -2,17 +2,19 @@ import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/auth/consent_gate.dart';
 import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
-import 'package:arunika_app/core/utils/dongeng_tab_controller.dart';
 import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/data/models/response/dongeng_response.dart';
 import 'package:arunika_app/data/repositories/auth_repository.dart';
 import 'package:arunika_app/data/repositories/fairy_tales_repository.dart';
+import 'package:arunika_app/data/repositories/growth_repository.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/navigation/main_shell.dart';
 import 'package:arunika_app/presentation/navigation/signup_navigator.dart';
 import 'package:arunika_app/presentation/screens/animal_detail/animal_detail_screen.dart';
 import 'package:arunika_app/presentation/screens/arscanner/ar_scan_shell.dart';
+import 'package:arunika_app/presentation/screens/growth/growth_cubit.dart';
+import 'package:arunika_app/presentation/screens/growth/growth_screen.dart';
 import 'package:arunika_app/presentation/screens/consent/consent_screen.dart';
 import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_bloc.dart';
 import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_screen.dart';
@@ -40,6 +42,7 @@ import 'package:arunika_app/presentation/screens/signup/privacy_policy_screen.da
 import 'package:arunika_app/presentation/screens/unlock_success/unlock_success_screen.dart';
 import 'package:arunika_app/presentation/screens/vocab/collection_screen.dart';
 import 'package:arunika_app/presentation/screens/widgets/parental_gate_guard.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -67,33 +70,48 @@ class AppRouter {
       // ── Re-consent (UU PDP) ────────────────────────────────────────────────
       GoRoute(path: '/consent', builder: (_, __) => const ConsentScreen()),
 
-      // ── Main Shell (5 tabs) ────────────────────────────────────────────────
+      // ── Main Shell (Beranda · Belajar · Tumbuh · Profil) ──────────────────
       GoRoute(
         path: '/shell',
         // Sends a user whose consent is missing or outdated to /consent.
         redirect: (context, state) => ConsentGate.redirect(),
         builder: (context, state) {
-          return MainShell(
-            key: MainShell.shellKey,
-            homeScreen: const NewHomeScreen(),
-            scanScreen: const ArScanShell(),
-            collectionScreen: const CollectionScreen(),
-            dongengScreen: BlocProvider(
-              create: (_) {
-                final highlightProductId =
-                    DongengTabController.pendingHighlightProductId;
-                DongengTabController.pendingHighlightProductId = null;
-                return DongengListBloc(
-                  repository: locator<FairyTalesRepository>(),
-                )..add(LoadDongengList(highlightProductId: highlightProductId));
-              },
-              child: const NewDongengListScreen(),
+          final flags = locator<FeatureFlagsNotifier>();
+          return BlocProvider(
+            // Shared by the Tumbuh tab and the Beranda growth card.
+            create: (_) => GrowthCubit(
+              repository: locator<GrowthRepository>(),
+              enabled: () =>
+                  authNotifier.isLoggedIn && flags.growthTrackingEnabled,
+              trigger: Listenable.merge([authNotifier, flags]),
             ),
-            parentScreen: BlocProvider(
-              create: (_) =>
-                  ProfileBloc(repository: locator<UserRepository>())
-                    ..add(ProfileInitial()),
-              child: const ProfileScreen(),
+            child: Builder(
+              builder: (context) => MainShell(
+                key: MainShell.shellKey,
+                homeScreen: const NewHomeScreen(),
+                kartuArBuilder: (_, categoryId) =>
+                    CollectionScreen(initialCategoryId: categoryId),
+                dongengBuilder: (_, highlightProductId) => BlocProvider(
+                  create: (_) => DongengListBloc(
+                    repository: locator<FairyTalesRepository>(),
+                  )..add(LoadDongengList(highlightProductId: highlightProductId)),
+                  child: const NewDongengListScreen(),
+                ),
+                growthScreen: const GrowthScreen(),
+                profileScreen: BlocProvider(
+                  create: (_) =>
+                      ProfileBloc(repository: locator<UserRepository>())
+                        ..add(ProfileInitial()),
+                  child: const ProfileScreen(),
+                ),
+                // Profile edits can change growth categories; refresh when
+                // the parent comes back to Tumbuh.
+                onTabChanged: (tab) {
+                  if (tab == MainShellTab.tumbuh) {
+                    context.read<GrowthCubit>().load();
+                  }
+                },
+              ),
             ),
           );
         },

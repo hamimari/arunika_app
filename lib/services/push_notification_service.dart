@@ -10,6 +10,7 @@ import 'package:arunika_app/data/repositories/fairy_tales_repository.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/navigation/app_router.dart';
 import 'package:arunika_app/presentation/navigation/main_shell.dart';
+import 'package:arunika_app/presentation/screens/belajar/belajar_tab.dart';
 import 'package:arunika_app/presentation/screens/vocab/ar_card_detail_screen.dart';
 import 'package:arunika_app/presentation/screens/widgets/login_required_dialog.dart';
 import 'package:arunika_app/presentation/widgets/in_app_notification_banner.dart';
@@ -198,12 +199,12 @@ class PushNotificationService {
           return;
       }
     } catch (e) {
-      // Content removed or network down — fall back to the matching tab.
+      // Content removed or network down — fall back to the matching list.
       AppLogger.warning('Failed to open push link', name: 'Push', error: e);
-      MainShell.shellKey.currentState?.switchTab(
+      MainShell.shellKey.currentState?.openBelajar(
         link.type == PushLinkType.dongeng
-            ? MainShellTab.dongeng
-            : MainShellTab.collection,
+            ? BelajarDestination.dongeng
+            : BelajarDestination.kartuAr,
       );
     }
   }

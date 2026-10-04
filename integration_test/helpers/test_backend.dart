@@ -155,6 +155,17 @@ class TestBackend {
     );
   }
 
+  /// Flips an app feature flag — what the backoffice's App Features switch
+  /// sends. The backend is shared, so a test that turns a flag on must turn it
+  /// back off.
+  Future<void> setFeatureFlag(String key, {required bool enabled}) async {
+    await _dio.patch(
+      '/admin/feature-flags/$key',
+      data: {'is_enabled': enabled},
+      options: await _adminAuth(),
+    );
+  }
+
   /// Turns [scope]'s strike-price rule back off. The backend is shared by
   /// every flow, so a test that sets a rule must clear it.
   Future<void> clearStrikeRule(String scope) async {

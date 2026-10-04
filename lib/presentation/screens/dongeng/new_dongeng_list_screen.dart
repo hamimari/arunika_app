@@ -1,4 +1,5 @@
 import 'package:arunika_app/constants/app_colors.dart';
+import 'package:arunika_app/presentation/screens/widgets/header_icon_button.dart';
 import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
@@ -155,6 +156,16 @@ class _NewDongengListScreenState extends State<NewDongengListScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        // Opened from the Belajar hub: back returns to it.
+        if (Navigator.of(context).canPop()) ...[
+          HeaderIconButton(
+            icon: Icons.arrow_back_ios_new_rounded,
+            color: AppColors.textDark,
+            semanticLabel: 'Kembali',
+            onTap: () => Navigator.of(context).maybePop(),
+          ),
+          const SizedBox(width: 12),
+        ],
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
