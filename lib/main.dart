@@ -14,6 +14,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -114,6 +115,9 @@ class MyApp extends StatelessWidget {
       title: 'Arunika World',
       theme: AppTheme.lightTheme,
       routerConfig: AppRouter.router,
+      // Lets widgets such as the date picker switch to Indonesian on request
+      // (the app's own locale stays the default).
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
     );
   }
 }

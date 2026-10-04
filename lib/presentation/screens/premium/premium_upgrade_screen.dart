@@ -7,6 +7,7 @@ import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/utils/price_format.dart';
 import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/data/models/response/subscription_info.dart';
+import 'package:arunika_app/data/repositories/premium_pack_repository.dart';
 import 'package:arunika_app/data/repositories/profile_loader.dart';
 import 'package:arunika_app/data/static/premium_packs.dart';
 import 'package:arunika_app/di/locator.dart';
@@ -35,13 +36,12 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
   // of a subscription the app itself can renew (see SubscriptionInfo).
   bool _checkingSubscription = true;
   SubscriptionInfo? _subscription;
+  // Pack types that have at least one pack; a tab is only shown for these.
+  List<String> _packTypes = const ['content', 'subscription'];
 
   @override
   void initState() {
     super.initState();
-    if (!widget.subscriptionOnly) {
-      _tabController = TabController(length: 2, vsync: this);
-    }
     _loadSubscription();
   }
 
@@ -53,11 +53,32 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
       // Unknown status: fall through to the normal package list — the
       // backend still refuses a purchase that isn't allowed.
     }
+    final showsTabs = sub == null && !widget.subscriptionOnly;
+    final types = showsTabs ? await _packTypesWithPacks() : _packTypes;
     if (!mounted) return;
     setState(() {
       _subscription = sub;
+      _packTypes = types;
+      if (showsTabs && types.length == 2) {
+        _tabController = TabController(length: 2, vsync: this);
+      }
       _checkingSubscription = false;
     });
+  }
+
+  // If the lookup fails, keep both tabs so the screen still works.
+  Future<List<String>> _packTypesWithPacks() async {
+    const all = ['content', 'subscription'];
+    try {
+      final repo = locator<PremiumPackRepository>();
+      final results = await Future.wait(all.map((t) => repo.fetchPacks(type: t)));
+      return [
+        for (var i = 0; i < all.length; i++)
+          if (results[i].isNotEmpty) all[i],
+      ];
+    } catch (_) {
+      return all;
+    }
   }
 
   AppBar _plainAppBar(String title) => AppBar(
@@ -111,6 +132,22 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
               ),
             ),
           ],
+        ),
+      );
+    }
+
+    // Only one pack type has packs: show it alone, without a tab bar.
+    if (_packTypes.length < 2) {
+      final type = _packTypes.isEmpty ? 'content' : _packTypes.first;
+      final title = type == 'content'
+          ? AppStrings.premiumTabContent
+          : AppStrings.premiumTabSubscription;
+      return Scaffold(
+        backgroundColor: AppColors.creamBackground,
+        appBar: _plainAppBar(title),
+        body: BlocProvider(
+          create: (_) => PremiumPackCubit(type)..loadPacks(),
+          child: const _PackTabView(),
         ),
       );
     }

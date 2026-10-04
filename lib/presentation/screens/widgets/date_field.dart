@@ -36,6 +36,23 @@ class AppDateField extends StatelessWidget {
               initialDate: value ?? DateTime.now(),
               firstDate: DateTime(2000),
               lastDate: DateTime.now(),
+              // Indonesian, so a typed date is read as dd/mm/yyyy.
+              locale: const Locale('id'),
+              // The default underlined field puts its label right on top of
+              // the typed date; an outlined one keeps them apart.
+              builder: (context, child) => Theme(
+                data: Theme.of(context).copyWith(
+                  inputDecorationTheme: const InputDecorationTheme(
+                    border: OutlineInputBorder(),
+                    floatingLabelBehavior: FloatingLabelBehavior.always,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 16,
+                    ),
+                  ),
+                ),
+                child: child!,
+              ),
             );
             if (picked != null) {
               onChanged(picked);

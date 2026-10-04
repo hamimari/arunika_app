@@ -305,7 +305,7 @@ void main() {
       expect(animal.emoji, '🦌');
       expect(animal.category, 'hutan');
       expect(animal.isUnlocked, isTrue);
-      expect(animal.bgColor.value, isNonZero);
+      expect(animal.bgColor.toARGB32(), isNonZero);
     });
 
     test('uses default values for missing optional fields', () {

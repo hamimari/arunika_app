@@ -112,7 +112,7 @@ void main() {
 
   // ─── _StoryCardWidget isLocked logic ────────────────────────────────────────
 
-  DongengResponse _paidStory() => DongengResponse(
+  DongengResponse paidStory() => DongengResponse(
     id: 'paid',
     title: 'Paid Story',
     ageStart: 3,
@@ -127,7 +127,7 @@ void main() {
     isDeleted: false,
   );
 
-  DongengResponse _freeStory() => DongengResponse(
+  DongengResponse freeStory() => DongengResponse(
     id: 'free',
     title: 'Free Story',
     ageStart: 3,
@@ -146,7 +146,7 @@ void main() {
     'isLocked is true when user is logged in and dongeng.isFree is false',
     () {
       const isLoggedIn = true;
-      final dongeng = _paidStory();
+      final dongeng = paidStory();
       final isLocked = !dongeng.isFree && isLoggedIn;
       expect(isLocked, isTrue);
     },
@@ -156,7 +156,7 @@ void main() {
     'isLocked is false when user is not logged in (guest), even if isFree is false',
     () {
       const isLoggedIn = false;
-      final dongeng = _paidStory();
+      final dongeng = paidStory();
       final isLocked = !dongeng.isFree && isLoggedIn;
       expect(isLocked, isFalse);
     },
@@ -164,7 +164,7 @@ void main() {
 
   test('isLocked is false when isFree is true regardless of auth state', () {
     for (final isLoggedIn in [true, false]) {
-      final dongeng = _freeStory();
+      final dongeng = freeStory();
       final isLocked = !dongeng.isFree && isLoggedIn;
       expect(isLocked, isFalse, reason: 'isLoggedIn=$isLoggedIn');
     }

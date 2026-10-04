@@ -772,6 +772,10 @@ class _StoryCardWidgetState extends State<_StoryCardWidget> {
                     priceIdr: dongeng.priceIdr,
                     contentType: PurchasedContentType.dongeng,
                     subtitle: 'Akses ke dongeng ${dongeng.title}',
+                    playProductId: dongeng.playProductId,
+                    strikePriceIdr: dongeng.strikePriceIdr,
+                    discountPercent: dongeng.discountPercent,
+                    promoEndsAt: dongeng.promoEndsAt,
                   );
                 }
               } else {
@@ -973,12 +977,18 @@ class _CategoriesSectionState extends State<_CategoriesSection> {
           const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Each tile gets an equal slot, so 1–4 categories stay centred
+            // instead of pushing to the edges and leaving a gap.
             children: displayCats
                 .map(
-                  (cat) => _CategoryTile(
-                    id: cat.id,
-                    name: cat.name,
-                    imageUrl: cat.imageUrl,
+                  (cat) => Expanded(
+                    child: Center(
+                      child: _CategoryTile(
+                        id: cat.id,
+                        name: cat.name,
+                        imageUrl: cat.imageUrl,
+                      ),
+                    ),
                   ),
                 )
                 .toList(),

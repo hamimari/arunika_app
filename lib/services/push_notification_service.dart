@@ -161,6 +161,10 @@ class PushNotificationService {
               priceIdr: dongeng.priceIdr,
               contentType: PurchasedContentType.dongeng,
               subtitle: 'Akses ke dongeng ${dongeng.title}',
+              playProductId: dongeng.playProductId,
+              strikePriceIdr: dongeng.strikePriceIdr,
+              discountPercent: dongeng.discountPercent,
+              promoEndsAt: dongeng.promoEndsAt,
             );
           }
         case PushLinkType.arCard:
@@ -184,6 +188,10 @@ class PushNotificationService {
               priceIdr: card.priceIdr,
               contentType: PurchasedContentType.arCard,
               subtitle: 'Akses ke kartu AR ${card.title ?? ''}'.trim(),
+              playProductId: card.playProductId,
+              strikePriceIdr: card.strikePriceIdr,
+              discountPercent: card.discountPercent,
+              promoEndsAt: card.promoEndsAt,
             );
           }
         case PushLinkType.none:

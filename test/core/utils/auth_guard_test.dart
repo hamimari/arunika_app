@@ -31,7 +31,7 @@ void main() {
     }
   });
 
-  Widget _buildApp({
+  Widget buildApp({
     required Widget home,
     List<GoRoute> extraRoutes = const [],
   }) {
@@ -69,7 +69,7 @@ void main() {
       mockAuth.setLoggedIn(true);
 
       await tester.pumpWidget(
-        _buildApp(
+        buildApp(
           home: Builder(
             builder: (ctx) {
               return ElevatedButton(
@@ -94,7 +94,7 @@ void main() {
       mockAuth.setLoggedIn(false);
 
       await tester.pumpWidget(
-        _buildApp(
+        buildApp(
           home: Builder(
             builder: (ctx) => ElevatedButton(
               onPressed: () => guardPremium(ctx),
@@ -118,7 +118,7 @@ void main() {
     mockAuth.setLoggedIn(false);
 
     await tester.pumpWidget(
-      _buildApp(
+      buildApp(
         home: Builder(
           builder: (ctx) => ElevatedButton(
             onPressed: () => guardPremium(ctx),
@@ -144,7 +144,7 @@ void main() {
     mockAuth.setLoggedIn(false);
 
     await tester.pumpWidget(
-      _buildApp(
+      buildApp(
         home: Builder(
           builder: (ctx) => ElevatedButton(
             onPressed: () => guardPremium(ctx),
@@ -169,7 +169,7 @@ void main() {
     mockAuth.setLoggedIn(false);
 
     await tester.pumpWidget(
-      _buildApp(
+      buildApp(
         home: Builder(
           builder: (ctx) => ElevatedButton(
             onPressed: () => guardPremium(ctx),
@@ -194,7 +194,7 @@ void main() {
       mockAuth.setLoggedIn(true);
 
       await tester.pumpWidget(
-        _buildApp(
+        buildApp(
           home: Builder(
             builder: (ctx) => ElevatedButton(
               onPressed: () => goToProductPurchase(
@@ -224,7 +224,7 @@ void main() {
       mockAuth.setLoggedIn(true);
 
       await tester.pumpWidget(
-        _buildApp(
+        buildApp(
           home: Builder(
             builder: (ctx) => ElevatedButton(
               onPressed: () => goToProductPurchase(

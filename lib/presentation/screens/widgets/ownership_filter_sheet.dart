@@ -58,21 +58,25 @@ class _OwnershipFilterSheetState extends State<_OwnershipFilterSheet> {
               ),
             ),
             const SizedBox(height: 4),
-            RadioListTile<bool>(
-              contentPadding: EdgeInsets.zero,
-              title: Text('Semua', style: AppTextStyles.body),
-              value: false,
+            RadioGroup<bool>(
               groupValue: _selected,
-              activeColor: AppColors.primaryOrange,
               onChanged: (v) => setState(() => _selected = v ?? false),
-            ),
-            RadioListTile<bool>(
-              contentPadding: EdgeInsets.zero,
-              title: Text('Koleksiku', style: AppTextStyles.body),
-              value: true,
-              groupValue: _selected,
-              activeColor: AppColors.primaryOrange,
-              onChanged: (v) => setState(() => _selected = v ?? false),
+              child: Column(
+                children: [
+                  RadioListTile<bool>(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Semua', style: AppTextStyles.body),
+                    value: false,
+                    activeColor: AppColors.primaryOrange,
+                  ),
+                  RadioListTile<bool>(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Koleksiku', style: AppTextStyles.body),
+                    value: true,
+                    activeColor: AppColors.primaryOrange,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             SizedBox(
