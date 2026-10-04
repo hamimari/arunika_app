@@ -1,16 +1,21 @@
-## ADDED Requirements
+# splash-screen Specification
+
+## Purpose
+Defines the required behaviour for splash screen in the Arunika system.
+
+## Requirements
 
 ### Requirement: Branded native splash screen
-The app SHALL display a native splash screen (rendered before Flutter engine initialises) using `assets/splash.png` centred on a white (`#FFFFFF`) background that blends seamlessly with the white portions of the image.
+The app SHALL display a native splash screen (rendered before Flutter engine initialises) using `assets/splash.png` centred on a background colour that has low contrast with the app's main background (`#F7F8FC`), avoiding a harsh colour transition. The background colour SHALL be `#F7F8FC` (same as the app background) or a very close neutral tone.
 
 #### Scenario: Splash screen appears on cold launch
 - **WHEN** the user cold-launches the app
-- **THEN** the native splash screen is shown immediately with `splash.png` centred on a white background before any Flutter widget renders
+- **THEN** the native splash screen is shown immediately with `splash.png` centred on a low-contrast background before any Flutter widget renders
 
-#### Scenario: Background colour matches image white
-- **WHEN** the splash screen is visible
-- **THEN** the background colour is `#FFFFFF` so that the white edges of `splash.png` are indistinguishable from the background
+#### Scenario: Background colour does not clash with app background
+- **WHEN** the splash screen transitions to the welcome screen
+- **THEN** there is no harsh colour contrast jump between the splash background and the app background
 
-#### Scenario: Splash dismisses when Flutter is ready
+#### Scenario: Splash dismisses to welcome screen
 - **WHEN** the Flutter engine and first widget tree have initialised
-- **THEN** the splash screen is dismissed and the app's first route is displayed
+- **THEN** the splash dismisses and the "Bring Animals to Life!" welcome screen is displayed with "Let's Explore!" and "Try Demo AR" buttons

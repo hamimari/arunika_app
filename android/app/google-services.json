@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "879051861289",
+    "project_id": "arunika-3ffa0",
+    "storage_bucket": "arunika-3ffa0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:879051861289:android:98781255ab4411b4141b38",
+        "android_client_info": {
+          "package_name": "com.arunika"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAEsiIPjzHKhVPipiqWXm-8BVxLDfy6cL4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

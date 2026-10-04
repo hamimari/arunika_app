@@ -29,7 +29,11 @@ class RefreshDio {
 }
 
 class AuthInterceptor extends InterceptorsWrapper {
-  static bool _isRefreshing = false;
+  // Shared by all concurrent 401s so simultaneous requests await the same
+  // refresh attempt instead of only the first one retrying while the rest
+  // are dropped unhandled (the old `!_isRefreshing` guard silently let
+  // concurrent 401s fall through to the caller with no recovery attempt).
+  static Future<bool>? _refreshFuture;
 
   @override
   Future<void> onRequest(
@@ -52,29 +56,30 @@ class AuthInterceptor extends InterceptorsWrapper {
       return handler.next(err);
     }
 
-    if (err.response?.statusCode == 401 && !_isRefreshing) {
-      _isRefreshing = true;
-
-      final success = await _refreshToken();
-      _isRefreshing = false;
+    if (err.response?.statusCode == 401) {
+      _refreshFuture ??= _refreshToken();
+      final success = await _refreshFuture!;
+      _refreshFuture = null;
 
       if (success) {
-        final token = await SecureTokenStorage.getToken();
-
-        final response = await DioClient.dio.request(
-          err.requestOptions.path,
-          data: err.requestOptions.data,
-          queryParameters: err.requestOptions.queryParameters,
-          options: Options(
-            method: err.requestOptions.method,
-            headers: {
-              ...err.requestOptions.headers,
-              'Authorization': 'Bearer $token',
-            },
-          ),
-        );
-
-        return handler.resolve(response);
+        try {
+          final token = await SecureTokenStorage.getToken();
+          final response = await DioClient.dio.request(
+            err.requestOptions.path,
+            data: err.requestOptions.data,
+            queryParameters: err.requestOptions.queryParameters,
+            options: Options(
+              method: err.requestOptions.method,
+              headers: {
+                ...err.requestOptions.headers,
+                'Authorization': 'Bearer $token',
+              },
+            ),
+          );
+          return handler.resolve(response);
+        } catch (_) {
+          // fall through to handler.next(err) below
+        }
       }
     }
 
@@ -83,7 +88,12 @@ class AuthInterceptor extends InterceptorsWrapper {
 
   Future<bool> _refreshToken() async {
     final refreshToken = await SecureTokenStorage.getRefreshToken();
-    if (refreshToken == null) return false;
+    if (refreshToken == null) {
+      // No refresh token to work with — the session is genuinely gone.
+      await authNotifier.logout();
+      AppRouter.router.go('/landing');
+      return false;
+    }
 
     try {
       final res = await RefreshDio.dio.post(
@@ -92,21 +102,27 @@ class AuthInterceptor extends InterceptorsWrapper {
         options: Options(extra: {'isRefresh': true}),
       );
 
-      final newToken = res.data['token'];
-      final newRefreshToken = res.data['refresh_token'];
+      // Matches auth_handler.go's RefreshToken response — 'access_token',
+      // not 'token' (the mismatch here used to save a null token on every
+      // refresh, silently breaking the session until the next hard logout).
+      final newToken = res.data['access_token'] as String?;
+      final newRefreshToken = res.data['refresh_token'] as String?;
+      if (newToken == null || newRefreshToken == null) return false;
 
       await SecureTokenStorage.saveToken(newToken);
       await SecureTokenStorage.saveRefreshToken(newRefreshToken);
       return true;
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
+        // Refresh token itself is invalid/expired — session is truly over.
         await authNotifier.logout();
+        AppRouter.router.go('/landing');
       }
+      // Any other error (network blip, server down) is treated as transient:
+      // don't nuke the session, just let this request fail and retry later.
       return false;
     } catch (e) {
-      await SecureTokenStorage.clear();
       return false;
     }
   }
-
 }

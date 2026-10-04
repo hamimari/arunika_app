@@ -38,5 +38,53 @@ void main() {
 
       expect(() => repo.findById('bad'), throwsException);
     });
+    test('getPrintablePdf calls correct endpoint and returns bytes', () async {
+      final fakeBytes = [37, 80, 68, 70]; // %PDF
+      when(
+        () => mockApi.getPrintablePdf('cat-ternak'),
+      ).thenAnswer((_) async => fakeBytes);
+
+      final result = await repo.getPrintablePdf('cat-ternak');
+
+      verify(() => mockApi.getPrintablePdf('cat-ternak')).called(1);
+      expect(result, fakeBytes);
+    });
+
+    test('getPrintablePdf propagates exception on non-200 status', () async {
+      when(
+        () => mockApi.getPrintablePdf(any()),
+      ).thenThrow(Exception('404 Not Found'));
+
+      expect(() => repo.getPrintablePdf('unknown'), throwsException);
+    });
+
+    test('findByProductId returns the card matching that product id', () async {
+      when(() => mockApi.findAll()).thenAnswer(
+        (_) async => {
+          'data': [
+            {'id': 'card-1', 'product_id': 'prod-1'},
+            {'id': 'card-2', 'product_id': 'prod-2'},
+          ],
+        },
+      );
+
+      final result = await repo.findByProductId('prod-2');
+
+      expect(result?.id, 'card-2');
+    });
+
+    test('findByProductId returns null when no card matches', () async {
+      when(() => mockApi.findAll()).thenAnswer(
+        (_) async => {
+          'data': [
+            {'id': 'card-1', 'product_id': 'prod-1'},
+          ],
+        },
+      );
+
+      final result = await repo.findByProductId('missing');
+
+      expect(result, isNull);
+    });
   });
 }

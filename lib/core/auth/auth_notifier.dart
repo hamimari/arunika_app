@@ -1,3 +1,4 @@
+import 'package:arunika_app/core/storage/LocalProfileStorage.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -14,6 +15,7 @@ class AuthNotifier extends ChangeNotifier {
 
   Future<void> logout() async {
     await SecureTokenStorage.clear();
+    await LocalProfileStorage.clear(); // clear cached profile so UI resets immediately
     _loggedIn = false;
     notifyListeners();
   }

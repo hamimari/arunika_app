@@ -148,7 +148,7 @@ arunika_backend/              # Go backend (separate directory)
 
 2. **Configure the API base URL**
 
-   The app reads `API_BASE_URL` from `--dart-define` at build/run time. For local development the default is already set in `lib/config/app_config.dart`. To override:
+   The app reads `API_BASE_URL` from `--dart-define` at build/run time. It defaults to production (`https://api.haloarunika.com`, set in `lib/config/app_config.dart`), so for local development point it at your own backend:
 
    ```bash
    flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
@@ -229,22 +229,56 @@ The backend will **exit with a clear error message** at startup if any required 
 
 ## Running Tests
 
-### Flutter
-
 ```bash
-flutter test
+make test-fast    # inner loop: flutter test
+make test-all     # everything CI runs on a pull request
 ```
 
-All 76 unit tests cover BLoC classes, repositories, AppLogger, and AppConfig.
+`make test-all` needs the JUnit converter once per machine:
+
+```bash
+dart pub global activate junitreport
+```
+
+193 tests cover BLoC/Cubit classes, repositories, widgets, `AppLogger` and
+`AppConfig`. CI runs them on every pull request (`.github/workflows/pr.yml`).
+
+### Coverage ratchet
+
+`make test-all` compares per-area coverage against `coverage-baseline.json`
+and reports any area that dropped. It is **report-only** today — it prints
+regressions without failing the build. After intentional changes:
+
+```bash
+make coverage-baseline
+```
+
+Current baseline is 34.9% overall; `lib/core` 83.9%, `lib/network` 93.5%,
+`lib/data` 45.4%, `lib/presentation` 32.7%, `lib/services` 6.0%.
+
+Full guide (integration flows on an emulator, Patrol, CI): [`docs/automation-testing.md`](docs/automation-testing.md).
+
+### Flaky tests
+
+A flaky test is one whose result changes between runs on an unchanged commit.
+The policy across all three Arunika repositories:
+
+- **Never add a retry to hide one.** Retries are permitted only in the E2E
+  tier, where a real device or browser has genuine nondeterminism. A
+  non-deterministic unit, widget or integration test is a real defect in the
+  test or the code.
+- **Quarantine within one working day.** Mark it `skip:` with a link to a
+  tracking issue so it stops blocking merges while still being visible.
+- **Assign an owner and a two-week expiry.** At expiry it is fixed or
+  deleted. A permanently quarantined test is worse than no test — it burns CI
+  time and erodes trust in the suite.
+- **Common causes here:** waiting on animations instead of state (use
+  `pumpAndSettle` with explicit finders, never a fixed `Future.delayed`), and
+  shared state between tests (register fresh mocks in `setUp`).
 
 ### Backend
 
-```bash
-cd "arunika backend"
-go test ./...
-```
-
-Tests cover services (auth, dongeng, AR, category, user, email), handlers, JWT utilities, and JWT middleware using `sqlmock` and `miniredis`.
+See [`arunika-backend/README.md`](../arunika-backend/README.md).
 
 ---
 
@@ -267,8 +301,13 @@ Output: `build/app/outputs/flutter-apk/`
 ### Android App Bundle (Play Store)
 
 ```bash
-flutter build appbundle --release
+flutter build appbundle --release \
+  --dart-define=API_BASE_URL=https://api.haloarunika.com \
+  --dart-define=MIDTRANS_CLIENT_KEY=<production client key> \
+  --dart-define=MIDTRANS_SNAP_JS_URL=https://app.midtrans.com/snap/snap.js
 ```
+
+The Midtrans defines default to the sandbox. They only matter while the backoffice `alternative_billing` flag is on, but a production build must still set them, and the snap.js URL must match the backend's `MIDTRANS_BASE_URL`.
 
 ### Signing
 

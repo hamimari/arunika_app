@@ -1,4 +1,9 @@
-## ADDED Requirements
+# flutter-prod-hardening Specification
+
+## Purpose
+Defines the required behaviour for flutter prod hardening in the Arunika system.
+
+## Requirements
 
 ### Requirement: Environment-based API configuration
 The app SHALL read the API base URL from a compile-time `--dart-define` variable `API_BASE_URL` so that different environments (dev, staging, prod) can be targeted without code changes.

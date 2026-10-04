@@ -1,11 +1,34 @@
 class ApiPaths {
   static const String signup = "/auth/signup";
+  static const String checkAvailability = "/auth/check-availability";
   static const String refreshToken = "/auth/refresh-token";
   static const String signin = "/auth/login";
   static const String findUserById = "/user/";
   static const String updateUser = "/user";
+  static const String deleteAccount = "/user/me";
+  static const String recordConsent = "/user/consent";
   static const String fairyTales = "/fairy-tales";
   static const String fairyTaleById = "/fairy-tales/";
+  static const String dongengCategories = "/dongeng-categories";
   static const String forgotPassword = "/forgot-password";
+  static const String resendVerification = "/auth/resend-verification";
   static const String arModelById = "/ar/cards/";
+  static const String arCards = "/ar/cards";
+  static const String arCategories = "/ar/categories";
+  static const String arPrintablePdf = "/ar/printable-pdf";
+  static const String paymentCreate = "/payment/create";
+  static const String paymentCreateProduct = "/payment/create-product";
+  static const String paymentPlayCreate = "/payment/play/create";
+  static const String paymentPlayCreateProduct = "/payment/play/create-product";
+  static const String paymentPlayVerify = "/payment/play/verify";
+  static const String paymentPlayReportExternal = "/payment/play/report-external";
+  static const String banners = "/banners";
+  static const String categories = "/categories";
+  static const String dongengHistory = "/fairy-tales/history";
+  static String dongengPlay(String id) => "/fairy-tales/$id/play";
+  static const String premiumPacks = "/premium/packs";
+  static const String orders = "/orders";
+  static String orderById(String id) => "/orders/$id";
+  static const String featureFlags = "/app/feature-flags";
+  static const String notificationToken = "/notifications/token";
 }

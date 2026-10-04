@@ -1,41 +1,47 @@
+import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/core/auth/consent_gate.dart';
+import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/core/storage/SecureStorageToken.dart';
+import 'package:arunika_app/core/utils/dongeng_tab_controller.dart';
+import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/data/models/response/dongeng_response.dart';
 import 'package:arunika_app/data/repositories/auth_repository.dart';
 import 'package:arunika_app/data/repositories/fairy_tales_repository.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/di/locator.dart';
+import 'package:arunika_app/presentation/navigation/main_shell.dart';
 import 'package:arunika_app/presentation/navigation/signup_navigator.dart';
+import 'package:arunika_app/presentation/screens/animal_detail/animal_detail_screen.dart';
+import 'package:arunika_app/presentation/screens/arscanner/ar_scan_shell.dart';
+import 'package:arunika_app/presentation/screens/consent/consent_screen.dart';
 import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_bloc.dart';
 import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_screen.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_bloc.dart';
 import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_event.dart';
-import 'package:arunika_app/presentation/screens/dongeng/dongeng_list_screen.dart';
+import 'package:arunika_app/presentation/screens/dongeng/new_dongeng_list_screen.dart';
 import 'package:arunika_app/presentation/screens/forgotpassword/forgot_password_bloc.dart';
 import 'package:arunika_app/presentation/screens/forgotpassword/forgot_password_screen.dart';
-import 'package:arunika_app/presentation/screens/home/home_bloc.dart';
-import 'package:arunika_app/presentation/screens/home/home_event.dart';
-import 'package:arunika_app/presentation/screens/home/home_screen.dart';
-import 'package:arunika_app/presentation/screens/home/home_state.dart';
-import 'package:arunika_app/presentation/screens/landing/landing_bloc.dart';
-import 'package:arunika_app/presentation/screens/landing/landing_screen.dart';
-import 'package:arunika_app/presentation/screens/otp/otp_bloc.dart';
-import 'package:arunika_app/presentation/screens/otp/otp_screen.dart';
+import 'package:arunika_app/presentation/screens/home/new_home_screen.dart';
+import 'package:arunika_app/presentation/screens/landing/new_landing_screen.dart';
+import 'package:arunika_app/presentation/screens/payment/payment_screen.dart';
+import 'package:arunika_app/presentation/screens/payment_history/payment_history_screen.dart';
+import 'package:arunika_app/presentation/screens/premium/premium_upgrade_screen.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_bloc.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_event.dart';
+import 'package:arunika_app/presentation/screens/profile/profile_screen.dart';
+import 'package:arunika_app/presentation/screens/reward/reward_screen.dart';
 import 'package:arunika_app/presentation/screens/signin/signin_bloc.dart';
 import 'package:arunika_app/presentation/screens/signin/signin_screen.dart';
-import 'package:arunika_app/presentation/screens/signup/child_signup_screen.dart';
-import 'package:arunika_app/presentation/screens/signup/parent_signup_success_screen.dart';
-import 'package:arunika_app/presentation/screens/signup/privacy_policy_screen.dart';
-import 'package:arunika_app/presentation/screens/signup/signup_bloc.dart';
-import 'package:arunika_app/presentation/screens/signup/signup_screen.dart';
 import 'package:arunika_app/presentation/screens/signup/terms_and_condition_screen.dart';
 import 'package:arunika_app/presentation/screens/signup/trial_screen.dart';
-import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/presentation/screens/signup/signup_bloc.dart';
+import 'package:arunika_app/presentation/screens/signup/parent_signup_success_screen.dart';
+import 'package:arunika_app/presentation/screens/signup/privacy_policy_screen.dart';
+import 'package:arunika_app/presentation/screens/unlock_success/unlock_success_screen.dart';
+import 'package:arunika_app/presentation/screens/vocab/collection_screen.dart';
+import 'package:arunika_app/presentation/screens/widgets/parental_gate_guard.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-
-import '../screens/profile/profile_screen.dart';
 
 final authNotifier = locator<AuthNotifier>();
 
@@ -44,58 +50,74 @@ class AppRouter {
     refreshListenable: authNotifier,
     initialLocation: '/',
     routes: [
+      // ── Root redirect ──────────────────────────────────────────────────────
       GoRoute(
         path: '/',
         redirect: (context, state) async {
           final token = await SecureTokenStorage.getToken();
           final isLoggedIn = token != null && token.isNotEmpty;
-
-          final goingToAuth =
-              state.matchedLocation == '/landing' ||
-              state.matchedLocation == '/signin';
-
-          if (!isLoggedIn && !goingToAuth) {
-            return '/landing';
-          }
-
-          if (isLoggedIn) {
-            return '/home';
-          }
+          if (!isLoggedIn) return '/landing';
+          return '/shell';
         },
       ),
 
-      ShellRoute(
-        builder: (context, state, child) {
-          return BlocProvider(
-            create: (_) => SignupBloc(repository: locator<AuthRepository>()),
-            child: child,
+      // ── Landing ────────────────────────────────────────────────────────────
+      GoRoute(path: '/landing', builder: (_, __) => const NewLandingScreen()),
+
+      // ── Re-consent (UU PDP) ────────────────────────────────────────────────
+      GoRoute(path: '/consent', builder: (_, __) => const ConsentScreen()),
+
+      // ── Main Shell (5 tabs) ────────────────────────────────────────────────
+      GoRoute(
+        path: '/shell',
+        // Sends a user whose consent is missing or outdated to /consent.
+        redirect: (context, state) => ConsentGate.redirect(),
+        builder: (context, state) {
+          return MainShell(
+            key: MainShell.shellKey,
+            homeScreen: const NewHomeScreen(),
+            scanScreen: const ArScanShell(),
+            collectionScreen: const CollectionScreen(),
+            dongengScreen: BlocProvider(
+              create: (_) {
+                final highlightProductId =
+                    DongengTabController.pendingHighlightProductId;
+                DongengTabController.pendingHighlightProductId = null;
+                return DongengListBloc(
+                  repository: locator<FairyTalesRepository>(),
+                )..add(LoadDongengList(highlightProductId: highlightProductId));
+              },
+              child: const NewDongengListScreen(),
+            ),
+            parentScreen: BlocProvider(
+              create: (_) =>
+                  ProfileBloc(repository: locator<UserRepository>())
+                    ..add(ProfileInitial()),
+              child: const ProfileScreen(),
+            ),
           );
         },
-        routes: [
-          GoRoute(
-            path: '/signup',
-            builder: (context, state) => const SignupScreen(),
-            routes: [
-              GoRoute(
-                path: 'child',
-                builder: (context, state) => ChildSignupScreen(),
-              ),
-            ],
-          ),
-        ],
+      ),
+
+      // ── Auth flow ──────────────────────────────────────────────────────────
+      // SignupNavigator is self-contained: it owns a BlocProvider<SignupBloc>
+      // and an inner Navigator for the multi-step signup flow. This avoids the
+      // ShellRoute nested-navigator context mismatch that caused
+      // "Provider<SignupBloc> not found" when pushing from dialogs.
+      GoRoute(
+        path: '/signup',
+        builder: (context, state) => const SignupNavigator(),
       ),
 
       GoRoute(
-        path: '/landing',
+        path: '/signin',
         builder: (context, state) => BlocProvider(
-          create: (_) => LandingBloc(),
-          child: const LandingScreen(),
+          create: (_) => SigninBloc(
+            repository: locator<AuthRepository>(),
+            userRepository: locator<UserRepository>(),
+          ),
+          child: const SignInScreen(),
         ),
-      ),
-      GoRoute(
-        path: '/otp',
-        builder: (context, state) =>
-            BlocProvider(create: (_) => OtpBloc(), child: const OtpScreen()),
       ),
       GoRoute(
         path: '/parent-signup-success',
@@ -104,7 +126,6 @@ class AppRouter {
           child: const ParentRegistrationSuccessScreen(),
         ),
       ),
-
       GoRoute(
         path: '/trial',
         builder: (context, state) => BlocProvider(
@@ -113,34 +134,23 @@ class AppRouter {
         ),
       ),
       GoRoute(
-        path: '/home',
+        path: '/forgot-password',
         builder: (context, state) => BlocProvider(
           create: (_) =>
-              HomeBloc(repository: locator<FairyTalesRepository>())
-                ..add(HomeInitial() as HomeEvent),
-          child: const HomeScreen(),
+              ForgotPasswordBloc(repository: locator<AuthRepository>()),
+          child: const ForgotPasswordScreen(),
         ),
       ),
       GoRoute(
-        path: '/dongeng-list',
-        builder: (context, state) => BlocProvider(
-          create: (_) =>
-              DongengListBloc(repository: locator<FairyTalesRepository>())
-                ..add(LoadDongengList()),
-          child: const DongengListScreen(),
-        ),
+        path: '/terms',
+        builder: (context, state) => const TermsAndConditionsScreen(),
       ),
-
       GoRoute(
-        path: '/profile',
-        builder: (context, state) => BlocProvider(
-          create: (_) =>
-              ProfileBloc(repository: locator<UserRepository>())
-                ..add(ProfileInitial()),
-          child: const ProfileScreen(),
-        ),
+        path: '/privacy',
+        builder: (context, state) => const PrivacyPolicyScreen(),
       ),
 
+      // ── Dongeng player (keep unchanged) ────────────────────────────────────
       GoRoute(
         path: '/dongeng-player',
         builder: (context, state) {
@@ -151,35 +161,80 @@ class AppRouter {
           );
         },
       ),
+
+      // ── Animal detail ──────────────────────────────────────────────────────
       GoRoute(
-        path: '/signin',
+        path: '/animal-detail',
         builder: (context, state) {
-          return BlocProvider(
-            create: (_) => SigninBloc(
-              repository: locator<AuthRepository>(),
-              userRepository: locator<UserRepository>(),
-            ),
-            child: const SignInScreen(),
+          final animal = state.extra as AnimalData;
+          return AnimalDetailScreen(animal: animal);
+        },
+      ),
+
+      // ── AR scan shell ──────────────────────────────────────────────────────
+      GoRoute(
+        path: '/ar-scan',
+        redirect: (_, __) =>
+            locator<FeatureFlagsNotifier>().qrScanEnabled ? null : '/shell',
+        builder: (_, __) => const ArScanShell(),
+      ),
+
+      // ── Reward screen ──────────────────────────────────────────────────────
+      GoRoute(
+        path: '/reward',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return RewardScreen(
+            animalName: extra?['animalName'] as String? ?? 'Hewan',
+            stars: extra?['stars'] as int? ?? 10,
           );
         },
       ),
+
+      // ── Standalone Koleksi with optional category filter ──────────────────
       GoRoute(
-        path: '/forgot-password',
+        path: '/koleksi',
         builder: (context, state) {
-          return BlocProvider(
-            create: (_) =>
-                ForgotPasswordBloc(repository: locator<AuthRepository>()),
-            child: const ForgotPasswordScreen(),
+          final categoryId = state.uri.queryParameters['categoryId'];
+          return CollectionScreen(initialCategoryId: categoryId);
+        },
+      ),
+
+      // ── Premium upgrade ────────────────────────────────────────────────────
+      // Gated by ParentalGateGuard — Families Policy requires a parental
+      // gate in front of purchase entry points in a children's app.
+      GoRoute(
+        path: '/premium',
+        builder: (_, state) {
+          final subscriptionOnly = state.extra as bool? ?? false;
+          return ParentalGateGuard(
+            child: PremiumUpgradeScreen(subscriptionOnly: subscriptionOnly),
           );
         },
       ),
+
+      // ── Payment ────────────────────────────────────────────────────────────
       GoRoute(
-        path: '/terms',
-        builder: (context, state) => const TermsAndConditionsScreen(),
+        path: '/payment',
+        builder: (context, state) {
+          final item = state.extra as PurchasableItem;
+          return ParentalGateGuard(child: PaymentScreen(item: item));
+        },
       ),
+
+      // ── Payment history ────────────────────────────────────────────────────
       GoRoute(
-        path: '/privacy',
-        builder: (context, state) => const PrivacyPolicyScreen(),
+        path: '/payment-history',
+        builder: (_, __) => const PaymentHistoryScreen(),
+      ),
+
+      // ── Unlock success ─────────────────────────────────────────────────────
+      GoRoute(
+        path: '/unlock-success',
+        builder: (context, state) {
+          final item = state.extra as PurchasableItem;
+          return UnlockSuccessScreen(item: item);
+        },
       ),
     ],
   );

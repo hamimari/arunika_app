@@ -12,30 +12,30 @@ import 'package:ar_flutter_plugin_2/managers/ar_session_manager.dart';
 import 'package:ar_flutter_plugin_2/models/ar_anchor.dart';
 import 'package:ar_flutter_plugin_2/models/ar_hittest_result.dart';
 import 'package:ar_flutter_plugin_2/models/ar_node.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 import 'package:arunika_app/data/repositories/ar_repository.dart';
 import 'package:arunika_app/di/locator.dart';
+import 'package:arunika_app/presentation/screens/arscanner/placement_machine.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vector_math/vector_math_64.dart' as vector;
 
-// ── Placement state machine ───────────────────────────────────────────────────
-// Replaces the three independent boolean flags (_placed, _tapped, _planeDetected)
-// that were prone to race conditions when multiple events arrived close together.
-//
-//   scanning → ready    : first onPlaneDetected with count > 0
-//   ready    → placing  : first pointer-down (any number of simultaneous fingers)
-//   placing  → placed   : addNode succeeds
-//   placing  → ready    : placement fails (empty hits, AR error)
-enum _PlacementState { scanning, ready, placing, placed }
-
 class ArCoreSurfacePlaceScreen extends StatefulWidget {
   final String modelUrl;
   final String? soundUrl;
+
+  /// When [true] (default), the bottom button is "Scan Again" which replaces
+  /// this screen with a fresh [QRScannerPage].  Set to [false] when navigating
+  /// from [ArCardDetailScreen] — the button becomes a plain "Back" that pops
+  /// back to the detail screen.
+  final bool showScanAgain;
+
   const ArCoreSurfacePlaceScreen({
     required this.modelUrl,
     this.soundUrl,
+    this.showScanAgain = true,
     super.key,
   });
 
@@ -53,9 +53,20 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
 
   List<ARNode> nodes = [];
   List<ARAnchor> anchors = [];
+  ARNode? _modelNode;
+  ARNode? _platformNode;
+
+  static const _platformAsset = 'assets/models/ar_base_platform.glb';
+  // Platform diameter relative to the model's largest dimension.
+  static const _platformSizeRatio = 1.0;
 
   // ── State machine ─────────────────────────────────────────────────────────
-  _PlacementState _state = _PlacementState.scanning;
+  final PlacementMachine _placement = PlacementMachine();
+  PlacementState get _state => _placement.state;
+
+  // Why the last tap placed nothing, shown in the banner until the next tap.
+  // Null when there is nothing to explain.
+  String? _placementHint;
 
   // ── Ripple entrance animation ─────────────────────────────────────────────
   // A screen-space ripple plays at the tap position the moment the user taps.
@@ -71,22 +82,24 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
   bool _showResizeHint = false;
 
   // ── Scale / rotation state ────────────────────────────────────────────────
-  double _currentScale = 0.5;
+  // Android (SceneView) treats scale as "fit the model's largest dimension to
+  // N meters", so this is a real-world size. It's recomputed from the tap
+  // distance on placement so the model looks proportionate on screen.
+  double _currentScale = 0.3;
   double _currentRotationY = 0.0;
 
-  double _pendingScale = 0.5;
-  double _pendingRotationY = 0.0;
+  Timer? _holdRotateTimer;
+
+  // A pointer-down that never becomes a native single tap (drag, pinch, long
+  // press) would otherwise leave the screen stuck showing "Placing model…".
+  Timer? _tapResultTimeout;
 
   // ── Multi-touch tracking (Listener-based) ─────────────────────────────────
   final Map<int, Offset> _pointers = {};
-  double _gestureBaseScale = 0.5;
+  double _gestureBaseScale = 0.3;
   double _gestureBaseRotY = 0.0;
   double _initialPointerDistance = 1.0;
   Offset _initialFocalPoint = Offset.zero;
-
-  // ── Debounce ──────────────────────────────────────────────────────────────
-  bool _isUpdating = false;
-  Timer? _debounceTimer;
 
   // ── Audio ─────────────────────────────────────────────────────────────────
   // Initialised only when soundUrl is provided; null otherwise so no resources
@@ -131,7 +144,8 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
 
   @override
   void dispose() {
-    _debounceTimer?.cancel();
+    _holdRotateTimer?.cancel();
+    _tapResultTimeout?.cancel();
     _rippleCtrl.dispose();
     _audioPlayer?.dispose();
 
@@ -201,7 +215,7 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
 
           // ── Pulsing tap indicator (center) ────────────────────────────────
           // Visible only when a plane is found AND the user hasn't tapped yet.
-          if (_state == _PlacementState.ready)
+          if (_state == PlacementState.ready)
             const Positioned.fill(
               child: IgnorePointer(
                 child: Center(child: _PulsingTapIndicator()),
@@ -209,18 +223,20 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
             ),
 
           // ── Status banner ─────────────────────────────────────────────────
-          if (_state != _PlacementState.placed)
+          if (_state != PlacementState.placed)
             Positioned(
-              bottom: 110,
+              bottom: MediaQuery.of(context).padding.bottom + 168,
               left: 24,
               right: 24,
-              child: IgnorePointer(child: _StatusBanner(state: _state)),
+              child: IgnorePointer(
+                child: _StatusBanner(state: _state, hint: _placementHint),
+              ),
             ),
 
           // ── Post-placement resize hint ────────────────────────────────────
-          if (_state == _PlacementState.placed && _showResizeHint)
+          if (_state == PlacementState.placed && _showResizeHint)
             Positioned(
-              bottom: 110,
+              bottom: MediaQuery.of(context).padding.bottom + 168,
               left: 24,
               right: 24,
               child: IgnorePointer(
@@ -233,15 +249,19 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
                     color: Colors.black.withValues(alpha: 0.70),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.open_with, color: Colors.white, size: 18),
-                      SizedBox(width: 8),
+                      const Icon(
+                        Icons.open_with,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
                       Flexible(
                         child: Text(
-                          'Model loading \u2014 Pinch to resize \u2022 Drag to rotate',
-                          style: TextStyle(
+                          'Pinch to resize \u2022 Use the buttons to rotate',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -255,55 +275,95 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
               ),
             ),
 
-          // ── Sound button ──────────────────────────────────────────────────
-          // Visible only after placement and when a soundUrl was provided.
-          // AnimatedOpacity fades it in/out without rebuilding the AR layer.
-          if (_audioPlayer != null)
-            Positioned(
-              bottom: MediaQuery.of(context).padding.bottom + 88,
-              right: 24,
-              child: AnimatedOpacity(
-                opacity: _state == _PlacementState.placed ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 300),
-                child: IgnorePointer(
-                  ignoring: _state != _PlacementState.placed,
-                  child: _SoundButton(
+          // ── Bottom control row: rotate left • sound • rotate right ────────
+          // Kept at the bottom so a zoomed-in model in the middle of the
+          // screen isn't covered. Empty slots keep each button in place.
+          // The sound button is visible before placement so the user can
+          // listen while scanning for a surface.
+          Positioned(
+            bottom: MediaQuery.of(context).padding.bottom + 88,
+            left: 24,
+            right: 24,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (_state == PlacementState.placed)
+                  _RotateButton(
+                    icon: Icons.rotate_left_rounded,
+                    tooltip: 'Rotate left',
+                    onTap: () => _rotateBy(-math.pi / 4),
+                    onHoldStart: () => _startHoldRotate(-1),
+                    onHoldEnd: _stopHoldRotate,
+                  )
+                else
+                  const SizedBox.shrink(),
+                if (_audioPlayer != null)
+                  _SoundButton(
                     player: _audioPlayer!,
                     soundUrl: widget.soundUrl!,
-                  ),
-                ),
-              ),
+                  )
+                else
+                  const SizedBox.shrink(),
+                if (_state == PlacementState.placed)
+                  _RotateButton(
+                    icon: Icons.rotate_right_rounded,
+                    tooltip: 'Rotate right',
+                    onTap: () => _rotateBy(math.pi / 4),
+                    onHoldStart: () => _startHoldRotate(1),
+                    onHoldEnd: _stopHoldRotate,
+                  )
+                else
+                  const SizedBox.shrink(),
+              ],
             ),
+          ),
 
-          // ── Scan Again button ─────────────────────────────────────────────
+          // ── Bottom action button ──────────────────────────────────────────
+          // "Scan Again"  — when opened from the QR scanner (default).
+          // "Back"        — when opened from ArCardDetailScreen; pops back.
           Positioned(
             bottom: MediaQuery.of(context).padding.bottom + 16,
             left: 24,
             right: 24,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => BlocProvider(
-                      create: (_) =>
-                          QRScannerBloc(repository: locator<ArRepository>()),
-                      child: QRScannerPage(),
+            child: widget.showScanAgain
+                ? ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BlocProvider(
+                            create: (_) => QRScannerBloc(
+                              repository: locator<ArRepository>(),
+                            ),
+                            child: QRScannerPage(),
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.orange,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
+                    icon: const Icon(Icons.qr_code_scanner),
+                    label: const Text('Scan Again'),
+                  )
+                : ElevatedButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.orange,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    label: const Text('Back'),
                   ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.orange,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              icon: const Icon(Icons.qr_code_scanner),
-              label: const Text("Scan Again"),
-            ),
           ),
         ],
       ),
@@ -325,10 +385,12 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
     // showAnimatedGuide: true on the first call only — adds the native hand-rotate
     // guide view once. The native session update callback auto-removes it as soon
     // as ARCore detects the first tracked plane (no Dart involvement needed).
+    // Feature points stay off: they draw a cloud of dots that ends up under
+    // the placed model. The plane overlay alone is enough to guide placement.
     await arSessionManager!.onInitialize(
       showAnimatedGuide: true,
       showPlanes: true,
-      showFeaturePoints: true,
+      showFeaturePoints: false,
       showWorldOrigin: false,
       handleTaps: true,
     );
@@ -345,7 +407,7 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
     await arSessionManager!.onInitialize(
       showAnimatedGuide: false,
       showPlanes: true,
-      showFeaturePoints: true,
+      showFeaturePoints: false,
       showWorldOrigin: false,
       handleTaps: true,
     );
@@ -353,23 +415,28 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
     arSessionManager!.onPlaneDetected = _onPlaneDetected;
   }
 
+  static const _noSurfaceHint =
+      'No surface there. Tap on the highlighted area';
+  static const _modelFailedHint =
+      'Could not load the model. Check your connection and tap again';
+
   // ── Plane detection feedback ──────────────────────────────────────────────
 
   void _onPlaneDetected(int count) {
     if (!mounted) return;
-    if (_state == _PlacementState.scanning && count > 0) {
-      setState(() => _state = _PlacementState.ready);
-    }
+    if (_placement.planeDetected(count)) setState(() {});
   }
 
   // ── Tap-to-place ──────────────────────────────────────────────────────────
 
   Future<void> _onPlaneTapped(List<ARHitTestResult> hits) async {
-    // Only act when we're in the 'placing' state (pointer-down already fired).
-    if (_state != _PlacementState.placing || !mounted) return;
+    if (!mounted || !_placement.startPlacement()) return;
+    _tapResultTimeout?.cancel();
+    setState(() => _placementHint = null);
 
     if (hits.isEmpty) {
-      if (mounted) setState(() => _state = _PlacementState.ready);
+      _placement.placementFailed();
+      setState(() => _placementHint = _noSurfaceHint);
       return;
     }
 
@@ -391,17 +458,20 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
     hit ??= hits.first;
 
     bool placementSucceeded = false;
+    // Set when the surface was fine but the model itself didn't load.
+    bool modelFailed = false;
     try {
       if (anchors.isNotEmpty) {
         await arAnchorManager!.removeAnchor(anchors.first);
         if (!mounted) return;
         anchors.clear();
       }
-      if (nodes.isNotEmpty) {
-        await arObjectManager!.removeNode(nodes.first);
-        if (!mounted) return;
-        nodes.clear();
+      for (final node in nodes) {
+        arObjectManager!.removeNode(node);
       }
+      nodes.clear();
+      _modelNode = null;
+      _platformNode = null;
 
       final anchor = ARPlaneAnchor(transformation: hit.worldTransform);
       final didAddAnchor = await arAnchorManager!.addAnchor(anchor);
@@ -410,13 +480,23 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
       if (didAddAnchor != false) {
         anchors.add(anchor);
 
-        final node = ARNode(
-          type: NodeType.webGLB,
-          uri: widget.modelUrl,
-          scale: vector.Vector3.all(_currentScale),
-          position: vector.Vector3.zero(),
-          rotation: quaternionFromY(_currentRotationY),
+        _currentScale = _sizeForDistance(hit.distance);
+        _gestureBaseScale = _currentScale;
+
+        // The platform is a tiny bundled asset, so it appears right away and
+        // shows where the model will land while the model downloads.
+        final platform = _buildPlatformNode();
+        final didAddPlatform = await arObjectManager!.addNode(
+          platform,
+          planeAnchor: anchor,
         );
+        if (!mounted) return;
+        if (didAddPlatform != false) {
+          nodes.add(platform);
+          _platformNode = platform;
+        }
+
+        final node = _buildNode();
 
         final didAddNode = await arObjectManager!.addNode(
           node,
@@ -426,19 +506,32 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
 
         if (didAddNode != false) {
           nodes.add(node);
+          _modelNode = node;
           placementSucceeded = true;
+          arSessionManager?.showPlanes(false);
           setState(() {
-            _state = _PlacementState.placed;
+            _placement.placementSucceeded();
             _showResizeHint = true;
           });
           Future.delayed(const Duration(seconds: 5), () {
             if (mounted) setState(() => _showResizeHint = false);
           });
+        } else {
+          modelFailed = true;
         }
       }
     } finally {
-      if (!placementSucceeded && mounted && _state == _PlacementState.placing) {
-        setState(() => _state = _PlacementState.ready);
+      if (!placementSucceeded && mounted) {
+        final platform = _platformNode;
+        if (platform != null) {
+          arObjectManager?.removeNode(platform);
+          nodes.remove(platform);
+          _platformNode = null;
+        }
+        setState(() {
+          _placement.placementFailed();
+          _placementHint = modelFailed ? _modelFailedHint : _noSurfaceHint;
+        });
       }
     }
   }
@@ -451,13 +544,17 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
     // Transition to 'placing' the instant the first finger touches down while
     // the surface is ready. This hides the pulsing indicator immediately —
     // no _pointers.length guard needed (any touch counts).
-    if (_state == _PlacementState.ready) {
+    if (_placement.pointerDown()) {
       setState(() {
-        _state = _PlacementState.placing;
+        _placementHint = null;
         _tapPosition = event.localPosition;
         _showRipple = true;
       });
       _rippleCtrl.forward();
+      _tapResultTimeout?.cancel();
+      _tapResultTimeout = Timer(const Duration(milliseconds: 1500), () {
+        if (mounted && _placement.tapTimedOut()) setState(() {});
+      });
     }
 
     if (_pointers.length >= 2) {
@@ -470,7 +567,7 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
   }
 
   void _handlePointerMove(PointerMoveEvent event) {
-    if (_state != _PlacementState.placed || nodes.isEmpty) return;
+    if (_state != PlacementState.placed || nodes.isEmpty) return;
     if (!_pointers.containsKey(event.pointer)) return;
     _pointers[event.pointer] = event.localPosition;
 
@@ -487,15 +584,19 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
     final newRotY =
         _gestureBaseRotY + (focal.dx - _initialFocalPoint.dx) * 0.01;
 
-    final scaleDelta = (newScale - _pendingScale).abs();
-    final rotDelta = (newRotY - _pendingRotationY).abs();
-    if (scaleDelta < _pendingScale * 0.01 && rotDelta < 0.5 * math.pi / 180) {
+    final scaleDelta = (newScale - _currentScale).abs();
+    final rotDelta = (newRotY - _currentRotationY).abs();
+    if (scaleDelta < _currentScale * 0.01 && rotDelta < 0.5 * math.pi / 180) {
       return;
     }
 
-    _pendingScale = newScale;
-    _pendingRotationY = newRotY;
-    _scheduleApply();
+    _currentScale = newScale;
+    _currentRotationY = newRotY;
+    if (scaleDelta >= _currentScale * 0.01) {
+      _applyScale();
+    } else {
+      _applyTransform();
+    }
   }
 
   void _handlePointerUp(PointerUpEvent event) {
@@ -512,57 +613,130 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
     _gestureBaseRotY = _currentRotationY;
   }
 
-  // ── Debounced apply ───────────────────────────────────────────────────────
+  // ── In-place transform ────────────────────────────────────────────────────
+  // Assigning ARNode.transform notifies the plugin's `transformationChanged`
+  // channel, which updates the already-loaded model on the native side.
+  // Removing and re-adding the node instead re-downloads the GLB, which made
+  // the model vanish for 10–20s on every resize.
 
-  void _scheduleApply() {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 50), _applyUpdate);
+  void _applyTransform() {
+    if (!mounted) return;
+    _modelNode?.transform = _composeTransform();
   }
 
-  Future<void> _applyUpdate() async {
-    if (nodes.isEmpty || _isUpdating) return;
-    if (arObjectManager == null || arAnchorManager == null) return;
-    if (!mounted) return;
+  void _applyScale() {
+    _applyTransform();
+    _platformNode?.transform = _composePlatformTransform();
+  }
 
-    _isUpdating = true;
-    _currentScale = _pendingScale;
-    _currentRotationY = _pendingRotationY;
+  void _rotateBy(double radians) {
+    if (_state != PlacementState.placed) return;
+    _currentRotationY += radians;
+    _gestureBaseRotY = _currentRotationY;
+    _applyTransform();
+  }
 
-    final oldNode = nodes.removeLast();
-    final anchor = anchors.last as ARPlaneAnchor;
+  void _startHoldRotate(double direction) {
+    _holdRotateTimer?.cancel();
+    // ~90°/s while held.
+    _holdRotateTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
+      _rotateBy(direction * (math.pi / 2) * 0.016);
+    });
+  }
 
-    await arObjectManager!.removeNode(oldNode);
-    if (!mounted) {
-      _isUpdating = false;
-      return;
-    }
+  void _stopHoldRotate() {
+    _holdRotateTimer?.cancel();
+    _holdRotateTimer = null;
+  }
 
-    final newNode = ARNode(
+  // ── Node helpers ──────────────────────────────────────────────────────────
+
+  // Roughly a third of the visible height at the tapped distance, clamped so
+  // a very close or far surface still gives a sensible tabletop-sized model.
+  double _sizeForDistance(double distance) {
+    if (distance.isNaN || distance <= 0) return 0.3;
+    return (distance * 0.35).clamp(0.15, 0.5);
+  }
+
+  ARNode _buildNode() {
+    return ARNode(
       type: NodeType.webGLB,
       uri: widget.modelUrl,
-      scale: vector.Vector3.all(_currentScale),
-      position: vector.Vector3.zero(),
-      rotation: quaternionFromY(_currentRotationY),
+      transformation: _composeTransform(),
+      // Handled by the vendored plugin patch: rests the model's bounding-box
+      // bottom on the anchor (i.e. on top of the platform) instead of its
+      // authored origin, which is often the model's center.
+      data: {'alignBottom': true},
     );
-
-    final didAdd = await arObjectManager!.addNode(newNode, planeAnchor: anchor);
-    if (!mounted) {
-      _isUpdating = false;
-      return;
-    }
-
-    if (didAdd != false) {
-      nodes.add(newNode);
-    }
-
-    _isUpdating = false;
   }
 
-  // ── Quaternion helper ─────────────────────────────────────────────────────
+  // Built from a real quaternion: the plugin's `rotation:` parameter is
+  // axis-angle and a zero-length axis turns the whole matrix into NaN.
+  vector.Matrix4 _composeTransform() {
+    return vector.Matrix4.compose(
+      vector.Vector3.zero(),
+      vector.Quaternion.axisAngle(vector.Vector3(0, 1, 0), _currentRotationY),
+      vector.Vector3.all(_currentScale),
+    );
+  }
 
-  vector.Vector4 quaternionFromY(double angle) {
-    final half = angle / 2;
-    return vector.Vector4(0.0, math.sin(half), 0.0, math.cos(half));
+  // The platform asset is 100 units across, which both platforms map to
+  // `scale` meters (Android fits the largest dimension; iOS applies 0.01).
+  ARNode _buildPlatformNode() {
+    return ARNode(
+      type: NodeType.localGLTF2,
+      uri: _platformAsset,
+      transformation: _composePlatformTransform(),
+    );
+  }
+
+  vector.Matrix4 _composePlatformTransform() {
+    return vector.Matrix4.compose(
+      vector.Vector3.zero(),
+      vector.Quaternion.identity(),
+      vector.Vector3.all(_currentScale * _platformSizeRatio),
+    );
+  }
+}
+
+// ── Rotate button ─────────────────────────────────────────────────────────────
+// Tap rotates by a fixed step; press and hold keeps rotating until released.
+
+class _RotateButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final VoidCallback onHoldStart;
+  final VoidCallback onHoldEnd;
+
+  const _RotateButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    required this.onHoldStart,
+    required this.onHoldEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        onLongPressStart: (_) => onHoldStart(),
+        onLongPressEnd: (_) => onHoldEnd(),
+        onLongPressCancel: onHoldEnd,
+        child: Material(
+          color: Colors.orange,
+          shape: const CircleBorder(),
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Icon(icon, color: Colors.white, size: 30),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -616,7 +790,7 @@ class _SoundButton extends StatelessWidget {
               if (playing) {
                 await player.stop();
               } else {
-                await player.setUrl(soundUrl);
+                await MediaCache.setAudioUrl(player, soundUrl);
                 await player.play();
               }
             } catch (_) {
@@ -735,9 +909,10 @@ class _PulsingTapIndicatorState extends State<_PulsingTapIndicator>
 // ── Status banner ─────────────────────────────────────────────────────────────
 
 class _StatusBanner extends StatelessWidget {
-  final _PlacementState state;
+  final PlacementState state;
+  final String? hint;
 
-  const _StatusBanner({required this.state});
+  const _StatusBanner({required this.state, this.hint});
 
   @override
   Widget build(BuildContext context) {
@@ -746,7 +921,7 @@ class _StatusBanner extends StatelessWidget {
     final String message;
 
     switch (state) {
-      case _PlacementState.placing:
+      case PlacementState.placing:
         bg = Colors.orange.shade800.withValues(alpha: 0.92);
         leading = const SizedBox(
           width: 18,
@@ -757,16 +932,16 @@ class _StatusBanner extends StatelessWidget {
           ),
         );
         message = 'Placing model\u2026';
-      case _PlacementState.ready:
+      case PlacementState.ready:
         bg = Colors.green.shade700.withValues(alpha: 0.92);
         leading = const Icon(
           Icons.check_circle_outline,
           color: Colors.white,
           size: 20,
         );
-        message = 'Flat surface found! Tap to place';
-      case _PlacementState.scanning:
-      case _PlacementState.placed:
+        message = hint ?? 'Flat surface found! Tap to place';
+      case PlacementState.scanning:
+      case PlacementState.placed:
         bg = Colors.black.withValues(alpha: 0.60);
         leading = const SizedBox(
           width: 18,

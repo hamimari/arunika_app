@@ -43,19 +43,13 @@ class HomeState {
 class HomeNavigating extends HomeState {
   final String selectedId;
   HomeNavigating({
-    UserResponse? user,
-    List<DongengResponse> dongengList = const [],
-    String searchQuery = '',
-    int currentPage = 0,
-    int totalCount = 0,
+    super.user,
+    super.dongengList = const [],
+    super.searchQuery = '',
+    super.currentPage = 0,
+    super.totalCount = 0,
     required this.selectedId,
-  }) : super(
-          user: user,
-          dongengList: dongengList,
-          searchQuery: searchQuery,
-          currentPage: currentPage,
-          totalCount: totalCount,
-        );
+  });
 }
 
 class NavigateToCategoryList extends HomeState {}
@@ -65,11 +59,11 @@ class NavigateToCategoryList extends HomeState {}
 class NavigateToDongengPlayer extends HomeState {
   final DongengResponse dongeng;
   NavigateToDongengPlayer(this.dongeng, HomeState prev)
-      : super(
-          user: prev.user,
-          dongengList: prev.dongengList,
-          searchQuery: prev.searchQuery,
-          currentPage: prev.currentPage,
-          totalCount: prev.totalCount,
-        );
+    : super(
+        user: prev.user,
+        dongengList: prev.dongengList,
+        searchQuery: prev.searchQuery,
+        currentPage: prev.currentPage,
+        totalCount: prev.totalCount,
+      );
 }

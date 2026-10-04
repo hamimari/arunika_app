@@ -1,5 +1,4 @@
-import 'package:arunika_app/data/models/response/child_response.dart';
-import 'package:arunika_app/data/models/response/signup_response.dart';
+import 'package:arunika_app/data/models/request/consent_request.dart';
 
 class SignUpRequest {
   final String name;
@@ -10,6 +9,9 @@ class SignUpRequest {
   final String password;
   final ChildRequest child;
 
+  /// What the parent agreed to. Null only for callers that predate consent.
+  final ConsentRequest? consent;
+
   SignUpRequest({
     required this.name,
     required this.phoneNumber,
@@ -18,6 +20,7 @@ class SignUpRequest {
     required this.city,
     required this.password,
     required this.child,
+    this.consent,
   });
 
   Map<String, dynamic> toJson() => {
@@ -28,6 +31,7 @@ class SignUpRequest {
     "city": city,
     "password": password,
     "child": [child.toJson()],
+    if (consent != null) "consent": consent!.toJson(),
   };
 }
 
@@ -51,10 +55,6 @@ class ChildRequest {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'gender': gender,
-      'date_of_birth': dateOfBirth,
-    };
+    return {'name': name, 'gender': gender, 'date_of_birth': dateOfBirth};
   }
 }

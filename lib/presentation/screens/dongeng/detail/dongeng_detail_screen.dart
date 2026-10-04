@@ -1,15 +1,19 @@
 import 'dart:async';
 import 'dart:math' show max;
 
+import 'package:arunika_app/data/models/response/dongeng_page.dart';
 import 'package:arunika_app/data/models/response/dongeng_response.dart';
 import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_bloc.dart';
 import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_event.dart';
 import 'package:arunika_app/presentation/screens/dongeng/detail/dongeng_detail_state.dart';
+import 'package:arunika_app/presentation/screens/dongeng/detail/page_curl/page_curl.dart';
+import 'package:arunika_app/presentation/screens/dongeng/detail/page_curl/page_turn_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 class DongengDetailScreen extends StatefulWidget {
   final DongengResponse dongeng;
@@ -47,10 +51,10 @@ class _DongengDetailScreenState extends State<DongengDetailScreen> {
       backgroundColor: Colors.black,
       body: BlocBuilder<DongengDetailBloc, DongengDetailState>(
         builder: (context, state) {
-          // if (state.pages.isNotEmpty) {
-          return _PageReaderView(state: state, dongeng: widget.dongeng);
-          // }
-          // return _NoContentView(dongeng: widget.dongeng);
+          if (state.pages.isNotEmpty) {
+            return _PageReaderView(state: state, dongeng: widget.dongeng);
+          }
+          return _NoContentView(dongeng: widget.dongeng);
         },
       ),
     );
@@ -73,6 +77,7 @@ class _PageReaderView extends StatefulWidget {
 
 class _PageReaderViewState extends State<_PageReaderView> {
   bool _showSubtitle = true;
+  final _curlKey = GlobalKey<PageCurlState>();
 
   late final AudioPlayer _audioPlayer = AudioPlayer();
   StreamSubscription<PlayerState>? _playerStateSub;
@@ -89,11 +94,32 @@ class _PageReaderViewState extends State<_PageReaderView> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _precacheNeighbours();
+  }
+
+  @override
   void didUpdateWidget(_PageReaderView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.state.currentPageIndex != widget.state.currentPageIndex) {
       _audioPlayer.stop();
       setState(() => _isPlaying = false);
+      _precacheNeighbours();
+    }
+  }
+
+  // So the page revealed under a curl is already drawn, not a spinner.
+  void _precacheNeighbours() {
+    final pages = widget.state.pages;
+    final i = widget.state.currentPageIndex;
+    for (final n in [i - 1, i + 1]) {
+      if (n < 0 || n >= pages.length) continue;
+      precacheImage(
+        MediaCache.image(pages[n].imageUrl),
+        context,
+        onError: (_, __) {}, // the page shows its own error when reached
+      );
     }
   }
 
@@ -111,7 +137,7 @@ class _PageReaderViewState extends State<_PageReaderView> {
     } else {
       setState(() => _isPlaying = true);
       try {
-        await _audioPlayer.setUrl(audioUrl);
+        await MediaCache.setAudioUrl(_audioPlayer, audioUrl);
         await _audioPlayer.play();
       } catch (_) {
         if (mounted) setState(() => _isPlaying = false);
@@ -134,31 +160,15 @@ class _PageReaderViewState extends State<_PageReaderView> {
 
     return Stack(
       children: [
-        // ── Full-bleed image ──────────────────────────────────────────────
+        // ── Full-bleed image, turned with a page curl ─────────────────────
         Positioned.fill(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 350),
-            transitionBuilder: (child, animation) =>
-                FadeTransition(opacity: animation, child: child),
-            child: Image.network(
-              page.imageUrl,
-              key: ValueKey(page.id),
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.cover,
-              loadingBuilder: (_, child, progress) => progress == null
-                  ? child
-                  : const Center(
-                      child: CircularProgressIndicator(color: Colors.orange),
-                    ),
-              errorBuilder: (_, __, ___) => Container(
-                color: const Color(0xFFFFE0B2),
-                child: const Icon(
-                  Icons.image_not_supported,
-                  size: 64,
-                  color: Colors.orange,
-                ),
-              ),
+          child: PageCurl(
+            key: _curlKey,
+            pageCount: totalPages,
+            index: state.currentPageIndex,
+            pageBuilder: (_, i) => _PageImage(page: state.pages[i]),
+            onTurned: (d) => context.read<DongengDetailBloc>().add(
+              d == TurnDirection.forward ? NextPage() : PreviousPage(),
             ),
           ),
         ),
@@ -218,7 +228,7 @@ class _PageReaderViewState extends State<_PageReaderView> {
               icon: Icons.arrow_back_ios_rounded,
               enabled: !state.isFirstPage,
               onTap: () =>
-                  context.read<DongengDetailBloc>().add(PreviousPage()),
+                  _curlKey.currentState?.turn(TurnDirection.backward),
             ),
           ),
         ),
@@ -232,7 +242,7 @@ class _PageReaderViewState extends State<_PageReaderView> {
             child: _SideNavButton(
               icon: Icons.arrow_forward_ios_rounded,
               enabled: !state.isLastPage,
-              onTap: () => context.read<DongengDetailBloc>().add(NextPage()),
+              onTap: () => _curlKey.currentState?.turn(TurnDirection.forward),
             ),
           ),
         ),
@@ -333,6 +343,40 @@ class _PageReaderViewState extends State<_PageReaderView> {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── One page's picture ────────────────────────────────────────────────────────
+
+class _PageImage extends StatelessWidget {
+  final DongengPage page;
+
+  const _PageImage({required this.page});
+
+  @override
+  Widget build(BuildContext context) {
+    return Image(
+      image: MediaCache.image(page.imageUrl),
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.cover,
+      loadingBuilder: (_, child, progress) => progress == null
+          ? child
+          : const ColoredBox(
+              color: Colors.black,
+              child: Center(
+                child: CircularProgressIndicator(color: Colors.orange),
+              ),
+            ),
+      errorBuilder: (_, __, ___) => Container(
+        color: const Color(0xFFFFE0B2),
+        child: const Icon(
+          Icons.image_not_supported,
+          size: 64,
+          color: Colors.orange,
+        ),
+      ),
     );
   }
 }
@@ -444,9 +488,9 @@ class _NoContentView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const BackButton(),
-          Image.network(
-            dongeng.imageUrl,
+          const BackButton(color: Colors.white),
+          Image(
+            image: MediaCache.image(dongeng.imageUrl),
             height: 140,
             fit: BoxFit.contain,
             errorBuilder: (_, __, ___) =>

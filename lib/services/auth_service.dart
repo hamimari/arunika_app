@@ -1,5 +1,4 @@
 import 'package:arunika_app/data/models/request/signup_request.dart';
-import 'package:arunika_app/data/models/response/child_response.dart';
 import 'package:arunika_app/data/models/response/signup_response.dart';
 
 import '../../data/repositories/auth_repository.dart';

@@ -16,6 +16,11 @@ class AuthRepository {
     return SignUpResponse.fromJson(json);
   }
 
+  /// Asks the backend to send a fresh verification email.
+  /// Throws the underlying [DioException] so the caller can distinguish a
+  /// rate-limited response from a genuine failure.
+  Future<void> resendVerification() => api.resendVerification();
+
   Future<SignInResponse> signin(SignInRequest request) async {
     final json = await api.signin(request.toJson());
     return SignInResponse.fromJson(json);
@@ -24,5 +29,14 @@ class AuthRepository {
   Future<ForgotPasswordResponse> forgotPassword(String email) async {
     final json = await api.forgotPassword({'email': email});
     return ForgotPasswordResponse.fromJson(json);
+  }
+
+  /// Returns (emailTaken, phoneTaken).
+  Future<(bool, bool)> checkAvailability({
+    required String email,
+    required String phone,
+  }) async {
+    final json = await api.checkAvailability(email: email, phone: phone);
+    return (json['email_taken'] as bool? ?? false, json['phone_taken'] as bool? ?? false);
   }
 }

@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.orange.withOpacity(0.35),
+                color: Colors.orange.withValues(alpha: 0.35),
                 blurRadius: 18,
                 offset: const Offset(0, 8),
               ),
@@ -166,7 +166,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                         child: ListView.builder(
                           controller: _scrollController,
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: state.dongengList.length +
+                          itemCount:
+                              state.dongengList.length +
                               (state.isLoadingMore ? 1 : 0),
                           itemBuilder: (context, index) {
                             if (index == state.dongengList.length) {
@@ -180,7 +181,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                               );
                             }
                             final story = state.dongengList[index];
-                            final bool isSelected = isNavigating &&
+                            final bool isSelected =
+                                isNavigating &&
+                                // state is guaranteed HomeNavigating when isNavigating is true
+                                // ignore: unnecessary_cast
                                 (state as HomeNavigating).selectedId ==
                                     story.id;
                             return Padding(
@@ -217,7 +221,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       child: Container(
                         color: Colors.black.withValues(alpha: 0.25),
                         child: const Center(
-                          child: CircularProgressIndicator(color: Colors.orange),
+                          child: CircularProgressIndicator(
+                            color: Colors.orange,
+                          ),
                         ),
                       ),
                     ),
