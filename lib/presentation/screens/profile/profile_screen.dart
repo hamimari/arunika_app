@@ -1,9 +1,11 @@
-import 'package:arunika_app/core/storage/LocalProfileStorage.dart';
-import 'package:arunika_app/core/storage/SecureStorageToken.dart';
-import 'package:arunika_app/data/repositories/ar_repository.dart';
+import 'package:arunika_app/constants/app_colors.dart';
+import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/core/utils/price_format.dart';
+import 'package:arunika_app/data/models/response/subscription_info.dart';
+import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/di/locator.dart';
-import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner.dart';
-import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_bloc.dart';
+import 'package:arunika_app/presentation/screens/widgets/active_subscription_view.dart';
+import 'package:arunika_app/presentation/screens/widgets/delete_account_dialog.dart';
 import 'package:arunika_app/presentation/screens/profile/child_form.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_bloc.dart';
 import 'package:arunika_app/presentation/screens/profile/profile_event.dart';
@@ -12,8 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-
-import '../widgets/bottom_nav.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -53,37 +54,6 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBF5),
-      bottomNavigationBar: const BottomNav(currentIndex: 1),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.orange.withValues(alpha: 0.35),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: FloatingActionButton(
-          elevation: 0,
-          backgroundColor: Colors.orange,
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => BlocProvider(
-                  create: (_) =>
-                      QRScannerBloc(repository: locator<ArRepository>()),
-                  child: QRScannerPage(),
-                ),
-              ),
-            );
-          },
-          child: const Icon(Iconsax.scan, size: 30),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       body: SafeArea(
         child: BlocBuilder<ProfileBloc, ProfileState>(
           builder: (context, state) {
@@ -120,7 +90,7 @@ class ProfileScreen extends StatelessWidget {
                         radius: 32,
                         backgroundColor: Colors.orange.shade200,
                         backgroundImage: child != null
-                            ? NetworkImage(
+                            ? MediaCache.image(
                                 'https://api.dicebear.com/7.x/bottts/png?seed=${child.name}',
                               )
                             : null,
@@ -181,75 +151,123 @@ class ProfileScreen extends StatelessWidget {
 
                 // ── Info cards ────────────────────────────────────────────
                 Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    children: [
-                      _InfoCard(
-                        icon: Iconsax.user,
-                        label: 'Orang Tua',
-                        value: parentName,
-                      ),
-                      const SizedBox(height: 12),
-                      _InfoCard(
-                        icon: Iconsax.sms,
-                        label: 'Email',
-                        value: user?.emailAddress ?? '-',
-                      ),
-                      const SizedBox(height: 12),
-                      _InfoCard(
-                        icon: Iconsax.call,
-                        label: 'Nomor Telepon',
-                        value: user?.phoneNumber ?? '-',
-                      ),
-                      const SizedBox(height: 12),
-                      _InfoCard(
-                        icon: Iconsax.location,
-                        label: 'Kota',
-                        value: user?.city ?? '-',
-                      ),
-                      const SizedBox(height: 12),
-                      _InfoCard(
-                        icon: Iconsax.home,
-                        label: 'Alamat',
-                        value: user?.address ?? '-',
-                      ),
-                      const SizedBox(height: 28),
+                  child: RefreshIndicator(
+                    color: Colors.orange,
+                    onRefresh: () async =>
+                        context.read<ProfileBloc>().add(ProfileInitial()),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      children: [
+                        if (user?.isSubscribed == true &&
+                            user?.subscription != null) ...[
+                          _MembershipCard(subscription: user!.subscription!),
+                          const SizedBox(height: 12),
+                        ],
+                        _InfoCard(
+                          icon: Iconsax.user,
+                          label: 'Orang Tua',
+                          value: parentName,
+                        ),
+                        const SizedBox(height: 12),
+                        _InfoCard(
+                          icon: Iconsax.sms,
+                          label: 'Email',
+                          value: user?.emailAddress ?? '-',
+                        ),
+                        const SizedBox(height: 12),
+                        _InfoCard(
+                          icon: Iconsax.call,
+                          label: 'Nomor Telepon',
+                          value: user?.phoneNumber ?? '-',
+                        ),
+                        const SizedBox(height: 12),
+                        _InfoCard(
+                          icon: Iconsax.location,
+                          label: 'Kota',
+                          value: user?.city ?? '-',
+                        ),
+                        const SizedBox(height: 12),
+                        _InfoCard(
+                          icon: Iconsax.home,
+                          label: 'Alamat',
+                          value: user?.address ?? '-',
+                        ),
+                        const SizedBox(height: 12),
+                        _InfoCard(
+                          icon: Iconsax.receipt_2,
+                          label: 'Transaksi',
+                          value: 'Riwayat Pembayaran',
+                          onTap: () => context.push('/payment-history'),
+                        ),
+                        const SizedBox(height: 28),
 
-                      // ── Logout ────────────────────────────────────────
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () async {
-                            await SecureTokenStorage.clear();
-                            await LocalProfileStorage.clear();
-                            if (context.mounted) context.go('/signin');
-                          },
-                          icon: const Icon(
-                            Iconsax.logout,
-                            color: Colors.orange,
-                          ),
-                          label: const Text(
-                            'Keluar',
-                            style: TextStyle(
+                        // ── Logout ────────────────────────────────────────
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              await locator<AuthNotifier>().logout();
+                              if (context.mounted) context.go('/landing');
+                            },
+                            icon: const Icon(
+                              Iconsax.logout,
                               color: Colors.orange,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
                             ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: const BorderSide(
-                              color: Colors.orange,
-                              width: 1.5,
+                            label: const Text(
+                              'Keluar',
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: const BorderSide(
+                                color: Colors.orange,
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                        const SizedBox(height: 12),
+
+                        // ── Delete account ──────────────────────────────
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _confirmDeleteAccount(context),
+                            icon: const Icon(
+                              Iconsax.trash,
+                              color: Colors.red,
+                            ),
+                            label: const Text(
+                              'Hapus Akun',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: const BorderSide(
+                                color: Colors.red,
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -259,7 +277,30 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => const DeleteAccountDialog(),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await locator<UserRepository>().deleteAccount();
+      await locator<AuthNotifier>().logout();
+      if (context.mounted) context.go('/landing');
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal menghapus akun. Silakan coba lagi.'),
+          ),
+        );
+      }
+    }
+  }
 }
+
 
 // ── Edit profile bottom sheet ──────────────────────────────────────────────────
 
@@ -386,6 +427,87 @@ class _EditProfileSheet extends StatelessWidget {
   }
 }
 
+// ── Membership card ───────────────────────────────────────────────────────────
+
+class _MembershipCard extends StatelessWidget {
+  final SubscriptionInfo subscription;
+
+  const _MembershipCard({required this.subscription});
+
+  @override
+  Widget build(BuildContext context) {
+    final daysLeft = subscription.daysLeft;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.primaryOrange, AppColors.primaryOrangeDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.workspace_premium_rounded, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  subscription.planName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subscription.autoRenew && subscription.expiresAt != null
+                ? 'Diperpanjang otomatis pada ${formatLongDate(subscription.expiresAt!)}'
+                : daysLeft != null
+                ? '$daysLeft hari lagi sebelum masa aktif berakhir'
+                : 'Langganan aktif',
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+          // Nothing to pay for while the subscription is active — renewing is
+          // offered only in its last days, and a Google Play subscription is
+          // renewed in Google Play (the new period starts at the old expiry).
+          if (subscription.canRenew) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => subscription.isGooglePlay
+                    ? openPlaySubscription(subscription)
+                    : context.push('/premium', extra: true),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Perpanjang',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 // ── Info card ──────────────────────────────────────────────────────────────────
 
 class _InfoCard extends StatelessWidget {
@@ -393,15 +515,19 @@ class _InfoCard extends StatelessWidget {
   final String label;
   final String value;
 
+  /// When set, the card is tappable and shows a chevron.
+  final VoidCallback? onTap;
+
   const _InfoCard({
     required this.icon,
     required this.label,
     required this.value,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -448,8 +574,20 @@ class _InfoCard extends StatelessWidget {
               ],
             ),
           ),
+          if (onTap != null)
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: Color(0xFF8D6E63),
+            ),
         ],
       ),
+    );
+    if (onTap == null) return card;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: card,
     );
   }
 }

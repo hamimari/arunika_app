@@ -1,4 +1,9 @@
-## ADDED Requirements
+# dongeng-navigation-fix Specification
+
+## Purpose
+Defines the required behaviour for dongeng navigation fix in the Arunika system.
+
+## Requirements
 
 ### Requirement: Navigation buttons respect safe-area insets
 The Previous and Next navigation buttons on the dongeng detail screen SHALL be fully visible and tappable on all supported device sizes, including devices with notches, rounded corners, or narrow aspect ratios.
@@ -14,3 +19,17 @@ The Previous and Next navigation buttons on the dongeng detail screen SHALL be f
 #### Scenario: Button tap area remains accessible
 - **WHEN** the buttons are positioned with the corrected insets
 - **THEN** the full 44×44 dp tap target of each button is within the touchable area of the screen
+
+### Requirement: Dongeng list screen has correct background color
+The system SHALL use `AppColors.pageBackground` (warm page background) as the background color of the dongeng list screen, consistent with the home screen.
+
+#### Scenario: Dongeng list background matches home screen
+- **WHEN** the user navigates to the Dongeng tab
+- **THEN** the background color SHALL visually match the home screen's warm background
+
+### Requirement: Dongeng list screen shows subtitle
+The system SHALL display a subtitle below the "Dongeng" heading on the list screen, providing context to the user.
+
+#### Scenario: Subtitle visible on load
+- **WHEN** the dongeng list screen is loaded
+- **THEN** a subtitle text SHALL appear below the main heading

@@ -10,8 +10,10 @@ import 'package:vector_math/vector_math_64.dart' as vector;
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 
 class ARQRCombinedScreen extends StatefulWidget {
+  const ARQRCombinedScreen({super.key});
+
   @override
-  _ARQRCombinedScreenState createState() => _ARQRCombinedScreenState();
+  State<ARQRCombinedScreen> createState() => _ARQRCombinedScreenState();
 }
 
 class _ARQRCombinedScreenState extends State<ARQRCombinedScreen> {
@@ -24,7 +26,7 @@ class _ARQRCombinedScreenState extends State<ARQRCombinedScreen> {
 
   @override
   void dispose() {
-    qrController?.dispose();
+    // qrController self-disposes when QRView is un-mounted
     arSessionManager.dispose();
     super.dispose();
   }
@@ -53,10 +55,11 @@ class _ARQRCombinedScreenState extends State<ARQRCombinedScreen> {
   }
 
   void onARViewCreated(
-      ARSessionManager sessionManager,
-      ARObjectManager objectManager,
-      ARAnchorManager anchorManager,
-      ARLocationManager locationManager) async {
+    ARSessionManager sessionManager,
+    ARObjectManager objectManager,
+    ARAnchorManager anchorManager,
+    ARLocationManager locationManager,
+  ) async {
     arSessionManager = sessionManager;
     arObjectManager = objectManager;
 

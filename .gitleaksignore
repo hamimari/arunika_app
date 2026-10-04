@@ -1,0 +1,13 @@
+# Reviewed gitleaks findings, confirmed by the owner on 2026-09-30. Each line
+# pins one commit + file + line, so any new secret is still reported.
+
+# GitHub Actions cache keys for the Android emulator snapshot, not secrets.
+f635ed4ecbf15c523b12f97fa01652810f33d4eb:.github/workflows/nightly.yml:generic-api-key:57
+f635ed4ecbf15c523b12f97fa01652810f33d4eb:.github/workflows/merge.yml:generic-api-key:96
+04826f9624ec951d5d360a24104f8184e17e3281:.github/workflows/nightly.yml:generic-api-key:57
+665bce1c16f6f4ead7275a657d7c545181d852d0:.github/workflows/merge.yml:generic-api-key:96
+
+# Firebase client API key. It ships inside every app binary by design; access
+# is controlled by the key's restrictions in Google Cloud Console, not secrecy.
+c65a30d96b9d1b64956252eb13719732522e1e98:android/app/google-services.json:gcp-api-key:18
+c65a30d96b9d1b64956252eb13719732522e1e98:lib/firebase_options.dart:gcp-api-key:36

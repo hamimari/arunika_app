@@ -4,6 +4,7 @@ import 'package:arunika_app/presentation/screens/signup/signup_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 class ParentRegistrationSuccessScreen extends StatelessWidget {
   const ParentRegistrationSuccessScreen({super.key});
@@ -25,8 +26,10 @@ class ParentRegistrationSuccessScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.network(
-                    'https://media-hosting.imagekit.io/930f10f515b7467f/ImageGen%20Apr%2010,%202025,%2006_13_18%20AM.png?Expires=1839246141&Key-Pair-Id=K2ZIVPTIP2VGHC&Signature=PxPqhx2MyUwoqgjzM--yQVqP1DTHu8OwjZizMq0owoal8FhnYJe-CIWpp23cUTWVWrLidBAu0fpr9kGG5UmuP9vi4055w4USUmMUw8VHosMtDklZ67rWaG35JgpydHrOfvjCY-58c5Ai0uVdCxiTE8I5K8AiPpvw-qidrQ2nbq648w8k0JJCmZj4hmaINYeU7QbeBgMCUMIpnCY0Kaejnwq7hoL6YMI8LaTGZ4vhADtkON14slLcWeTpWMld6puUcyMSWU3TUvo8DL2nPiwSMk2tH7atXyj~FjgTyDY14TSFqKFyQvF-w4qdikJPpwlJGm07rknS6X82vSd7FuJ7Og__',
+                  Image(
+                    image: MediaCache.image(
+                      'https://media-hosting.imagekit.io/930f10f515b7467f/ImageGen%20Apr%2010,%202025,%2006_13_18%20AM.png?Expires=1839246141&Key-Pair-Id=K2ZIVPTIP2VGHC&Signature=PxPqhx2MyUwoqgjzM--yQVqP1DTHu8OwjZizMq0owoal8FhnYJe-CIWpp23cUTWVWrLidBAu0fpr9kGG5UmuP9vi4055w4USUmMUw8VHosMtDklZ67rWaG35JgpydHrOfvjCY-58c5Ai0uVdCxiTE8I5K8AiPpvw-qidrQ2nbq648w8k0JJCmZj4hmaINYeU7QbeBgMCUMIpnCY0Kaejnwq7hoL6YMI8LaTGZ4vhADtkON14slLcWeTpWMld6puUcyMSWU3TUvo8DL2nPiwSMk2tH7atXyj~FjgTyDY14TSFqKFyQvF-w4qdikJPpwlJGm07rknS6X82vSd7FuJ7Og__',
+                    ),
                     // Replace with your own asset or image URL
                     width: 600,
                     height: 400,
@@ -46,10 +49,7 @@ class ParentRegistrationSuccessScreen extends StatelessWidget {
                   const Text(
                     'Ayo buat akun untuk buah hati dan\nmulai belajar bersama arunika',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white70,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.white70),
                   ),
                   const SizedBox(height: 32),
                   SizedBox(
@@ -65,9 +65,9 @@ class ParentRegistrationSuccessScreen extends StatelessWidget {
                         elevation: 0,
                       ),
                       onPressed: () {
-                        context
-                            .read<SignupBloc>()
-                            .add(ChildRegistrationButtonPressed());
+                        context.read<SignupBloc>().add(
+                          ChildRegistrationButtonPressed(),
+                        );
                       },
                       child: const Text(
                         'Lengkapi Data Si Kecil',
@@ -77,7 +77,7 @@ class ParentRegistrationSuccessScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                  )
+                  ),
                 ],
               ),
             ),

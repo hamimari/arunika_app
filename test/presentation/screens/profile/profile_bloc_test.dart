@@ -10,6 +10,7 @@ import 'package:arunika_app/presentation/screens/profile/profile_state.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MockUserRepository extends Mock implements UserRepository {}
@@ -37,6 +38,7 @@ void main() {
   late MockUserRepository mockRepo;
 
   setUp(() {
+    FlutterSecureStorage.setMockInitialValues({});
     SharedPreferences.setMockInitialValues({});
     mockRepo = MockUserRepository();
     registerFallbackValue(
@@ -72,8 +74,12 @@ void main() {
       ),
       act: (b) => b.add(EditSubmitted()),
       expect: () => [
-        isA<ProfileState>().having((s) => s.isSuccess, 'success', false),
-        isA<ProfileState>().having((s) => s.isSuccess, 'success', true),
+        isA<ProfileState>()
+            .having((s) => s.isSuccess, 'success', false)
+            .having((s) => s.isSubmitting, 'submitting', true),
+        isA<ProfileState>()
+            .having((s) => s.isSuccess, 'success', true)
+            .having((s) => s.isSubmitting, 'submitting', false),
       ],
     );
 
@@ -96,8 +102,12 @@ void main() {
       ),
       act: (b) => b.add(EditSubmitted()),
       expect: () => [
-        isA<ProfileState>().having((s) => s.isSuccess, 'success', false),
-        isA<ProfileState>().having((s) => s.error, 'error', isNotNull),
+        isA<ProfileState>()
+            .having((s) => s.isSuccess, 'success', false)
+            .having((s) => s.isSubmitting, 'submitting', true),
+        isA<ProfileState>()
+            .having((s) => s.error, 'error', isNotNull)
+            .having((s) => s.isSubmitting, 'submitting', false),
       ],
     );
 

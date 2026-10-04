@@ -29,3 +29,7 @@ class ModelError extends QRScannerState {
   @override
   List<Object?> get props => [message];
 }
+
+class ModelUnauthorized extends QRScannerState {
+  const ModelUnauthorized();
+}

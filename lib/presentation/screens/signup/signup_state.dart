@@ -21,14 +21,19 @@ class SignupState {
   final String? childGender;
   final String? childGenderError;
   final bool tncAccepted;
+  final bool parentalConsentAccepted;
 
   // navigation
   final bool navigateToChild;
   final bool navigateToTrial;
   final bool isSubmitting;
+  final bool isCheckingAvailability;
   final bool isSuccess;
   final bool showErrors;
   final String? error;
+
+  /// Both consent boxes must be ticked before the account can be created.
+  bool get consentGiven => tncAccepted && parentalConsentAccepted;
 
   SignupState({
     this.name = '',
@@ -51,9 +56,11 @@ class SignupState {
     this.childGender,
     this.childGenderError,
     this.tncAccepted = false,
+    this.parentalConsentAccepted = false,
     this.navigateToChild = false,
     this.navigateToTrial = false,
     this.isSubmitting = false,
+    this.isCheckingAvailability = false,
     this.isSuccess = false,
     this.showErrors = false,
     this.error = '',
@@ -80,7 +87,9 @@ class SignupState {
     String? childGender,
     String? childGenderError,
     bool? tncAccepted,
+    bool? parentalConsentAccepted,
     bool? isSubmitting,
+    bool? isCheckingAvailability,
     bool? isSuccess,
     bool? showErrors,
     bool? navigateToChild,
@@ -107,7 +116,11 @@ class SignupState {
       childGender: childGender ?? this.childGender,
       childGenderError: childGenderError,
       tncAccepted: tncAccepted ?? this.tncAccepted,
+      parentalConsentAccepted:
+          parentalConsentAccepted ?? this.parentalConsentAccepted,
       isSubmitting: isSubmitting ?? this.isSubmitting,
+      isCheckingAvailability:
+          isCheckingAvailability ?? this.isCheckingAvailability,
       isSuccess: isSuccess ?? this.isSuccess,
       showErrors: showErrors ?? this.showErrors,
       navigateToChild: navigateToChild ?? this.navigateToChild,

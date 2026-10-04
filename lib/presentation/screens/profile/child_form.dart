@@ -63,7 +63,7 @@ class _ChildFormState extends State<ChildForm> {
             return AppTextField(
               controller: nameController,
               label: 'Nama Kamu (Orang Tua)',
-              hint: 'Contoh : Nagita Slavina',
+              hint: 'Contoh: Budi Santoso',
               onChanged: (value) =>
                   context.read<ProfileBloc>().add(NameChanged(value)),
               error: state.nameError,
@@ -91,7 +91,7 @@ class _ChildFormState extends State<ChildForm> {
             return AppTextField(
               controller: emailController,
               label: 'Email',
-              hint: 'nagita.slavina@mail.com',
+              hint: 'nama@email.com',
               onChanged: (value) => context.read<ProfileBloc>()
                   .add(EmailChanged(value)),
               error: state.emailError,
@@ -133,7 +133,7 @@ class _ChildFormState extends State<ChildForm> {
             return AppTextField(
               controller: childNameController,
               label: 'Nama Anak',
-              hint: 'Contoh: Rafatar',
+              hint: 'Contoh: Dinda',
               error: state.childNameError,
               onChanged: (v) =>
                   context.read<ProfileBloc>().add(ChildNameChanged(v)),

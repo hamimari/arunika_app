@@ -29,7 +29,10 @@ class AppDropdownField extends StatelessWidget {
 
         // Dropdown
         DropdownButtonFormField<String>(
-          value: (value?.isEmpty ?? true) ? null : value,
+          // Keyed on the value so the field resets when the parent changes it,
+          // since initialValue is only read on the first build.
+          key: ValueKey(value),
+          initialValue: (value?.isEmpty ?? true) ? null : value,
           hint: Text(hint),
           items: items,
           onChanged: (val) {

@@ -1,0 +1,10 @@
+{
+  "lib/constants": 66.7,
+  "lib/core": 85.2,
+  "lib/data": 46.7,
+  "lib/di": 4.3,
+  "lib/network": 93.5,
+  "lib/presentation": 41.1,
+  "lib/services": 38.3,
+  "total": 43.0
+}

@@ -1,5 +1,4 @@
 import 'package:arunika_app/data/models/response/child_response.dart';
-import 'package:arunika_app/data/models/response/signup_response.dart';
 
 abstract class SignupEvent {}
 
@@ -48,24 +47,35 @@ class ChildGenderChanged extends SignupEvent {
   ChildGenderChanged(this.gender);
 }
 
+/// The parent ticked "I agree to the Terms and Privacy Policy".
 class TncToggled extends SignupEvent {
   final bool accepted;
   TncToggled(this.accepted);
+}
+
+/// The parent ticked the declaration that they are the child's parent or
+/// legal guardian and consent to processing of the child's data.
+class ParentalConsentToggled extends SignupEvent {
+  final bool accepted;
+  ParentalConsentToggled(this.accepted);
 }
 
 class ObscurePasswordToggled extends SignupEvent {
   final bool obscure;
   ObscurePasswordToggled(this.obscure);
 }
+
 class NavigateToChildReset extends SignupEvent {
   final bool navigateToChild;
   NavigateToChildReset(this.navigateToChild);
 }
+
 class PrefillChildData extends SignupEvent {
   final ChildResponse child;
 
   PrefillChildData(this.child);
 }
+
 class ChildPrefilled extends SignupEvent {
   final String name;
   final String gender;

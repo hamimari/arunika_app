@@ -6,6 +6,7 @@ import 'package:arunika_app/presentation/screens/widgets/bottom_nav.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:arunika_app/core/media/media_cache.dart';
 
 class DongengListScreen extends StatelessWidget {
   const DongengListScreen({super.key});
@@ -99,7 +100,9 @@ class DongengListScreen extends StatelessWidget {
     } else if (state is DongengListNavigating) {
       list = state.dongengList;
     } else {
-      return const Center(child: CircularProgressIndicator(color: Colors.orange));
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.orange),
+      );
     }
 
     if (list.isEmpty) {
@@ -116,8 +119,8 @@ class DongengListScreen extends StatelessWidget {
       itemCount: list.length,
       itemBuilder: (context, index) {
         final story = list[index];
-        final bool isSelected = state is DongengListNavigating &&
-            state.selectedId == story.id;
+        final bool isSelected =
+            state is DongengListNavigating && state.selectedId == story.id;
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: Material(
@@ -126,9 +129,9 @@ class DongengListScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               onTap: state is DongengListNavigating
                   ? null
-                  : () => context
-                        .read<DongengListBloc>()
-                        .add(DongengItemSelected(story)),
+                  : () => context.read<DongengListBloc>().add(
+                      DongengItemSelected(story),
+                    ),
               child: _StoryCard(dongeng: story, isLoading: isSelected),
             ),
           ),
@@ -161,8 +164,8 @@ class _StoryCard extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(28),
-            child: Image.network(
-              dongeng.imageUrl,
+            child: Image(
+              image: MediaCache.image(dongeng.imageUrl),
               width: 56,
               height: 56,
               fit: BoxFit.cover,
@@ -198,7 +201,10 @@ class _StoryCard extends StatelessWidget {
             const SizedBox(
               width: 20,
               height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.orange,
+              ),
             )
           else
             Container(

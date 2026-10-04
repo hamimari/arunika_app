@@ -12,6 +12,8 @@ class FairyTalesApi {
     String search = '',
     int page = 1,
     int perPage = 10,
+    String? categoryId,
+    String? subCategoryId,
   }) async {
     final res = await dio.get(
       ApiPaths.fairyTales,
@@ -19,6 +21,10 @@ class FairyTalesApi {
         if (search.isNotEmpty) 'search': search,
         'page': page,
         'per_page': perPage,
+        if (categoryId != null && categoryId.isNotEmpty)
+          'dongeng_category_id': categoryId,
+        if (subCategoryId != null && subCategoryId.isNotEmpty)
+          'dongeng_sub_category_id': subCategoryId,
       },
     );
     return res.data as Map<String, dynamic>;
@@ -27,6 +33,11 @@ class FairyTalesApi {
   /// Returns a single fairy tale with its pages ordered by page_number.
   Future<Map<String, dynamic>> findById(String id) async {
     final res = await dio.get('${ApiPaths.fairyTaleById}$id');
+    return res.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getCategories() async {
+    final res = await dio.get(ApiPaths.dongengCategories);
     return res.data as Map<String, dynamic>;
   }
 }

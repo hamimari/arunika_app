@@ -1,0 +1,100 @@
+name: PR
+
+on:
+  pull_request:
+  push:
+    branches: [master, mvp, main]
+
+concurrency:
+  group: pr-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.44.4"
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Warnings and errors fail the build; the 9 remaining infos are
+      # framework deprecations and naming nits that would otherwise block
+      # every PR. Tighten to plain `flutter analyze` once they are cleared.
+      - run: flutter analyze --no-fatal-infos
+      # NOTE: `dart format --set-exit-if-changed` is deliberately NOT a gate
+      # yet — 58 of 203 files predate any formatting discipline, and
+      # reformatting them is an unrelated mass diff. Run `make fmt` and turn
+      # this on in a dedicated change.
+
+  test:
+    name: Unit + widget tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Install JUnit converter
+        run: |
+          dart pub global activate junitreport 2.0.2
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
+      - name: Run tests
+        run: |
+          mkdir -p reports
+          set -o pipefail
+          flutter test --machine --coverage | tojunit --output reports/junit.xml
+
+      # Enforcing: a pull request may not reduce coverage for any package.
+      # This is "no regression", not an absolute floor — several areas are
+      # still below the strategy's targets.
+      - name: Coverage ratchet
+        if: always()
+        env:
+          RATCHET_ENFORCE: "1"
+        run: python3 scripts/coverage_ratchet.py
+
+      - name: Report results
+        uses: dorny/test-reporter@v1
+        # Annotate the diff even when the suite failed — that is when it matters.
+        if: always()
+        with:
+          name: Flutter tests
+          path: reports/junit.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-coverage
+          path: coverage/lcov.info
+          retention-days: 7
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      # Full history, so a push scan can see every new commit.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Scans the commits this pull request or push adds; reviewed historical
+      # findings are listed in .gitleaksignore.
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: 8.30.1

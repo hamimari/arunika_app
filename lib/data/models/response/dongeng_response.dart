@@ -1,3 +1,5 @@
+import 'package:arunika_app/core/utils/price_format.dart';
+import 'package:arunika_app/data/models/response/dongeng_category.dart';
 import 'package:arunika_app/data/models/response/dongeng_page.dart';
 
 class DongengResponse {
@@ -7,19 +9,41 @@ class DongengResponse {
   final double ageEnd;
   final String imageUrl;
   final bool isFree;
+  final bool isUnlocked;
+  final String? productId;
+  final int? priceIdr;
+  // Google Play SKU of the linked product — needed to buy it via Play.
+  final String? playProductId;
+  // Display-only promotional strike price; null when no promo is running.
+  final int? strikePriceIdr;
+  final int? discountPercent;
+  final DateTime? promoEndsAt;
   final String audioUrl;
   final String duration;
   final List<DongengPage> pages;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted;
+  final String? categoryId;
+  final String? subCategoryId;
+  final DongengCategory? categoryRef;
+  final DongengCategory? subCategoryRef;
 
+  // Defaults to [isFree] when not passed explicitly — matches the API's
+  // additive rollout, where older responses/fixtures omit `is_unlocked`.
   const DongengResponse({
     required this.id,
     required this.title,
     required this.ageStart,
     required this.ageEnd,
     required this.isFree,
+    bool? isUnlocked,
+    this.productId,
+    this.priceIdr,
+    this.playProductId,
+    this.strikePriceIdr,
+    this.discountPercent,
+    this.promoEndsAt,
     required this.imageUrl,
     required this.audioUrl,
     required this.duration,
@@ -27,15 +51,29 @@ class DongengResponse {
     required this.createdAt,
     required this.updatedAt,
     required this.isDeleted,
-  });
+    this.categoryId,
+    this.subCategoryId,
+    this.categoryRef,
+    this.subCategoryRef,
+  }) : isUnlocked = isUnlocked ?? isFree;
 
   factory DongengResponse.fromJson(Map<String, dynamic> json) {
+    final categoryRefJson = json['category_ref'] as Map<String, dynamic>?;
+    final subCategoryRefJson =
+        json['sub_category_ref'] as Map<String, dynamic>?;
     return DongengResponse(
       id: json['id'] as String,
       title: json['title'] as String,
       ageStart: (json['age_start'] as num).toDouble(),
       ageEnd: (json['age_end'] as num).toDouble(),
       isFree: json['is_free'] as bool,
+      isUnlocked: json['is_unlocked'] as bool?,
+      productId: json['product_id'] as String?,
+      priceIdr: (json['price_idr'] as num?)?.toInt(),
+      playProductId: json['play_product_id'] as String?,
+      strikePriceIdr: (json['strike_price_idr'] as num?)?.toInt(),
+      discountPercent: (json['discount_percent'] as num?)?.toInt(),
+      promoEndsAt: parseOptionalDate(json['promo_ends_at']),
       imageUrl: json['image_url'] as String,
       audioUrl: (json['audio_url'] as String?) ?? '',
       duration: (json['duration'] as String?) ?? '',
@@ -47,6 +85,14 @@ class DongengResponse {
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       isDeleted: json['is_deleted'] as bool,
+      categoryId: json['dongeng_category_id'] as String?,
+      subCategoryId: json['dongeng_sub_category_id'] as String?,
+      categoryRef: categoryRefJson != null
+          ? DongengCategory.fromJson(categoryRefJson)
+          : null,
+      subCategoryRef: subCategoryRefJson != null
+          ? DongengCategory.fromJson(subCategoryRefJson)
+          : null,
     );
   }
 
@@ -63,6 +109,7 @@ class DongengResponse {
       'age_start': ageStart,
       'age_end': ageEnd,
       'is_free': isFree,
+      'is_unlocked': isUnlocked,
       'image_url': imageUrl,
       'audio_url': audioUrl,
       'duration': duration,

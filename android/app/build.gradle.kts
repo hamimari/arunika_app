@@ -5,6 +5,8 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 // ── Release signing config ─────────────────────────────────────────────────
@@ -19,9 +21,9 @@ if (hasKeyProperties) {
 }
 
 android {
-    namespace = "com.example.arunika_app"
+    namespace = "com.arunika"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -33,11 +35,18 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.arunika_app"
+        applicationId = "com.arunika"
         minSdk = 28
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
+        versionCode = flutter.versionCode //latest is 7
         versionName = flutter.versionName
+        // Patrol (patrol_test/): native-UI automation for permission dialogs.
+        testInstrumentationRunner = "pl.leancode.patrol.PatrolJUnitRunner"
+        testInstrumentationRunnerArguments["clearPackageData"] = "true"
+    }
+
+    testOptions {
+        execution = "ANDROIDX_TEST_ORCHESTRATOR"
     }
 
     // ── ABI splits ────────────────────────────────────────────────────────────
@@ -81,4 +90,8 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    androidTestUtil("androidx.test:orchestrator:1.5.1")
 }
