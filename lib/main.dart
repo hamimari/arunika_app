@@ -1,9 +1,10 @@
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'dart:io' show HandshakeException, Platform, SocketException;
 
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/core/logger/app_logger.dart';
+import 'package:dio/dio.dart';
 import 'package:arunika_app/core/theme/app_theme.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/firebase_options.dart';
@@ -14,6 +15,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -34,7 +36,11 @@ void main() {
           stackTrace: details.stack,
         );
         // Forward to Crashlytics in release mode.
-        FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+        if (_isExpectedRuntimeError(details.exception)) {
+          FirebaseCrashlytics.instance.recordFlutterError(details);
+        } else {
+          FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+        }
         // Forward to the default handler so the error is still logged in debug.
         FlutterError.presentError(details);
       };
@@ -101,9 +107,26 @@ void main() {
         stackTrace: stackTrace,
       );
       // Forward uncaught async errors to Crashlytics in release mode.
-      FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: true);
+      FirebaseCrashlytics.instance.recordError(
+        error,
+        stackTrace,
+        fatal: !_isExpectedRuntimeError(error),
+      );
     },
   );
+}
+
+/// Errors caused by the user's network, session or device rather than a bug:
+/// failed/blocked requests (including ISPs that hijack TLS and cause a
+/// hostname-mismatch handshake error), Google Fonts failing to download
+/// (the app falls back to the default font), and AR calls racing a node
+/// that was just removed. Still reported, but as non-fatal.
+bool _isExpectedRuntimeError(Object error) {
+  if (error is DioException || error is HandshakeException) return true;
+  if (error is SocketException || error is TimeoutException) return true;
+  if (error is MissingPluginException) return false;
+  if (error is PlatformException && error.code == 'NODE_NOT_FOUND') return true;
+  return error.toString().contains('Failed to load font');
 }
 
 class MyApp extends StatelessWidget {

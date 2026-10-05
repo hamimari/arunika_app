@@ -1,6 +1,8 @@
 package com.uhg0.ar_flutter_plugin_2
 
 import android.app.Activity
+import java.io.File
+import java.nio.ByteBuffer
 import android.content.Context
 import android.graphics.Bitmap
 import android.os.Handler
@@ -138,6 +140,9 @@ class ArView(
     private val onObjectMethodCall =
         MethodChannel.MethodCallHandler { call, result ->
             when (call.method) {
+                // PATCH: Dart's ARObjectManager.onInitialize() calls "init" on this
+                // channel; with no handler it threw MissingPluginException.
+                "init" -> result.success(null)
                 "addNode" -> {
                     val nodeData = call.arguments as? Map<String, Any>
                     nodeData?.let {
@@ -179,7 +184,11 @@ class ArView(
                 config.apply {
                     depthMode = Config.DepthMode.DISABLED
                     instantPlacementMode = Config.InstantPlacementMode.DISABLED
-                    lightEstimationMode = Config.LightEstimationMode.ENVIRONMENTAL_HDR
+                    // PATCH: ENVIRONMENTAL_HDR replaces the scene lighting with
+                    // ARCore's estimate, which some devices (seen on Android 14)
+                    // report far too dark, leaving the model nearly black. Disabled,
+                    // every device uses the bundled HDR environment set in init.
+                    lightEstimationMode = Config.LightEstimationMode.DISABLED
                     focusMode = Config.FocusMode.AUTO
                     planeFindingMode = Config.PlaneFindingMode.DISABLED
                 }
@@ -227,7 +236,19 @@ class ArView(
         }
 
         return try {
-            sceneView.modelLoader.loadModelInstance(fileLocation)?.let { modelInstance ->
+            // PATCH: an absolute path is a GLB already on disk (Dart downloads and
+            // caches it). Reading it is much faster than the SDK's uncached HTTP
+            // fetch, which made large models take minutes on slow connections.
+            val localFile = if (fileLocation.startsWith("/")) File(fileLocation) else null
+            val modelInstance = if (localFile != null) {
+                val buffer = withContext(Dispatchers.IO) {
+                    ByteBuffer.wrap(localFile.readBytes())
+                }
+                sceneView.modelLoader.createModelInstance(buffer)
+            } else {
+                sceneView.modelLoader.loadModelInstance(fileLocation)
+            }
+            modelInstance?.let { modelInstance ->
                 object : ModelNode(
                     modelInstance = modelInstance,
                     // PATCH: was transformation.first(), which is scale * cos(rotation).
@@ -678,7 +699,10 @@ class ArView(
             }
             val node = nodesMap[name]
             if (node == null) {
-                result.error("NODE_NOT_FOUND", "Node with name $name not found", null)
+                // PATCH: a transform can arrive before the node finishes loading or
+                // after it was removed; that is harmless, not an error.
+                Log.w(TAG, "Ignoring transform for unknown node $name")
+                result.success(null)
                 return
             }
             node.scaleToUnitCube(scaleFromTransform(transform))

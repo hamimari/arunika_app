@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'package:ar_flutter_plugin_2/ar_flutter_plugin.dart';
 import 'package:just_audio/just_audio.dart';
@@ -12,12 +13,14 @@ import 'package:ar_flutter_plugin_2/managers/ar_session_manager.dart';
 import 'package:ar_flutter_plugin_2/models/ar_anchor.dart';
 import 'package:ar_flutter_plugin_2/models/ar_hittest_result.dart';
 import 'package:ar_flutter_plugin_2/models/ar_node.dart';
+import 'package:arunika_app/core/logger/app_logger.dart';
 import 'package:arunika_app/core/media/media_cache.dart';
 import 'package:arunika_app/data/repositories/ar_repository.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/screens/arscanner/placement_machine.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_bloc.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vector_math/vector_math_64.dart' as vector;
@@ -106,9 +109,15 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
   // are allocated when the feature is not in use.
   AudioPlayer? _audioPlayer;
 
+  // Local path of the model, downloaded into the disk cache while the user is
+  // still scanning for a surface. Null (and so ignored) when the download
+  // fails or on iOS, where the plugin fetches the URL itself.
+  Future<String?>? _modelFile;
+
   @override
   void initState() {
     super.initState();
+    if (!kIsWeb && Platform.isAndroid) _modelFile = _prefetchModel();
     _rippleCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
@@ -139,6 +148,20 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
           _audioPlayer!.seek(Duration.zero);
         }
       });
+    }
+  }
+
+  Future<String?> _prefetchModel() async {
+    try {
+      final file = await MediaCache.manager.getSingleFile(widget.modelUrl);
+      return file.path;
+    } catch (e) {
+      AppLogger.warning(
+        'Model prefetch failed, falling back to native download',
+        name: 'ArCoreScreen',
+        error: e,
+      );
+      return null;
     }
   }
 
@@ -496,7 +519,8 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
           _platformNode = platform;
         }
 
-        final node = _buildNode();
+        final node = _buildNode(await _modelFile);
+        if (!mounted) return;
 
         final didAddNode = await arObjectManager!.addNode(
           node,
@@ -658,10 +682,10 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
     return (distance * 0.35).clamp(0.15, 0.5);
   }
 
-  ARNode _buildNode() {
+  ARNode _buildNode(String? localPath) {
     return ARNode(
-      type: NodeType.webGLB,
-      uri: widget.modelUrl,
+      type: localPath != null ? NodeType.fileSystemAppFolderGLB : NodeType.webGLB,
+      uri: localPath ?? widget.modelUrl,
       transformation: _composeTransform(),
       // Handled by the vendored plugin patch: rests the model's bounding-box
       // bottom on the anchor (i.e. on top of the platform) instead of its
