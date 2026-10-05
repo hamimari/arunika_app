@@ -8,6 +8,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/data/api/feature_flag_api.dart';
+import '../../../helpers/fake_cart.dart';
 
 class MockArRepository extends Mock implements ArRepository {}
 
@@ -32,7 +33,8 @@ ArCardResponse _lockedCard(String id, String title) => ArCardResponse(
 void main() {
   late MockArRepository mockRepo;
 
-  setUp(() {
+  setUp(() async {
+    await registerTestCart();
     mockRepo = MockArRepository();
     when(() => mockRepo.getCategories()).thenAnswer((_) async => []);
     if (locator.isRegistered<ArRepository>()) {
@@ -49,6 +51,7 @@ void main() {
   });
 
   tearDown(() {
+    unregisterTestCart();
     if (locator.isRegistered<ArRepository>()) {
       locator.unregister<ArRepository>();
     }
@@ -160,6 +163,81 @@ void main() {
     testWidgets('no back button when it is the first screen', (tester) async {
       await pumpWithFlags(tester, {});
       expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsNothing);
+    });
+  });
+  group('Keranjang Belanja', () {
+    ArCardResponse paidCard(String id, String title, {bool owned = false}) =>
+        ArCardResponse(
+          id: id,
+          title: title,
+          emoji: '🐸',
+          imageUrl: '',
+          bgColor: '#FFF3E0',
+          isUnlocked: owned,
+          productId: 'prod-$id',
+          priceIdr: 1000,
+          strikePriceIdr: 2000,
+        );
+
+    testWidgets(
+      'a paid card gets the cart button; adding shows the toast and in-cart state',
+      (tester) async {
+        final api = FakeCartApi();
+        final cart = await registerTestCart(
+          enabled: true,
+          api: api,
+          auth: LoggedInAuth(),
+        );
+        when(() => mockRepo.findAll()).thenAnswer(
+          (_) async => [
+            paidCard('1', 'Frog'),
+            paidCard('2', 'Owned', owned: true),
+          ],
+        );
+
+        await tester.pumpWidget(buildApp());
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const ValueKey('cart-toggle-prod-1')),
+          findsOneWidget,
+        );
+        expect(find.byKey(const ValueKey('cart-toggle-prod-2')), findsNothing);
+        expect(find.byKey(const ValueKey('cart-badge')), findsNothing);
+
+        await tester.tap(find.byKey(const ValueKey('cart-toggle-prod-1')));
+        await tester.pumpAndSettle();
+
+        expect(cart.contains('prod-1'), isTrue);
+        expect(find.text('Ditambahkan ke keranjang'), findsOneWidget);
+        expect(find.text('Di keranjang · Lihat'), findsOneWidget);
+        expect(find.byKey(const ValueKey('cart-badge')), findsOneWidget);
+        expect(find.byIcon(Icons.check_rounded), findsWidgets);
+
+        // Tapping the green button takes it out again.
+        await tester.tap(find.byKey(const ValueKey('cart-toggle-prod-1')));
+        await tester.pumpAndSettle();
+        expect(cart.contains('prod-1'), isFalse);
+        expect(find.text('Di keranjang · Lihat'), findsNothing);
+        // Let the undo window close.
+        await tester.pump(const Duration(seconds: 6));
+      },
+    );
+
+    testWidgets('no cart controls while the cart flag is off', (tester) async {
+      await registerTestCart(enabled: false, auth: LoggedInAuth());
+      when(
+        () => mockRepo.findAll(),
+      ).thenAnswer((_) async => [paidCard('1', 'Frog')]);
+
+      await tester.pumpWidget(buildApp());
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('cart-toggle-prod-1')), findsNothing);
+      expect(
+        find.byIcon(Icons.shopping_cart_outlined),
+        findsWidgets,
+      ); // the Beli icon only
     });
   });
 }

@@ -34,6 +34,8 @@ import 'package:arunika_app/services/push_notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
+import 'package:arunika_app/data/api/cart_api.dart';
+import 'package:arunika_app/core/cart/cart_notifier.dart';
 
 final locator = GetIt.instance;
 
@@ -59,7 +61,12 @@ void setupLocator() {
   locator.registerLazySingleton(() => HurufRepository(HurufApi()));
   locator.registerLazySingleton(() => AngkaRepository(AngkaApi()));
   locator.registerLazySingleton(
-    () => ProfileLoader(locator<UserRepository>(), locator<AuthNotifier>()),
+    () => ProfileLoader(
+      locator<UserRepository>(),
+      locator<AuthNotifier>(),
+      onLoaded: (profile) =>
+          locator<CartNotifier>().setSubscribed(profile.isSubscribed),
+    ),
   );
   locator.registerLazySingleton(() => PlayBillingApi());
   locator.registerLazySingleton<BillingService>(
@@ -70,6 +77,14 @@ void setupLocator() {
     ),
   );
   locator.registerLazySingleton(() => FeatureFlagsNotifier(FeatureFlagApi()));
+  locator.registerLazySingleton(() => CartApi());
+  locator.registerLazySingleton(
+    () => CartNotifier(
+      locator<CartApi>(),
+      locator<FeatureFlagsNotifier>(),
+      locator<AuthNotifier>(),
+    ),
+  );
   locator.registerLazySingleton(
     () => PushNotificationService(
       FirebaseMessaging.instance,

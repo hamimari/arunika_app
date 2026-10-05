@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:arunika_app/core/cart/cart_notifier.dart';
 
 void main() {
   // Wrap everything — including binding initialisation — in the same zone so
@@ -81,7 +82,11 @@ void main() {
       // fetch the current ones in the background.
       final featureFlags = locator<FeatureFlagsNotifier>();
       await featureFlags.loadCached();
-      unawaited(featureFlags.refresh());
+      // The cart loads once the current flags are known (it stays hidden
+      // while the `cart` flag is off).
+      unawaited(
+        featureFlags.refresh().then((_) => locator<CartNotifier>().refresh()),
+      );
 
       await initializeDateFormatting('id_ID');
 

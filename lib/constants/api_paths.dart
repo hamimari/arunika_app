@@ -29,6 +29,12 @@ class ApiPaths {
   static const String premiumPacks = "/premium/packs";
   static const String orders = "/orders";
   static String orderById(String id) => "/orders/$id";
+  static String orderVerify(String id) => "/orders/$id/verify";
+  // Keranjang Belanja.
+  static const String cart = "/cart";
+  static const String cartItems = "/cart/items";
+  static String cartItem(String productId) => "/cart/items/$productId";
+  static const String entitlements = "/entitlements";
   static const String featureFlags = "/app/feature-flags";
   static const String notificationToken = "/notifications/token";
   static String childGrowth(String childId) => "/children/$childId/growth";

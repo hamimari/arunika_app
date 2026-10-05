@@ -49,6 +49,8 @@ import 'package:arunika_app/presentation/screens/widgets/parental_gate_guard.dar
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:arunika_app/presentation/screens/cart/cart_result_screen.dart';
+import 'package:arunika_app/presentation/screens/cart/cart_screen.dart';
 
 final authNotifier = locator<AuthNotifier>();
 
@@ -264,6 +266,16 @@ class AppRouter {
           final item = state.extra as PurchasableItem;
           return ParentalGateGuard(child: PaymentScreen(item: item));
         },
+      ),
+
+      // ── Keranjang Belanja ──────────────────────────────────────────────────
+      // Browsing the cart needs no gate; "Bayar" shows the parental gate
+      // every time (see CartCheckout).
+      GoRoute(path: '/cart', builder: (_, __) => const CartScreen()),
+      GoRoute(
+        path: '/cart/result',
+        builder: (_, state) =>
+            CartResultScreen(args: state.extra as CartResultArgs),
       ),
 
       // ── Payment history ────────────────────────────────────────────────────

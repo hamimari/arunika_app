@@ -68,6 +68,20 @@ class FakeBilling implements BillingService {
         : null,
   );
 
+  /// What the next cart purchase resolves to.
+  CartPurchaseOutcome cartOutcome = CartPurchaseOutcome.granted;
+  final List<({String orderId, String playProductId})> cartPurchases = [];
+
+  @override
+  Future<CartPurchaseOutcome> purchaseCart({
+    required String orderId,
+    required String playProductId,
+  }) async {
+    cartPurchases.add((orderId: orderId, playProductId: playProductId));
+    await onPurchase?.call(orderId, playProductId);
+    return cartOutcome;
+  }
+
   @override
   Future<void> syncPendingPurchases() async => syncCallCount++;
 

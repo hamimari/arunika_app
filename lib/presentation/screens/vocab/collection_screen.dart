@@ -3,7 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/core/cart/cart_notifier.dart';
 import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
+import 'package:arunika_app/data/models/cart.dart';
+import 'package:arunika_app/presentation/screens/cart/cart_widgets.dart';
 import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:arunika_app/data/models/response/ar_card_category.dart';
 import 'package:arunika_app/data/models/response/ar_card_response.dart';
@@ -55,9 +58,20 @@ class _CollectionView extends StatefulWidget {
 class _CollectionViewState extends State<_CollectionView> {
   bool _isSearching = false;
   final _searchController = TextEditingController();
+  final _cart = locator<CartNotifier>();
+
+  @override
+  void initState() {
+    super.initState();
+    // A paid cart order unlocks cards; reload so they show as owned.
+    _cart.grants.addListener(_reload);
+  }
+
+  void _reload() => context.read<CollectionBlocHandler>().add(LoadArCards());
 
   @override
   void dispose() {
+    _cart.grants.removeListener(_reload);
     _searchController.dispose();
     super.dispose();
   }
@@ -181,18 +195,21 @@ class _CollectionViewState extends State<_CollectionView> {
                       ),
                     );
                   }
-                  return GridView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 14,
-                          crossAxisSpacing: 14,
-                          mainAxisExtent: 276,
-                        ),
-                    itemCount: cards.length,
-                    itemBuilder: (_, i) => _ArCardItem(card: cards[i]),
+                  return ListenableBuilder(
+                    listenable: _cart,
+                    builder: (context, _) => GridView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 14,
+                        crossAxisSpacing: 14,
+                        // Room for "Di keranjang · Lihat" under the buttons.
+                        mainAxisExtent: _cart.enabled ? 296 : 276,
+                      ),
+                      itemCount: cards.length,
+                      itemBuilder: (_, i) => _ArCardItem(card: cards[i]),
+                    ),
                   );
                 }
                 return const SizedBox.shrink();
@@ -252,6 +269,7 @@ class _CollectionViewState extends State<_CollectionView> {
           semanticLabel: 'Cari kartu',
           onTap: () => setState(() => _isSearching = true),
         ),
+        const CartHeaderButton(),
       ],
     );
   }
@@ -357,6 +375,18 @@ class _ArCardItem extends StatelessWidget {
     final owned = !locked && card.productId != null;
     final onPromo =
         locked && card.strikePriceIdr != null && card.discountPercent != null;
+    // Paid, sold singly and not owned: it can also go in the cart.
+    final cartItem = locked && card.productId != null && card.priceIdr != null
+        ? CartItem(
+            productId: card.productId!,
+            type: CartItemType.arCard,
+            contentId: card.id ?? '',
+            title: card.title ?? 'Kartu AR',
+            imageUrl: card.imageUrl,
+            priceIdr: card.priceIdr!,
+            strikePriceIdr: card.strikePriceIdr,
+          )
+        : null;
 
     return GestureDetector(
       onTap: () => _onTap(context),
@@ -466,47 +496,60 @@ class _ArCardItem extends StatelessWidget {
                           ),
                   ],
                   const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 38,
-                    child: locked
-                        ? ElevatedButton.icon(
-                            onPressed: () => _onTap(context),
-                            icon: const Icon(
-                              Icons.shopping_cart_outlined,
-                              size: 18,
-                            ),
-                            label: const Text(AppStrings.btnBuy),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.ctaRust,
-                              foregroundColor: AppColors.white,
-                              elevation: 0,
-                              padding: EdgeInsets.zero,
-                              textStyle: AppTextStyles.buttonSmall,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                          )
-                        : OutlinedButton.icon(
-                            onPressed: () => _onTap(context),
-                            icon: const Icon(
-                              Icons.view_in_ar_rounded,
-                              size: 18,
-                            ),
-                            label: const Text(AppStrings.btnOpenAr),
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor: AppColors.ctaRustSoft,
-                              foregroundColor: AppColors.ctaRust,
-                              side: const BorderSide(color: AppColors.ctaRust),
-                              padding: EdgeInsets.zero,
-                              textStyle: AppTextStyles.buttonSmall,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                          ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 38,
+                          child: locked
+                              ? ElevatedButton.icon(
+                                  onPressed: () => _onTap(context),
+                                  icon: const Icon(
+                                    Icons.shopping_cart_outlined,
+                                    size: 18,
+                                  ),
+                                  label: const Text(AppStrings.btnBuy),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.ctaRust,
+                                    foregroundColor: AppColors.white,
+                                    elevation: 0,
+                                    padding: EdgeInsets.zero,
+                                    textStyle: AppTextStyles.buttonSmall,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                )
+                              : OutlinedButton.icon(
+                                  onPressed: () => _onTap(context),
+                                  icon: const Icon(
+                                    Icons.view_in_ar_rounded,
+                                    size: 18,
+                                  ),
+                                  label: const Text(AppStrings.btnOpenAr),
+                                  style: OutlinedButton.styleFrom(
+                                    backgroundColor: AppColors.ctaRustSoft,
+                                    foregroundColor: AppColors.ctaRust,
+                                    side: const BorderSide(
+                                      color: AppColors.ctaRust,
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    textStyle: AppTextStyles.buttonSmall,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                      if (cartItem != null) ...[
+                        const SizedBox(width: 8),
+                        CartToggleButton(item: cartItem),
+                      ],
+                    ],
                   ),
+                  if (cartItem != null)
+                    InCartLink(productId: cartItem.productId),
                 ],
               ),
             ),

@@ -12,7 +12,11 @@ class ProfileLoader {
   final UserRepository _users;
   final AuthNotifier _auth;
 
-  ProfileLoader(this._users, this._auth);
+  /// Called with every freshly loaded profile (the cart hides itself for
+  /// Akses Premium subscribers).
+  final void Function(UserResponse profile)? onLoaded;
+
+  ProfileLoader(this._users, this._auth, {this.onLoaded});
 
   Future<UserResponse?> load() async {
     if (!_auth.isLoggedIn) return null;
@@ -26,6 +30,7 @@ class ProfileLoader {
         // keep the cached profile on failure
       }
     }
+    if (profile != null) onLoaded?.call(profile);
     return profile;
   }
 

@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'package:arunika_app/data/api/cart_api.dart';
 import 'package:arunika_app/data/api/play_billing_api.dart';
+import 'package:arunika_app/data/models/cart.dart';
+import 'package:arunika_app/services/billing_service.dart';
 import 'package:arunika_app/services/google_play_billing_service.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,6 +29,8 @@ DioException _subscriptionActive() {
 }
 
 class _MockPlayBillingApi extends Mock implements PlayBillingApi {}
+
+class _MockCartApi extends Mock implements CartApi {}
 
 class _MockAndroidAddition extends Mock
     implements InAppPurchaseAndroidPlatformAddition {}
@@ -533,6 +538,122 @@ void main() {
       verify(
         () => addition.setBillingChoice(BillingChoiceMode.playBillingOnly),
       ).called(1);
+    });
+  });
+  group('purchaseCart', () {
+    late _MockCartApi cartApi;
+    const sku = 'arunika.cart.t6000';
+
+    setUp(() {
+      cartApi = _MockCartApi();
+      service = GooglePlayBillingService(api, iap: iap, cartApi: cartApi);
+      when(() => iap.queryProductDetails(any())).thenAnswer(
+        (_) async => ProductDetailsResponse(
+          productDetails: [_FakeProductDetails(sku)],
+          notFoundIDs: const [],
+        ),
+      );
+      when(
+        () => iap.buyConsumable(
+          purchaseParam: any(named: 'purchaseParam'),
+          autoConsume: any(named: 'autoConsume'),
+        ),
+      ).thenAnswer((_) async => true);
+    });
+
+    Future<CartPurchaseOutcome> payWith(
+      PurchaseStatus status, {
+      bool pendingComplete = true,
+    }) async {
+      final future = service.purchaseCart(
+        orderId: 'order-9',
+        playProductId: sku,
+      );
+      await Future<void>.delayed(Duration.zero);
+      purchaseStream.add([
+        _FakePurchaseDetails(
+          productID: sku,
+          status: status,
+          pendingCompletePurchase: pendingComplete,
+        ),
+      ]);
+      return future;
+    }
+
+    test(
+      'buys the consumable with the order id and lets the server consume it',
+      () async {
+        when(
+          () => cartApi.verifyOrder(any(), any()),
+        ).thenAnswer((_) async => OrderPhase.granted);
+
+        expect(
+          await payWith(PurchaseStatus.purchased),
+          CartPurchaseOutcome.granted,
+        );
+
+        final param =
+            verify(
+                  () => iap.buyConsumable(
+                    purchaseParam: captureAny(named: 'purchaseParam'),
+                    autoConsume: false,
+                  ),
+                ).captured.single
+                as PurchaseParam;
+        expect(param.applicationUserName, 'order-9');
+        verify(
+          () => cartApi.verifyOrder('order-9', 'purchase-token'),
+        ).called(1);
+        verify(() => iap.completePurchase(any())).called(1);
+      },
+    );
+
+    test(
+      'paid but not granted yet resolves to processing and stays open',
+      () async {
+        when(
+          () => cartApi.verifyOrder(any(), any()),
+        ).thenAnswer((_) async => OrderPhase.processing);
+        expect(
+          await payWith(PurchaseStatus.purchased),
+          CartPurchaseOutcome.processing,
+        );
+        verifyNever(() => iap.completePurchase(any()));
+      },
+    );
+
+    test('a verify failure is processing, never a second charge', () async {
+      when(
+        () => cartApi.verifyOrder(any(), any()),
+      ).thenThrow(Exception('offline'));
+      expect(
+        await payWith(PurchaseStatus.purchased),
+        CartPurchaseOutcome.processing,
+      );
+    });
+
+    test('cancel and pending', () async {
+      expect(
+        await payWith(PurchaseStatus.canceled),
+        CartPurchaseOutcome.canceled,
+      );
+      expect(
+        await payWith(PurchaseStatus.pending),
+        CartPurchaseOutcome.processing,
+      );
+    });
+
+    test('an unknown cart product is reported', () async {
+      when(() => iap.queryProductDetails(any())).thenAnswer(
+        (_) async => ProductDetailsResponse(
+          productDetails: const [],
+          notFoundIDs: const [sku],
+        ),
+      );
+      expect(
+        await service.purchaseCart(orderId: 'order-9', playProductId: sku),
+        CartPurchaseOutcome.productNotFound,
+      );
     });
   });
 }

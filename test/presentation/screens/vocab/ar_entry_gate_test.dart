@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/data/api/feature_flag_api.dart';
+import '../../../helpers/fake_cart.dart';
 
 class _MockArRepository extends Mock implements ArRepository {}
 
@@ -67,7 +68,8 @@ void main() {
     locator.registerSingleton<AuthNotifier>(_StubAuthNotifier(loggedIn));
   }
 
-  setUp(() {
+  setUp(() async {
+    await registerTestCart();
     repo = _MockArRepository();
     when(() => repo.getCategories()).thenAnswer((_) async => []);
     if (locator.isRegistered<ArRepository>()) {
@@ -84,6 +86,7 @@ void main() {
   });
 
   tearDown(() {
+    unregisterTestCart();
     if (locator.isRegistered<ArRepository>()) {
       locator.unregister<ArRepository>();
     }

@@ -23,6 +23,9 @@ class FeatureFlag {
   // Belajar Angka: the Angka card on Belajar and on the Beranda "Lanjutkan
   // belajar" row. Off unless enabled, like Huruf.
   static const String belajarAngka = 'belajar_angka';
+  // Keranjang Belanja: the cart buttons, header badge and cart screen.
+  // Off unless enabled, so builds never show a cart the backend refuses.
+  static const String cart = 'cart';
 }
 
 /// Holds the backoffice-controlled feature switches.
@@ -49,6 +52,7 @@ class FeatureFlagsNotifier extends ChangeNotifier {
     FeatureFlag.growthTracking,
     FeatureFlag.belajarHuruf,
     FeatureFlag.belajarAngka,
+    FeatureFlag.cart,
   };
 
   bool isEnabled(String key) => _flags[key] ?? !failClosed.contains(key);
@@ -60,6 +64,7 @@ class FeatureFlagsNotifier extends ChangeNotifier {
   bool get growthTrackingEnabled => isEnabled(FeatureFlag.growthTracking);
   bool get belajarHurufEnabled => isEnabled(FeatureFlag.belajarHuruf);
   bool get belajarAngkaEnabled => isEnabled(FeatureFlag.belajarAngka);
+  bool get cartEnabled => isEnabled(FeatureFlag.cart);
 
   Future<void> loadCached() async {
     try {

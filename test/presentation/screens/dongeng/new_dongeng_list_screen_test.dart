@@ -13,6 +13,7 @@ import 'package:arunika_app/data/models/purchasable_item.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import '../../../helpers/fake_cart.dart';
 
 class MockFairyTalesRepository extends Mock implements FairyTalesRepository {}
 
@@ -58,7 +59,8 @@ void main() {
   late MockFairyTalesRepository mockRepo;
   late MockAuthNotifier mockAuth;
 
-  setUp(() {
+  setUp(() async {
+    await registerTestCart();
     if (locator.isRegistered<DongengHistoryRepository>()) {
       locator.unregister<DongengHistoryRepository>();
     }
@@ -79,6 +81,7 @@ void main() {
   });
 
   tearDown(() {
+    unregisterTestCart();
     if (locator.isRegistered<DongengHistoryRepository>()) {
       locator.unregister<DongengHistoryRepository>();
     }

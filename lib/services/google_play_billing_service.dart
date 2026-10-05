@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:arunika_app/core/logger/app_logger.dart';
+import 'package:arunika_app/data/api/cart_api.dart';
 import 'package:arunika_app/data/api/play_billing_api.dart';
+import 'package:arunika_app/data/models/cart.dart';
 import 'package:arunika_app/network/api_errors.dart';
 import 'package:arunika_app/services/billing_service.dart';
 import 'package:dio/dio.dart';
@@ -69,6 +71,9 @@ class PlayPurchaseResult {
 class GooglePlayBillingService implements BillingService {
   final InAppPurchase _iap;
   final PlayBillingApi _api;
+  final CartApi? _cartApiOverride;
+  CartApi get _cartApi => _cartApiOverride ?? (_lazyCartApi ??= CartApi());
+  CartApi? _lazyCartApi;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
   // The BillingClient's current mode: false = Google Play only (its
   // default), true = User Choice Billing.
@@ -79,8 +84,10 @@ class GooglePlayBillingService implements BillingService {
   GooglePlayBillingService(
     this._api, {
     InAppPurchase? iap,
+    CartApi? cartApi,
     bool Function()? alternativeBillingAllowed,
   }) : _iap = iap ?? InAppPurchase.instance,
+       _cartApiOverride = cartApi,
        _alternativeBillingAllowed =
            alternativeBillingAllowed ?? (() => false);
 
@@ -173,6 +180,153 @@ class GooglePlayBillingService implements BillingService {
     }
 
     return _doPurchase(playProductId, orderId);
+  }
+
+  /// Cart total products are consumables named `arunika.cart.t<rupiah>`.
+  static bool isCartProduct(String productId) =>
+      productId.startsWith('arunika.cart.');
+
+  @override
+  Future<CartPurchaseOutcome> purchaseCart({
+    required String orderId,
+    required String playProductId,
+  }) async {
+    if (!await _iap.isAvailable()) {
+      AppLogger.warning('Google Play Billing is not available', name: _log);
+      return CartPurchaseOutcome.storeUnavailable;
+    }
+    try {
+      final response = await _iap.queryProductDetails({playProductId});
+      if (response.productDetails.isEmpty) {
+        AppLogger.warning(
+          'Google Play does not know cart product "$playProductId"',
+          name: _log,
+        );
+        return CartPurchaseOutcome.productNotFound;
+      }
+
+      final completer = Completer<CartPurchaseOutcome>();
+      await _purchaseSubscription?.cancel();
+      _purchaseSubscription = _iap.purchaseStream.listen(
+        (purchases) => _onCartPurchaseUpdate(
+          purchases: purchases,
+          orderId: orderId,
+          playProductId: playProductId,
+          completer: completer,
+        ),
+        onError: (_) {
+          if (!completer.isCompleted) {
+            completer.complete(CartPurchaseOutcome.error);
+          }
+        },
+      );
+
+      // The order id rides along as obfuscatedAccountId; the server checks
+      // it, so a purchase can only settle the order it was made for. The
+      // server consumes the purchase after granting, so the same total can
+      // be bought again.
+      final launched = await _iap.buyConsumable(
+        purchaseParam: PurchaseParam(
+          productDetails: response.productDetails.first,
+          applicationUserName: orderId,
+        ),
+        autoConsume: false,
+      );
+      if (!launched && !completer.isCompleted) {
+        completer.complete(CartPurchaseOutcome.error);
+      }
+      return await completer.future.timeout(
+        const Duration(minutes: 5),
+        // Unknown: the order screen polls the server instead of guessing.
+        onTimeout: () => CartPurchaseOutcome.processing,
+      );
+    } catch (e, st) {
+      AppLogger.error(
+        'Cart purchase threw',
+        name: _log,
+        error: e,
+        stackTrace: st,
+      );
+      return CartPurchaseOutcome.error;
+    } finally {
+      await _purchaseSubscription?.cancel();
+      _purchaseSubscription = null;
+    }
+  }
+
+  Future<void> _onCartPurchaseUpdate({
+    required List<PurchaseDetails> purchases,
+    required String orderId,
+    required String playProductId,
+    required Completer<CartPurchaseOutcome> completer,
+  }) async {
+    for (final purchase in purchases) {
+      final isOurs =
+          purchase.productID == playProductId ||
+          (purchase.productID.isEmpty &&
+              (purchase.status == PurchaseStatus.canceled ||
+                  purchase.status == PurchaseStatus.error));
+      if (!isOurs) continue;
+      switch (purchase.status) {
+        case PurchaseStatus.pending:
+          // A delayed payment method: Google settles it later and the RTDN
+          // or the next app start grants the order.
+          if (!completer.isCompleted) {
+            completer.complete(CartPurchaseOutcome.processing);
+          }
+        case PurchaseStatus.canceled:
+          if (!completer.isCompleted) {
+            completer.complete(CartPurchaseOutcome.canceled);
+          }
+        case PurchaseStatus.error:
+          AppLogger.warning(
+            'Google Play reported a cart purchase error: ${purchase.error?.message}',
+            name: _log,
+          );
+          if (!completer.isCompleted) {
+            completer.complete(CartPurchaseOutcome.error);
+          }
+        case PurchaseStatus.purchased:
+        case PurchaseStatus.restored:
+          final outcome = await _settleCartPurchase(purchase, orderId);
+          if (!completer.isCompleted) completer.complete(outcome);
+      }
+    }
+  }
+
+  /// Sends a cart purchase to the server and, once its items are granted,
+  /// completes it with Google. Paid but not yet granted resolves to
+  /// processing; the purchase stays open and is retried on the next start.
+  Future<CartPurchaseOutcome> _settleCartPurchase(
+    PurchaseDetails purchase,
+    String orderId,
+  ) async {
+    try {
+      final phase = await _cartApi.verifyOrder(
+        orderId,
+        purchase.verificationData.serverVerificationData,
+      );
+      if (phase != OrderPhase.granted) return CartPurchaseOutcome.processing;
+      if (purchase.pendingCompletePurchase) {
+        await _iap.completePurchase(purchase);
+      }
+      return CartPurchaseOutcome.granted;
+    } catch (e) {
+      AppLogger.error(
+        'Backend could not verify the cart purchase',
+        name: _log,
+        error: e,
+      );
+      return CartPurchaseOutcome.processing;
+    }
+  }
+
+  /// The cart order id Google carries for a purchase (obfuscatedAccountId).
+  static String? cartOrderIdOf(PurchaseDetails purchase) {
+    if (purchase is GooglePlayPurchaseDetails) {
+      return purchase.billingClientPurchase.obfuscatedAccountId;
+    }
+    return null;
   }
 
   // Never throws — every failure path (including a platform exception from
@@ -355,6 +509,15 @@ class GooglePlayBillingService implements BillingService {
     for (final purchase in purchases) {
       if (purchase.status != PurchaseStatus.purchased &&
           purchase.status != PurchaseStatus.restored) {
+        continue;
+      }
+      // A cart purchase interrupted by a crash or lost network: settle it
+      // against the order it carries.
+      if (isCartProduct(purchase.productID)) {
+        final orderId = cartOrderIdOf(purchase);
+        if (orderId != null && orderId.isNotEmpty) {
+          await _settleCartPurchase(purchase, orderId);
+        }
         continue;
       }
       try {

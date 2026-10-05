@@ -21,6 +21,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:arunika_app/core/media/media_cache.dart';
+import 'package:arunika_app/core/cart/cart_notifier.dart';
+import 'package:arunika_app/data/models/cart.dart';
+import 'package:arunika_app/presentation/screens/cart/cart_widgets.dart';
 
 CategoryOption _fromDongengCategory(DongengCategory c) => CategoryOption(
   id: c.id,
@@ -39,9 +42,20 @@ class NewDongengListScreen extends StatefulWidget {
 class _NewDongengListScreenState extends State<NewDongengListScreen> {
   bool _isSearching = false;
   final _searchController = TextEditingController();
+  final _cart = locator<CartNotifier>();
+
+  @override
+  void initState() {
+    super.initState();
+    // A paid cart order unlocks stories; reload so they show as owned.
+    _cart.grants.addListener(_reload);
+  }
+
+  void _reload() => context.read<DongengListBloc>().add(LoadDongengList());
 
   @override
   void dispose() {
+    _cart.grants.removeListener(_reload);
     _searchController.dispose();
     super.dispose();
   }
@@ -204,6 +218,7 @@ class _NewDongengListScreenState extends State<NewDongengListScreen> {
             ),
           ),
         ),
+        const CartHeaderButton(),
       ],
     );
   }
@@ -447,6 +462,17 @@ class _NewDongengListScreenState extends State<NewDongengListScreen> {
 }
 
 // ── Shared bits ────────────────────────────────────────────────────────────────
+
+/// A locked, paid story as a cart item.
+CartItem cartItemOf(DongengResponse d) => CartItem(
+  productId: d.productId!,
+  type: CartItemType.dongeng,
+  contentId: d.id,
+  title: d.title,
+  imageUrl: d.imageUrl,
+  priceIdr: d.priceIdr!,
+  strikePriceIdr: d.strikePriceIdr,
+);
 
 String _meta(DongengResponse d) =>
     '${d.ageStart.toInt()}–${d.ageEnd.toInt()} tahun · ${d.duration}';
@@ -694,9 +720,20 @@ class _FeaturedCard extends StatelessWidget {
                     isLoading: isLoading,
                     onPressed: onTap,
                   ),
+                  if (locked &&
+                      dongeng.productId != null &&
+                      dongeng.priceIdr != null) ...[
+                    const SizedBox(width: 8),
+                    CartToggleButton(item: cartItemOf(dongeng), size: 42),
+                  ],
                 ],
               ),
             ),
+            if (locked && dongeng.productId != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: InCartLink(productId: dongeng.productId!),
+              ),
           ],
         ),
       ),
@@ -822,8 +859,17 @@ class _StoryRow extends StatelessWidget {
                     isLoading: isLoading,
                     onPressed: onTap,
                   ),
+                  if (dongeng.productId != null) ...[
+                    const SizedBox(width: 8),
+                    CartToggleButton(item: cartItemOf(dongeng), size: 42),
+                  ],
                 ],
               ),
+              if (dongeng.productId != null)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: InCartLink(productId: dongeng.productId!),
+                ),
             ],
           ],
         ),

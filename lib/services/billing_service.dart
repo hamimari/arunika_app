@@ -1,5 +1,27 @@
 import 'package:arunika_app/services/google_play_billing_service.dart';
 
+/// How paying a cart order ended.
+enum CartPurchaseOutcome {
+  /// Paid and every item granted.
+  granted,
+
+  /// Paid (or still being paid, e.g. a delayed payment method) but not
+  /// granted yet — the "Sedang diproses" screen polls the order.
+  processing,
+
+  /// The parent closed the Google Play sheet; nothing was charged.
+  canceled,
+
+  /// Google Play reported an error; nothing was charged.
+  error,
+
+  /// Google Play Billing isn't available on this device.
+  storeUnavailable,
+
+  /// Google Play doesn't know the cart total product.
+  productNotFound,
+}
+
 /// The purchase surface the app depends on.
 ///
 /// Extracted so a test can substitute the whole billing implementation.
@@ -24,6 +46,14 @@ abstract class BillingService {
   /// Buys a single product (an AR card or a dongeng).
   Future<PlayPurchaseResult> purchaseProduct({
     required String productId,
+    required String playProductId,
+  });
+
+  /// Pays a cart order (Keranjang Belanja) with the consumable store
+  /// product the backend picked for its total, passing the order id to
+  /// Google so the server can match the purchase to the order.
+  Future<CartPurchaseOutcome> purchaseCart({
+    required String orderId,
     required String playProductId,
   });
 
