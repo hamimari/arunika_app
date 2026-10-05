@@ -7,6 +7,8 @@ import 'package:arunika_app/data/models/response/dongeng_response.dart';
 import 'package:arunika_app/data/repositories/auth_repository.dart';
 import 'package:arunika_app/data/repositories/fairy_tales_repository.dart';
 import 'package:arunika_app/data/repositories/growth_repository.dart';
+import 'package:arunika_app/data/repositories/huruf_repository.dart';
+import 'package:arunika_app/presentation/screens/huruf/huruf_cubit.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/navigation/main_shell.dart';
@@ -77,14 +79,27 @@ class AppRouter {
         redirect: (context, state) => ConsentGate.redirect(),
         builder: (context, state) {
           final flags = locator<FeatureFlagsNotifier>();
-          return BlocProvider(
-            // Shared by the Tumbuh tab and the Beranda growth card.
-            create: (_) => GrowthCubit(
-              repository: locator<GrowthRepository>(),
-              enabled: () =>
-                  authNotifier.isLoggedIn && flags.growthTrackingEnabled,
-              trigger: Listenable.merge([authNotifier, flags]),
-            ),
+          return MultiBlocProvider(
+            providers: [
+              // Shared by the Tumbuh tab and the Beranda growth card.
+              BlocProvider(
+                create: (_) => GrowthCubit(
+                  repository: locator<GrowthRepository>(),
+                  enabled: () =>
+                      authNotifier.isLoggedIn && flags.growthTrackingEnabled,
+                  trigger: Listenable.merge([authNotifier, flags]),
+                ),
+              ),
+              // Shared by Belajar Huruf and the Beranda "Lanjutkan belajar".
+              BlocProvider(
+                create: (_) => HurufCubit(
+                  repository: locator<HurufRepository>(),
+                  enabled: () =>
+                      authNotifier.isLoggedIn && flags.belajarHurufEnabled,
+                  trigger: Listenable.merge([authNotifier, flags]),
+                ),
+              ),
+            ],
             child: Builder(
               builder: (context) => MainShell(
                 key: MainShell.shellKey,

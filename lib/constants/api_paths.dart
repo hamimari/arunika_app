@@ -38,4 +38,12 @@ class ApiPaths {
       "/children/$childId/growth/measurements/$id";
   static String growthMeasurementRestore(String childId, String id) =>
       "/children/$childId/growth/measurements/$id/restore";
+
+  // Belajar Huruf
+  static const String hurufManifest = "/learn/huruf/manifest";
+  static String hurufLetter(String id) => "/learn/huruf/letters/$id";
+  static String hurufProgress(String childId) =>
+      "/children/$childId/huruf/progress";
+  static String hurufLetterProgress(String childId, String letterId) =>
+      "/children/$childId/huruf/progress/$letterId";
 }

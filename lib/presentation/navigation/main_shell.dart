@@ -6,7 +6,9 @@ import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/di/locator.dart';
+import 'package:arunika_app/data/models/response/huruf_response.dart';
 import 'package:arunika_app/presentation/screens/belajar/belajar_tab.dart';
+import 'package:arunika_app/presentation/screens/huruf/huruf_cubit.dart';
 import 'package:arunika_app/services/push_notification_service.dart';
 
 // Tab ids — used by other screens to switch tabs programmatically. These are
@@ -118,11 +120,13 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
   }
 
   /// Opens a Belajar destination (Kartu AR, optionally filtered to a category,
-  /// or Dongeng, optionally highlighting a story).
+  /// Dongeng, optionally highlighting a story, or Huruf, optionally a letter).
   void openBelajar(
     BelajarDestination destination, {
     String? categoryId,
     String? highlightProductId,
+    HurufManifestLetter? hurufLetter,
+    HurufActivity? hurufStart,
   }) {
     if (_currentIndex != MainShellTab.belajar) {
       setState(() => _currentIndex = MainShellTab.belajar);
@@ -132,6 +136,8 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
       destination,
       categoryId: categoryId,
       highlightProductId: highlightProductId,
+      hurufLetter: hurufLetter,
+      hurufStart: hurufStart,
     );
   }
 

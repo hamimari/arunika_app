@@ -18,6 +18,48 @@ class AppStrings {
   static const String navDongeng = 'Dongeng';
   static const String belajarSubtitle = 'Pilih petualangan belajar hari ini!';
 
+  // Belajar Huruf
+  static const String hurufCardTitle = 'Huruf';
+  static const String hurufCardDescription = 'Kenal huruf A sampai Z';
+  static const String hurufTitle = 'Belajar Huruf';
+  static const String hurufSubtitle = 'Kenal huruf A sampai Z';
+  static const String hurufContinue = 'Lanjutkan belajar';
+  static const String hurufAll = 'Semua Huruf';
+  static String hurufDoneCount(int done, int total) =>
+      '$done dari $total selesai';
+  static const String hurufFree = 'Gratis';
+  static const String hurufPremium = 'Premium';
+  static const String hurufKenali = 'Kenali';
+  static const String hurufTebalkan = 'Tebalkan';
+  static String hurufLetterTitle(String upper) => 'Huruf $upper';
+  static const String hurufListenSound = 'Dengar bunyi';
+  static String hurufTraceTitle(String letter) => 'Tebalkan huruf $letter';
+  static const String hurufTraceHint = 'Ikuti angka dan panah';
+  static const String hurufRepeat = 'Ulangi';
+  static const String hurufFinish = 'Selesai';
+  static const String hurufNextTebalkan = 'Lanjut ke Tebalkan';
+  static const String hurufLowerNow = 'Sekarang huruf kecilnya!';
+  static String hurufSuccessBody(String upper) =>
+      'Kamu berhasil menebalkan huruf $upper.';
+  static const String hurufPlusStar = '+1 bintang';
+  static String hurufNextLetter(String upper) => 'Lanjut ke huruf $upper';
+  static const String hurufBackToList = 'Kembali ke daftar huruf';
+  static const String hurufTraceAgain = 'Tebalkan lagi';
+  static const String hurufUnlockAll = 'Buka semua huruf';
+  static const String hurufTryAgain = 'Coba lagi';
+  static const String hurufShowExample = 'Lihat contoh';
+  static const String hurufHintLabel = 'Petunjuk:';
+  static String hurufReasonOffPath(String upper) =>
+      'Garisnya keluar dari jalur huruf $upper.';
+  static const String hurufReasonTooShort = 'Garisnya belum sampai ujung.';
+  static const String hurufReasonWrongDirection = 'Arah garisnya terbalik.';
+  static const String hurufLoadError = 'Huruf belum bisa dimuat.';
+  static const String hurufRetry = 'Coba lagi';
+  static const String hurufAudioRetry = 'Putar ulang';
+  static const String hurufNoChild =
+      'Tambahkan data si kecil di Profil untuk mulai belajar huruf.';
+  static const String hurufEmpty = 'Huruf segera hadir!';
+
   // Home
   static const String homeGreeting = 'Halo, Selamat Datang! 👋';
   static const String homeGreetingName = 'Halo, ';

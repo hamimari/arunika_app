@@ -1,12 +1,19 @@
 import 'package:arunika_app/constants/app_colors.dart';
 import 'package:arunika_app/constants/app_strings.dart';
 import 'package:arunika_app/constants/app_text_styles.dart';
+import 'package:arunika_app/core/auth/auth_notifier.dart';
+import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
+import 'package:arunika_app/di/locator.dart';
 import 'package:arunika_app/presentation/screens/belajar/belajar_tab.dart';
+import 'package:arunika_app/presentation/screens/huruf/huruf_cubit.dart';
+import 'package:arunika_app/presentation/screens/huruf/huruf_widgets.dart';
+import 'package:arunika_app/presentation/screens/widgets/login_required_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iconsax/iconsax.dart';
 
 /// "Belajar — Pilih petualangan belajar hari ini!": one card per learning
-/// feature. Stimulasi Bayi, Angka and Huruf join here when they ship.
+/// feature. Stimulasi Bayi and Angka join here when they ship.
 class BelajarHubScreen extends StatelessWidget {
   final ValueChanged<BelajarDestination> onOpen;
 
@@ -47,9 +54,59 @@ class BelajarHubScreen extends StatelessWidget {
               icon: Iconsax.book_1,
               onTap: () => onOpen(BelajarDestination.dongeng),
             ),
+            _HurufCard(onOpen: () => onOpen(BelajarDestination.huruf)),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Belajar Huruf: shown when `belajar_huruf` is on, with a "Premium" badge
+/// for anyone without Akses Premium. Guests are asked to sign in first,
+/// since progress belongs to a child.
+class _HurufCard extends StatelessWidget {
+  final VoidCallback onOpen;
+
+  const _HurufCard({required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    final flags = locator<FeatureFlagsNotifier>();
+    final cubit = context.read<HurufCubit?>();
+    return ListenableBuilder(
+      listenable: flags,
+      builder: (context, _) {
+        if (!flags.belajarHurufEnabled) return const SizedBox.shrink();
+        Widget card(bool premium) => Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: _BelajarCard(
+            title: AppStrings.hurufCardTitle,
+            description: AppStrings.hurufCardDescription,
+            action: 'Buka',
+            background: HurufColors.mint,
+            accent: HurufColors.teal,
+            icon: Icons.abc_rounded,
+            badge: premium ? null : AppStrings.hurufPremium,
+            onTap: () {
+              if (!locator<AuthNotifier>().isLoggedIn) {
+                showLoginRequiredDialog(
+                  context,
+                  featureLabel: AppStrings.hurufTitle,
+                );
+                return;
+              }
+              onOpen();
+            },
+          ),
+        );
+        if (cubit == null) return card(false);
+        return BlocBuilder<HurufCubit, HurufState>(
+          bloc: cubit,
+          buildWhen: (a, b) => a.premium != b.premium,
+          builder: (_, state) => card(state.premium),
+        );
+      },
     );
   }
 }
@@ -63,6 +120,9 @@ class _BelajarCard extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
+  /// A small chip next to the title, e.g. "Premium".
+  final String? badge;
+
   const _BelajarCard({
     required this.title,
     required this.description,
@@ -71,13 +131,16 @@ class _BelajarCard extends StatelessWidget {
     required this.accent,
     required this.icon,
     required this.onTap,
+    this.badge,
   });
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '$title. $description',
+      label: badge == null
+          ? '$title. $description'
+          : '$title, $badge. $description',
       child: Material(
         color: background,
         borderRadius: BorderRadius.circular(22),
@@ -92,9 +155,37 @@ class _BelajarCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: AppTextStyles.heading.copyWith(fontSize: 20),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              title,
+                              style: AppTextStyles.heading.copyWith(
+                                fontSize: 20,
+                              ),
+                            ),
+                          ),
+                          if (badge != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.premiumBadgeBg,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                badge!,
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.mediumBrown,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Text(

@@ -48,6 +48,19 @@ void main() {
     expect(notifier.growthTrackingEnabled, isTrue, reason: 'explicitly enabled');
   });
 
+  test('belajar huruf fails closed while unknown', () async {
+    final notifier = FeatureFlagsNotifier(api);
+    expect(notifier.belajarHurufEnabled, isFalse, reason: 'never fetched');
+
+    when(() => api.fetchFlags()).thenAnswer((_) async => {'qr_scan': true});
+    await notifier.refresh();
+    expect(notifier.belajarHurufEnabled, isFalse, reason: 'old backend without the flag');
+
+    when(() => api.fetchFlags()).thenAnswer((_) async => {'belajar_huruf': true});
+    await notifier.refresh();
+    expect(notifier.belajarHurufEnabled, isTrue, reason: 'explicitly enabled');
+  });
+
   test('refresh applies backend flags, notifies, and caches them', () async {
     when(
       () => api.fetchFlags(),

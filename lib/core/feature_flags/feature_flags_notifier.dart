@@ -17,6 +17,9 @@ class FeatureFlag {
   // enabled, so an app talking to a backend without the growth API never
   // shows it.
   static const String growthTracking = 'growth_tracking';
+  // Belajar Huruf: the Huruf card on Belajar and the Beranda "Lanjutkan
+  // belajar" row. Off unless enabled, like growth tracking.
+  static const String belajarHuruf = 'belajar_huruf';
 }
 
 /// Holds the backoffice-controlled feature switches.
@@ -41,6 +44,7 @@ class FeatureFlagsNotifier extends ChangeNotifier {
   static const Set<String> failClosed = {
     FeatureFlag.alternativeBilling,
     FeatureFlag.growthTracking,
+    FeatureFlag.belajarHuruf,
   };
 
   bool isEnabled(String key) => _flags[key] ?? !failClosed.contains(key);
@@ -50,6 +54,7 @@ class FeatureFlagsNotifier extends ChangeNotifier {
   bool get alternativeBillingEnabled =>
       isEnabled(FeatureFlag.alternativeBilling);
   bool get growthTrackingEnabled => isEnabled(FeatureFlag.growthTracking);
+  bool get belajarHurufEnabled => isEnabled(FeatureFlag.belajarHuruf);
 
   Future<void> loadCached() async {
     try {

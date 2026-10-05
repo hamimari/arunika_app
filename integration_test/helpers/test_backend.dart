@@ -188,4 +188,65 @@ class TestBackend {
       options: await _adminAuth(),
     );
   }
+
+  /// Publishes Belajar Huruf letter [upper] (a draft in the e2e seed) with
+  /// the seeded test assets — the backoffice editor's "Simpan draft" then
+  /// "Terbitkan". Letters are not free, so non-subscribers see it locked.
+  Future<String> publishHurufLetter(
+    String upper, {
+    required String word,
+  }) async {
+    final auth = await _adminAuth();
+    final list = await _dio.get('/admin/huruf/letters', options: auth);
+    final id =
+        (list.data['data'] as List).cast<Map<String, dynamic>>().firstWhere(
+              (l) => l['upper'] == upper,
+            )['id']
+            as String;
+    final draft = await _dio.get(
+      '/admin/huruf/letters/$id/draft',
+      options: auth,
+    );
+    await _dio.put(
+      '/admin/huruf/letters/$id/draft',
+      data: {
+        'draft_rev': draft.data['data']['draft_rev'],
+        'draft': {
+          'kenali': {
+            'word': word,
+            'highlight': [0],
+            // Seeded by db/seeds/test/seed.sql in arunika-backend.
+            'image_asset_id': 'e2e0f000-0000-0000-0000-000000000001',
+          },
+          'dengar': {
+            'letter_audio_id': 'e2e0f000-0000-0000-0000-000000000002',
+            'word_audio_id': 'e2e0f000-0000-0000-0000-000000000003',
+          },
+          'tebalkan': {
+            'lower_required': false,
+            'upper': [
+              {'order': 1, 'label': 'Garis tegak', 'path': 'M90 40 L90 260'},
+            ],
+            'lower': [],
+          },
+          'feedback': {
+            'success': 'Keren! Huruf $upper rapi!',
+            'retry': 'Belum pas, ayo lagi!',
+            'hint': 'Mulai dari angka 1, lalu ikuti titik-titik sampai ujung.',
+          },
+        },
+      },
+      options: auth,
+    );
+    await _dio.post('/admin/huruf/letters/$id/publish', options: auth);
+    return id;
+  }
+
+  /// Hides a letter again, so other flows see the seeded state.
+  Future<void> hideHurufLetter(String id) async {
+    await _dio.post(
+      '/admin/huruf/letters/$id/hide',
+      options: await _adminAuth(),
+    );
+  }
 }

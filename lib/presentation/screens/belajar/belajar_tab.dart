@@ -1,9 +1,13 @@
 import 'package:arunika_app/presentation/screens/belajar/belajar_hub_screen.dart';
+import 'package:arunika_app/data/models/response/huruf_response.dart';
+import 'package:arunika_app/presentation/screens/huruf/huruf_cubit.dart';
+import 'package:arunika_app/presentation/screens/huruf/huruf_detail_screen.dart';
+import 'package:arunika_app/presentation/screens/huruf/huruf_list_screen.dart';
 import 'package:flutter/material.dart';
 
-enum BelajarDestination { hub, kartuAr, dongeng }
+enum BelajarDestination { hub, kartuAr, dongeng, huruf }
 
-/// The Belajar tab: a hub with Kartu AR and Dongeng, each opening inside the
+/// The Belajar tab: a hub with Kartu AR, Dongeng and Huruf, each opening inside the
 /// tab's own navigation stack so the bottom bar stays visible. Screens they
 /// push themselves (AR viewer, Dongeng player, payment) still use the root
 /// routes.
@@ -36,10 +40,15 @@ class BelajarTabState extends State<BelajarTab> {
   bool get canPop => _nav?.canPop() ?? false;
 
   /// Shows [destination], starting from the hub so back always returns there.
+  ///
+  /// For Huruf, [hurufLetter] also opens that letter's detail on top of the
+  /// letter list (Beranda "Lanjutkan belajar"), starting at [hurufStart].
   void open(
     BelajarDestination destination, {
     String? categoryId,
     String? highlightProductId,
+    HurufManifestLetter? hurufLetter,
+    HurufActivity? hurufStart,
   }) {
     final nav = _nav;
     if (nav == null) return;
@@ -61,6 +70,24 @@ class BelajarTabState extends State<BelajarTab> {
             builder: (ctx) => widget.dongengBuilder(ctx, highlightProductId),
           ),
         );
+      case BelajarDestination.huruf:
+        nav.push(
+          MaterialPageRoute(
+            settings: const RouteSettings(name: 'huruf'),
+            builder: (_) => const HurufListScreen(),
+          ),
+        );
+        if (hurufLetter != null) {
+          nav.push(
+            MaterialPageRoute(
+              settings: RouteSettings(name: 'huruf-${hurufLetter.upper}'),
+              builder: (_) => HurufDetailScreen(
+                letter: hurufLetter,
+                initialActivity: hurufStart,
+              ),
+            ),
+          );
+        }
     }
   }
 

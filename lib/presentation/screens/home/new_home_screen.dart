@@ -22,6 +22,8 @@ import 'package:arunika_app/presentation/navigation/main_shell.dart';
 import 'package:arunika_app/presentation/screens/belajar/belajar_tab.dart';
 import 'package:arunika_app/presentation/screens/growth/growth_cubit.dart';
 import 'package:arunika_app/presentation/screens/home/home_growth_card.dart';
+import 'package:arunika_app/presentation/screens/home/home_continue_learning.dart';
+import 'package:arunika_app/presentation/screens/huruf/huruf_cubit.dart';
 import 'package:arunika_app/presentation/screens/home/home_banner_cubit.dart';
 import 'package:arunika_app/presentation/screens/home/home_dongeng_section_bloc.dart';
 import 'package:arunika_app/presentation/screens/premium/premium_pack_cubit.dart';
@@ -142,6 +144,8 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
                   ctx.read<HomeDongengSectionBloc>().reload(),
                   ctx.read<PremiumPackCubit>().loadPacks(fresh: true),
                   if (ctx.read<GrowthCubit?>() case final growth?) growth.load(),
+                  if (ctx.read<HurufCubit?>() case final huruf?)
+                    huruf.load(force: true),
                 ]);
               },
               child: CustomScrollView(
@@ -161,6 +165,8 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
                       ),
                     ),
                   SliverToBoxAdapter(child: _BannerCarouselSection()),
+                  // Huruf letter in progress (hidden unless belajar_huruf).
+                  const SliverToBoxAdapter(child: HomeContinueLearning()),
                   SliverToBoxAdapter(
                     child: _StoriesSection(isLoggedIn: isLoggedIn),
                   ),
