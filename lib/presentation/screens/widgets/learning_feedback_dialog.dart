@@ -19,7 +19,7 @@ class FeedbackAction {
 const _successGreen = Color(0xFF1F6F4A);
 const _retryBrown = Color(0xFF7A3A12);
 
-/// The shared learning pop-up (Huruf, and later Angka): a cheerful success
+/// The shared learning pop-up (Huruf and Angka): a cheerful success
 /// variant, and a gentle retry variant with a hint. Never red, never a
 /// failure sound.
 class LearningFeedbackDialog extends StatelessWidget {
@@ -35,6 +35,13 @@ class LearningFeedbackDialog extends StatelessWidget {
   /// An extra action, e.g. "Buka semua huruf" for non-subscribers.
   final FeedbackAction? extra;
 
+  /// Success only: whether to show the star row ("+1 bintang").
+  final bool showStars;
+
+  /// Success only: when set, the row shows this many of three stars earned
+  /// (a level result) instead of the celebratory "+1 bintang".
+  final int? starsEarned;
+
   const LearningFeedbackDialog({
     super.key,
     required this.kind,
@@ -44,6 +51,8 @@ class LearningFeedbackDialog extends StatelessWidget {
     required this.primary,
     this.secondary,
     this.extra,
+    this.showStars = true,
+    this.starsEarned,
   });
 
   /// Shows the pop-up; it can't be dismissed by tapping outside, so a child
@@ -67,7 +76,8 @@ class LearningFeedbackDialog extends StatelessWidget {
       child: Stack(
         children: [
           if (_success) const Positioned.fill(child: _Confetti()),
-          Padding(
+          // Scrolls rather than overflowing on short phones with large text.
+          SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -88,7 +98,10 @@ class LearningFeedbackDialog extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: AppTextStyles.body.copyWith(color: AppColors.textDark),
                 ),
-                if (_success) ...[const SizedBox(height: 14), const _Stars()],
+                if (_success && showStars) ...[
+                  const SizedBox(height: 14),
+                  _Stars(earned: starsEarned),
+                ],
                 if (!_success && hint != null && hint!.isNotEmpty) ...[
                   const SizedBox(height: 14),
                   _HintBox(hint: hint!),
@@ -171,11 +184,33 @@ class _Mascot extends StatelessWidget {
 }
 
 class _Stars extends StatelessWidget {
-  const _Stars();
+  /// Stars earned out of three; null for the celebratory "+1 bintang" row.
+  final int? earned;
+
+  const _Stars({this.earned});
 
   @override
   Widget build(BuildContext context) {
     const gold = Color(0xFFE3A21A);
+    const empty = Color(0xFFE6DED5);
+    final n = earned;
+    if (n != null) {
+      return Semantics(
+        label: AppStrings.angkaStarsLabel(n),
+        excludeSemantics: true,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < 3; i++)
+              Icon(
+                i < n ? Icons.star_rounded : Icons.star_outline_rounded,
+                color: i < n ? gold : empty,
+                size: i == 1 ? 48 : 40,
+              ),
+          ],
+        ),
+      );
+    }
     // Scales down rather than overflowing with large system text.
     return FittedBox(
       fit: BoxFit.scaleDown,

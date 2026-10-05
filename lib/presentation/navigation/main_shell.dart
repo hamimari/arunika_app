@@ -6,6 +6,7 @@ import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/di/locator.dart';
+import 'package:arunika_app/data/models/response/angka_response.dart';
 import 'package:arunika_app/data/models/response/huruf_response.dart';
 import 'package:arunika_app/presentation/screens/belajar/belajar_tab.dart';
 import 'package:arunika_app/presentation/screens/huruf/huruf_cubit.dart';
@@ -127,6 +128,7 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
     String? highlightProductId,
     HurufManifestLetter? hurufLetter,
     HurufActivity? hurufStart,
+    AngkaManifestLevel? angkaLevel,
   }) {
     if (_currentIndex != MainShellTab.belajar) {
       setState(() => _currentIndex = MainShellTab.belajar);
@@ -138,6 +140,7 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
       highlightProductId: highlightProductId,
       hurufLetter: hurufLetter,
       hurufStart: hurufStart,
+      angkaLevel: angkaLevel,
     );
   }
 

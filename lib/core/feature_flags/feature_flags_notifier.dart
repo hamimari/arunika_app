@@ -20,6 +20,9 @@ class FeatureFlag {
   // Belajar Huruf: the Huruf card on Belajar and the Beranda "Lanjutkan
   // belajar" row. Off unless enabled, like growth tracking.
   static const String belajarHuruf = 'belajar_huruf';
+  // Belajar Angka: the Angka card on Belajar and on the Beranda "Lanjutkan
+  // belajar" row. Off unless enabled, like Huruf.
+  static const String belajarAngka = 'belajar_angka';
 }
 
 /// Holds the backoffice-controlled feature switches.
@@ -45,6 +48,7 @@ class FeatureFlagsNotifier extends ChangeNotifier {
     FeatureFlag.alternativeBilling,
     FeatureFlag.growthTracking,
     FeatureFlag.belajarHuruf,
+    FeatureFlag.belajarAngka,
   };
 
   bool isEnabled(String key) => _flags[key] ?? !failClosed.contains(key);
@@ -55,6 +59,7 @@ class FeatureFlagsNotifier extends ChangeNotifier {
       isEnabled(FeatureFlag.alternativeBilling);
   bool get growthTrackingEnabled => isEnabled(FeatureFlag.growthTracking);
   bool get belajarHurufEnabled => isEnabled(FeatureFlag.belajarHuruf);
+  bool get belajarAngkaEnabled => isEnabled(FeatureFlag.belajarAngka);
 
   Future<void> loadCached() async {
     try {

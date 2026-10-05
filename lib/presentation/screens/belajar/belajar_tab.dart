@@ -1,3 +1,6 @@
+import 'package:arunika_app/data/models/response/angka_response.dart';
+import 'package:arunika_app/presentation/screens/angka/angka_question_screen.dart';
+import 'package:arunika_app/presentation/screens/angka/angka_screen.dart';
 import 'package:arunika_app/presentation/screens/belajar/belajar_hub_screen.dart';
 import 'package:arunika_app/data/models/response/huruf_response.dart';
 import 'package:arunika_app/presentation/screens/huruf/huruf_cubit.dart';
@@ -5,9 +8,9 @@ import 'package:arunika_app/presentation/screens/huruf/huruf_detail_screen.dart'
 import 'package:arunika_app/presentation/screens/huruf/huruf_list_screen.dart';
 import 'package:flutter/material.dart';
 
-enum BelajarDestination { hub, kartuAr, dongeng, huruf }
+enum BelajarDestination { hub, kartuAr, dongeng, huruf, angka }
 
-/// The Belajar tab: a hub with Kartu AR, Dongeng and Huruf, each opening inside the
+/// The Belajar tab: a hub with Kartu AR, Dongeng, Huruf and Angka, each opening inside the
 /// tab's own navigation stack so the bottom bar stays visible. Screens they
 /// push themselves (AR viewer, Dongeng player, payment) still use the root
 /// routes.
@@ -43,12 +46,14 @@ class BelajarTabState extends State<BelajarTab> {
   ///
   /// For Huruf, [hurufLetter] also opens that letter's detail on top of the
   /// letter list (Beranda "Lanjutkan belajar"), starting at [hurufStart].
+  /// For Angka, [angkaLevel] resumes that level on top of Belajar Angka.
   void open(
     BelajarDestination destination, {
     String? categoryId,
     String? highlightProductId,
     HurufManifestLetter? hurufLetter,
     HurufActivity? hurufStart,
+    AngkaManifestLevel? angkaLevel,
   }) {
     final nav = _nav;
     if (nav == null) return;
@@ -85,6 +90,21 @@ class BelajarTabState extends State<BelajarTab> {
                 letter: hurufLetter,
                 initialActivity: hurufStart,
               ),
+            ),
+          );
+        }
+      case BelajarDestination.angka:
+        nav.push(
+          MaterialPageRoute(
+            settings: const RouteSettings(name: 'angka'),
+            builder: (_) => const AngkaScreen(),
+          ),
+        );
+        if (angkaLevel != null) {
+          nav.push(
+            MaterialPageRoute(
+              settings: RouteSettings(name: 'angka-level-${angkaLevel.id}'),
+              builder: (_) => AngkaQuestionScreen(level: angkaLevel),
             ),
           );
         }

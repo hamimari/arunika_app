@@ -7,7 +7,9 @@ import 'package:arunika_app/data/models/response/dongeng_response.dart';
 import 'package:arunika_app/data/repositories/auth_repository.dart';
 import 'package:arunika_app/data/repositories/fairy_tales_repository.dart';
 import 'package:arunika_app/data/repositories/growth_repository.dart';
+import 'package:arunika_app/data/repositories/angka_repository.dart';
 import 'package:arunika_app/data/repositories/huruf_repository.dart';
+import 'package:arunika_app/presentation/screens/angka/angka_cubit.dart';
 import 'package:arunika_app/presentation/screens/huruf/huruf_cubit.dart';
 import 'package:arunika_app/data/repositories/user_repository.dart';
 import 'package:arunika_app/di/locator.dart';
@@ -96,6 +98,15 @@ class AppRouter {
                   repository: locator<HurufRepository>(),
                   enabled: () =>
                       authNotifier.isLoggedIn && flags.belajarHurufEnabled,
+                  trigger: Listenable.merge([authNotifier, flags]),
+                ),
+              ),
+              // Shared by Belajar Angka and the Beranda "Lanjutkan belajar".
+              BlocProvider(
+                create: (_) => AngkaCubit(
+                  repository: locator<AngkaRepository>(),
+                  enabled: () =>
+                      authNotifier.isLoggedIn && flags.belajarAngkaEnabled,
                   trigger: Listenable.merge([authNotifier, flags]),
                 ),
               ),

@@ -60,6 +60,59 @@ class AppStrings {
       'Tambahkan data si kecil di Profil untuk mulai belajar huruf.';
   static const String hurufEmpty = 'Huruf segera hadir!';
 
+  // Belajar Angka
+  static const String angkaCardTitle = 'Angka';
+  static const String angkaCardDescription =
+      'Kenal angka, hitung benda, jawab soal';
+  static const String angkaCardAction = 'Mulai';
+  static const String angkaTitle = 'Belajar Angka';
+  static const String angkaSubtitle = 'Kenal angka dan berhitung, yuk!';
+  static const String angkaKenalTitle = 'Kenal Angka';
+  static const String angkaKenalSubtitle = 'Ketuk angka untuk dengar bunyinya';
+  static const String angkaHitungTitle = 'Hitung Benda';
+  static const String angkaHitungSubtitle =
+      'Hitung gambarnya, lalu ketik jawabannya';
+  static String angkaLevelLabel(int n) => 'Level $n';
+  static const String angkaStart = 'Mulai';
+  static const String angkaContinue = 'Lanjut';
+  static const String angkaPlayAgain = 'Main lagi';
+  static String angkaAnswered(int answered, int total) =>
+      '$answered/$total soal';
+  static String angkaFinishFirst(int level) =>
+      'Selesaikan Level $level untuk membuka';
+  static const String angkaFree = 'Gratis';
+  static const String angkaPremium = 'Premium';
+  static String angkaQuestionHeader(int level, int q, int total) =>
+      'Level $level · Soal $q dari $total';
+  static const String angkaYourAnswer = 'Jawabanmu';
+  static const String angkaCheck = 'Periksa';
+  static const String angkaDelete = 'Hapus';
+  static const String angkaListen = 'Dengar soal';
+  static String angkaQuestionFallback(String benda) => 'Ada berapa $benda?';
+  static String angkaSuccessBody(int n, String benda) =>
+      'Ada $n $benda. Kamu pintar berhitung!';
+  static String angkaRetryBody(int answer, String benda) =>
+      'Jawabanmu $answer. Yuk, hitung ${benda}nya sekali lagi.';
+  static const String angkaNextQuestion = 'Soal berikutnya';
+  static const String angkaBackToMenu = 'Kembali ke menu';
+  static const String angkaTryAgain = 'Coba lagi';
+  static const String angkaListenAgain = 'Dengar soal lagi';
+  static const String angkaLevelDoneTitle = 'Hore, level selesai!';
+  static String angkaLevelDoneBody(int firstCorrect, int total) =>
+      '$firstCorrect dari $total benar di percobaan pertama.';
+  static const String angkaProvisional = 'Bintang disimpan saat online.';
+  static const String angkaNextLevel = 'Level berikutnya';
+  static const String angkaUnlockAll = 'Buka semua level';
+  static const String angkaContinueLabel = 'ANGKA';
+  static const String angkaLoadError = 'Angka belum bisa dimuat.';
+  static const String angkaNoChild =
+      'Tambahkan data si kecil di Profil untuk mulai belajar angka.';
+  static const String angkaEmpty = 'Angka segera hadir!';
+  static const String angkaReplay = 'Dengarkan';
+  static const String angkaPrevious = 'Angka sebelumnya';
+  static const String angkaNext = 'Angka berikutnya';
+  static String angkaStarsLabel(int n) => '$n dari 3 bintang';
+
   // Home
   static const String homeGreeting = 'Halo, Selamat Datang! 👋';
   static const String homeGreetingName = 'Halo, ';

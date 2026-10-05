@@ -46,4 +46,15 @@ class ApiPaths {
       "/children/$childId/huruf/progress";
   static String hurufLetterProgress(String childId, String letterId) =>
       "/children/$childId/huruf/progress/$letterId";
+  static const String angkaManifest = "/learn/angka/manifest";
+  static String angkaNumber(int value) => "/learn/angka/numbers/$value";
+  static String angkaLevel(String id) => "/learn/angka/levels/$id";
+  static String angkaProgress(String childId) =>
+      "/children/$childId/angka/progress";
+  static String angkaSessions(String childId) =>
+      "/children/$childId/angka/sessions";
+  static String angkaSession(String childId, String sessionId) =>
+      "/children/$childId/angka/sessions/$sessionId";
+  static String angkaSessionComplete(String childId, String sessionId) =>
+      "/children/$childId/angka/sessions/$sessionId/complete";
 }

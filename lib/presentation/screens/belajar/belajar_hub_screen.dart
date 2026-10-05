@@ -4,6 +4,8 @@ import 'package:arunika_app/constants/app_text_styles.dart';
 import 'package:arunika_app/core/auth/auth_notifier.dart';
 import 'package:arunika_app/core/feature_flags/feature_flags_notifier.dart';
 import 'package:arunika_app/di/locator.dart';
+import 'package:arunika_app/presentation/screens/angka/angka_cubit.dart';
+import 'package:arunika_app/presentation/screens/angka/angka_widgets.dart';
 import 'package:arunika_app/presentation/screens/belajar/belajar_tab.dart';
 import 'package:arunika_app/presentation/screens/huruf/huruf_cubit.dart';
 import 'package:arunika_app/presentation/screens/huruf/huruf_widgets.dart';
@@ -13,7 +15,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iconsax/iconsax.dart';
 
 /// "Belajar — Pilih petualangan belajar hari ini!": one card per learning
-/// feature. Stimulasi Bayi and Angka join here when they ship.
+/// feature. Stimulasi Bayi joins here when it ships.
 class BelajarHubScreen extends StatelessWidget {
   final ValueChanged<BelajarDestination> onOpen;
 
@@ -54,10 +56,61 @@ class BelajarHubScreen extends StatelessWidget {
               icon: Iconsax.book_1,
               onTap: () => onOpen(BelajarDestination.dongeng),
             ),
+            _AngkaCard(onOpen: () => onOpen(BelajarDestination.angka)),
             _HurufCard(onOpen: () => onOpen(BelajarDestination.huruf)),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Belajar Angka: shown when `belajar_angka` is on, with a "Premium" badge
+/// for anyone without Akses Premium. Guests are asked to sign in first,
+/// since progress belongs to a child.
+class _AngkaCard extends StatelessWidget {
+  final VoidCallback onOpen;
+
+  const _AngkaCard({required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    final flags = locator<FeatureFlagsNotifier>();
+    final cubit = context.read<AngkaCubit?>();
+    return ListenableBuilder(
+      listenable: flags,
+      builder: (context, _) {
+        if (!flags.belajarAngkaEnabled) return const SizedBox.shrink();
+        Widget card(bool premium) => Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: _BelajarCard(
+            key: const ValueKey('belajar-angka-card'),
+            title: AppStrings.angkaCardTitle,
+            description: AppStrings.angkaCardDescription,
+            action: AppStrings.angkaCardAction,
+            background: AngkaColors.sky,
+            accent: AngkaColors.blue,
+            icon: Icons.numbers_rounded,
+            badge: premium ? null : AppStrings.angkaPremium,
+            onTap: () {
+              if (!locator<AuthNotifier>().isLoggedIn) {
+                showLoginRequiredDialog(
+                  context,
+                  featureLabel: AppStrings.angkaTitle,
+                );
+                return;
+              }
+              onOpen();
+            },
+          ),
+        );
+        if (cubit == null) return card(false);
+        return BlocBuilder<AngkaCubit, AngkaState>(
+          bloc: cubit,
+          buildWhen: (a, b) => a.premium != b.premium,
+          builder: (_, state) => card(state.premium),
+        );
+      },
     );
   }
 }
@@ -124,6 +177,7 @@ class _BelajarCard extends StatelessWidget {
   final String? badge;
 
   const _BelajarCard({
+    super.key,
     required this.title,
     required this.description,
     required this.action,
