@@ -1,4 +1,5 @@
 import 'package:arunika_app/presentation/screens/arscanner/ar_core_screen.dart';
+import 'package:arunika_app/presentation/screens/arscanner/ar_safety_warning.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -104,6 +105,22 @@ Future<void> _simulatePlaneDetected(WidgetTester tester, int planeCount) async {
   );
 }
 
+/// Pumps the AR screen and acknowledges the AR safety warning so the AR view
+/// itself is built.
+Future<void> _pumpArScreen(WidgetTester tester) async {
+  await tester.pumpWidget(
+    const MaterialApp(
+      home: ArCoreSurfacePlaceScreen(modelUrl: 'https://example.com/model.glb'),
+    ),
+  );
+  await tester.pump();
+
+  final accept = find.text('Saya Mengerti');
+  await tester.ensureVisible(accept);
+  await tester.tap(accept);
+  await tester.pump();
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 void main() {
@@ -118,9 +135,11 @@ void main() {
   });
 
   group('ArCoreSurfacePlaceScreen', () {
-    // ── Task 5.3: status banner shows scanning prompt on initial render ──────
+    // ── Play Families Policy: AR safety warning before the AR view ──────────
 
-    testWidgets('shows scanning hint on initial render', (tester) async {
+    testWidgets('shows AR safety warning before the AR view on launch', (
+      tester,
+    ) async {
       _stubArChannels(tester);
 
       await tester.pumpWidget(
@@ -130,8 +149,33 @@ void main() {
           ),
         ),
       );
-
       await tester.pump();
+
+      expect(find.byType(ArSafetyWarning), findsOneWidget);
+      expect(find.text('Gunakan dengan pengawasan orang tua'), findsOneWidget);
+      expect(find.text('Perhatikan sekitarmu'), findsOneWidget);
+      expect(
+        find.text('Slowly move your camera to find a flat surface'),
+        findsNothing,
+      );
+    });
+
+    testWidgets('accepting the safety warning shows the AR view', (
+      tester,
+    ) async {
+      _stubArChannels(tester);
+
+      await _pumpArScreen(tester);
+
+      expect(find.byType(ArSafetyWarning), findsNothing);
+    });
+
+    // ── Task 5.3: status banner shows scanning prompt on initial render ──────
+
+    testWidgets('shows scanning hint on initial render', (tester) async {
+      _stubArChannels(tester);
+
+      await _pumpArScreen(tester);
 
       // On initial render no plane has been detected yet, so the status banner
       // shows the scanning prompt to guide the user.
@@ -159,15 +203,7 @@ void main() {
     ) async {
       _stubArChannels(tester);
 
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: ArCoreSurfacePlaceScreen(
-            modelUrl: 'https://example.com/model.glb',
-          ),
-        ),
-      );
-
-      await tester.pump();
+      await _pumpArScreen(tester);
 
       // Sending the event should not throw
       await _simulatePlaneDetected(tester, 1);
@@ -190,15 +226,7 @@ void main() {
       (tester) async {
         final addNodeCount = _stubArChannels(tester);
 
-        await tester.pumpWidget(
-          const MaterialApp(
-            home: ArCoreSurfacePlaceScreen(
-              modelUrl: 'https://example.com/model.glb',
-            ),
-          ),
-        );
-
-        await tester.pump();
+        await _pumpArScreen(tester);
 
         // First detection
         await _simulatePlaneDetected(tester, 1);

@@ -15,6 +15,7 @@ import 'package:ar_flutter_plugin_2/models/ar_node.dart';
 import 'package:arunika_app/core/media/media_cache.dart';
 import 'package:arunika_app/data/repositories/ar_repository.dart';
 import 'package:arunika_app/di/locator.dart';
+import 'package:arunika_app/presentation/screens/arscanner/ar_safety_warning.dart';
 import 'package:arunika_app/presentation/screens/arscanner/placement_machine.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner.dart';
 import 'package:arunika_app/presentation/screens/qrscanner/qr_scanner_bloc.dart';
@@ -106,6 +107,9 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
   // are allocated when the feature is not in use.
   AudioPlayer? _audioPlayer;
 
+  // The AR view is only built once the user acknowledges the safety warning.
+  bool _safetyAcknowledged = false;
+
   @override
   void initState() {
     super.initState();
@@ -175,6 +179,14 @@ class _ArCoreSurfacePlaceScreenState extends State<ArCoreSurfacePlaceScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Play Families Policy: show the AR safety warning as soon as the AR
+    // section starts, before the AR camera session is created.
+    if (!_safetyAcknowledged) {
+      return ArSafetyWarning(
+        onAccept: () => setState(() => _safetyAcknowledged = true),
+        onCancel: () => Navigator.of(context).maybePop(),
+      );
+    }
     return Scaffold(
       body: Stack(
         children: [
